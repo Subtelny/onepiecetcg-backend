@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv:*)",
+      "Bash(mvn:*)",
+      "Bash(echo:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "WebFetch(domain:optcgapi.com)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "Bash(kill %1)",
+      "Bash(kill:*)",
+      "Bash(curl:*)",
+      "Bash(jobs)"
+    ]
+  }
+}

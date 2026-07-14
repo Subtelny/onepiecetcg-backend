@@ -70,21 +70,33 @@ pl.janda.onepiecetcg/
 │   │   ├── CardFaqEntry.java
 │   │   ├── Deck.java
 │   │   ├── DeckCard.java
-│   │   └── Shop.java
+│   │   ├── Shop.java
+│   │   └── CardSet.java            # JPA entity (synced from optcgapi.com)
 │   ├── repository/                 # Repository INTERFACES (Ports)
 │   │   ├── CardRepository.java
 │   │   ├── DeckRepository.java
-│   │   └── ShopRepository.java
+│   │   ├── ShopRepository.java
+│   │   └── CardSetRepository.java
+│   ├── client/                     # Outbound client INTERFACES (Ports)
+│   │   └── CardSetApiClient.java
 │   └── service/                    # Business logic (Application services)
 │       ├── CardService.java
 │       ├── DeckService.java
-│       └── ShopService.java
+│       ├── ShopService.java
+│       └── CardSetSyncService.java
 │
 ├── infrastructure/                 # Infrastructure adapters
 │   ├── persistence/                # Repository implementations
 │   │   ├── InMemoryCardRepository.java
 │   │   ├── InMemoryDeckRepository.java
-│   │   └── InMemoryShopRepository.java
+│   │   ├── InMemoryShopRepository.java
+│   │   └── JpaCardSetRepository.java  # Spring Data JPA (PostgreSQL)
+│   ├── client/                     # External HTTP client adapters
+│   │   ├── OptcgApiCardSetClient.java
+│   │   └── dto/
+│   │       └── OptcgSetResponse.java
+│   ├── scheduler/
+│   │   └── CardSetSyncScheduler.java  # Daily @Scheduled sync + startup sync
 │   └── data/
 │       └── MockDataLoader.java     # Loads initial data (@PostConstruct)
 │
@@ -175,6 +187,58 @@ The frontend (`~/WebstormProjects/onepiecetcg`) defines TypeScript interfaces. B
 - Frontend uses `field?: type` for optional
 - Backend: use `Integer`, `String` (wrapper types, not primitives)
 - Never return `undefined` - use `null` in JSON
+
+---
+
+## 🎯 Page-Specific API Design
+
+### Philosophy
+
+The backend is organized around **frontend page needs**, not just generic CRUD operations. Each major page in the frontend has corresponding API endpoints that provide exactly the data needed.
+
+### Page-to-Controller Mapping
+
+**HomePage** → `HomeController` (`/api/home/*`)
+- Platform statistics (total cards, active decks, community size, tournaments)
+- Featured updates (new sets, ban lists, announcements)
+- Meta snapshot (dominant colors, trending archetypes)
+- Upcoming events (tournaments, pre-releases, casual play)
+
+**CardSearchPage** → `CardController` (`/api/cards/*`)
+- Advanced search with filters (sets, colors, rarities, types, attributes, cost/power ranges)
+- Card details with embedded errata and FAQ
+
+**DeckListPage** → `DeckController` (`/api/decks/*`)
+- Deck browsing and search
+- Featured/popular decks endpoint
+- Full CRUD for deck management
+
+**ShopSearchPage** → `ShopController` (`/api/shops/*`)
+- Shop directory with location-based search
+- Shop details with contact info and opening hours
+
+**TournamentCreatorPage** → `TournamentController` (`/api/tournaments/*`)
+- Tournament CRUD (Swiss, Single Elimination, Round Robin)
+- Player management and match tracking
+- Standings calculation with tiebreakers (OMW%, GW%, OGW%)
+
+### Design Principles
+
+1. **Data Aggregation**: Endpoints aggregate data from multiple sources (e.g., `/api/home/stats` pulls from cards, decks, tournaments)
+2. **Specialized Endpoints**: Create dedicated endpoints for common use cases (e.g., `/api/decks/featured` vs generic search)
+3. **Complete Data**: Return complete nested objects when needed (e.g., Tournament includes full Player and Match arrays)
+4. **Frontend-Driven**: API structure follows frontend needs, not database schema
+5. **Minimal Round-Trips**: Design endpoints to minimize frontend API calls (include related data)
+
+### When to Create Page-Specific Controllers
+
+Create a new controller when:
+- A new major page/feature is added to the frontend
+- The page needs aggregated data from multiple sources
+- The page has unique business logic (calculations, sorting, filtering)
+- Generic CRUD doesn't match the page's workflow
+
+**Example**: `HomeController` exists because HomePage needs aggregated statistics, not because "Home" is a database entity.
 
 ---
 
@@ -917,6 +981,8 @@ public interface JpaCardRepository extends JpaRepository<Card, String>, CardRepo
 
 4. **Services remain unchanged** - they depend on `CardRepository` interface, not implementation
 
+**✅ Implemented for `CardSet`:** PostgreSQL (via Docker Compose) + JPA is already wired up for the `CardSet` entity (`application/model/CardSet.java`, `infrastructure/persistence/JpaCardSetRepository.java`). The `Card`/`Deck`/`Shop` in-memory repositories are unaffected and can follow the same pattern when migrated.
+
 ### Authentication & Authorization
 
 - Add Spring Security
@@ -929,6 +995,8 @@ public interface JpaCardRepository extends JpaRepository<Card, String>, CardRepo
 - Sync card data from `https://www.optcgapi.com/api/`
 - Scheduled jobs (`@Scheduled`) to update card database
 - Cache external API responses
+
+**✅ Implemented for card sets:** `CardSetSyncScheduler` (`infrastructure/scheduler/`) syncs `GET https://www.optcgapi.com/api/allSets/` once on startup and daily via cron (`sets.sync.cron`, default `0 0 3 * * *`), persisting results into PostgreSQL through `CardSetSyncService` → `CardSetRepository` → `JpaCardSetRepository`. Card-level sync from the same API remains a future enhancement.
 
 ### Advanced Features
 
@@ -951,12 +1019,41 @@ public interface JpaCardRepository extends JpaRepository<Card, String>, CardRepo
 - OpenAPI Spec: http://localhost:3000/api-docs
 
 **Key Endpoints:**
-- Cards: `GET /api/cards`, `GET /api/cards/{id}`
-- Decks: `GET /api/decks`, `POST /api/decks`, `PUT /api/decks/{id}`, `DELETE /api/decks/{id}`
-- Shops: `GET /api/shops`, `GET /api/shops/{id}`
+
+**Homepage Data:**
+- Platform Stats: `GET /api/home/stats`
+- Featured Update: `GET /api/home/featured`
+- Meta Snapshot: `GET /api/home/meta`
+- Upcoming Events: `GET /api/home/events`
+
+**Cards:**
+- Search/List: `GET /api/cards` (with filters)
+- Get by ID: `GET /api/cards/{id}`
+
+**Decks:**
+- List/Search: `GET /api/decks` (with filters)
+- Featured Decks: `GET /api/decks/featured`
+- Get by ID: `GET /api/decks/{id}`
+- Create: `POST /api/decks`
+- Update: `PUT /api/decks/{id}`
+- Delete: `DELETE /api/decks/{id}`
+
+**Shops:**
+- List/Search: `GET /api/shops` (with filters)
+- Get by ID: `GET /api/shops/{id}`
+
+**Tournaments:**
+- List: `GET /api/tournaments`
+- Get by ID: `GET /api/tournaments/{id}`
+- Create: `POST /api/tournaments`
+- Update: `PUT /api/tournaments/{id}`
+- Delete: `DELETE /api/tournaments/{id}`
 
 **Development:**
 ```bash
+# Start local PostgreSQL (required for CardSet sync)
+docker compose up -d
+
 # Compile
 mvn clean compile
 
@@ -994,6 +1091,14 @@ Before merging/committing, verify:
 
 ## 📖 Version History
 
+**v1.1.0** (2026-07-14)
+- Added page-specific controllers for frontend integration
+- **HomeController**: Platform stats, featured updates, meta snapshot, events
+- **TournamentController**: Full tournament management (Swiss, Single Elimination, Round Robin)
+- **DeckController**: Extended with featured decks endpoint
+- Page-to-controller mapping documented
+- 13 total API endpoints
+
 **v1.0.0** (2026-07-14)
 - Initial backend implementation
 - Hexagonal architecture with DDD
@@ -1004,6 +1109,6 @@ Before merging/committing, verify:
 
 ---
 
-**Last Updated:** 2026-07-14
+**Last Updated:** 2026-07-14 (v1.1.0)
 **Author:** Sebastian Janda
 **AI Assistant:** Claude (Anthropic)

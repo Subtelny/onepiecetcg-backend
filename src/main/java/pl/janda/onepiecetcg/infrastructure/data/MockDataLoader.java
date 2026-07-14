@@ -6,14 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.*;
 import pl.janda.onepiecetcg.infrastructure.persistence.InMemoryCardRepository;
-import pl.janda.onepiecetcg.infrastructure.persistence.InMemoryDeckRepository;
-import pl.janda.onepiecetcg.infrastructure.persistence.InMemoryShopRepository;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -21,15 +15,11 @@ import java.util.UUID;
 public class MockDataLoader {
 
     private final InMemoryCardRepository cardRepository;
-    private final InMemoryDeckRepository deckRepository;
-    private final InMemoryShopRepository shopRepository;
 
     @PostConstruct
     public void loadMockData() {
         log.info("Loading mock data...");
         loadCards();
-        loadDecks();
-        loadShops();
         log.info("Mock data loaded successfully!");
     }
 
@@ -232,217 +222,6 @@ public class MockDataLoader {
                 .rarity(rarity)
                 .cardNumber(cardNumber)
                 .imageUrl(imageUrl)
-                .build();
-    }
-
-    private void loadDecks() {
-        // Get some cards for deck building
-        Card luffyLeader = cardRepository.findById("card-001").orElseThrow();
-        Card ace = cardRepository.findById("card-006").orElseThrow();
-        Card sanji = cardRepository.findById("card-007").orElseThrow();
-        Card robin = cardRepository.findById("card-008").orElseThrow();
-        Card gumGumRedRoc = cardRepository.findById("card-020").orElseThrow();
-        Card thousandSunny = cardRepository.findById("card-024").orElseThrow();
-
-        Deck redRushDeck = createDeck(
-                "deck-001",
-                "Red Rush Aggro",
-                "Aggressive red deck focused on early board control and rushing the opponent.",
-                luffyLeader,
-                Arrays.asList(
-                        new DeckCard(ace, 4),
-                        new DeckCard(sanji, 4),
-                        new DeckCard(robin, 4),
-                        new DeckCard(gumGumRedRoc, 3),
-                        new DeckCard(thousandSunny, 2)
-                ),
-                "LuffyFan123"
-        );
-        deckRepository.addDeck(redRushDeck);
-
-        // Deck 2 - Green Zoro
-        Card zoroLeader = cardRepository.findById("card-002").orElseThrow();
-        Card zoroChar = cardRepository.findById("card-011").orElseThrow();
-        Card usopp = cardRepository.findById("card-012").orElseThrow();
-        Card chopper = cardRepository.findById("card-013").orElseThrow();
-
-        Deck greenZoroDeck = createDeck(
-                "deck-002",
-                "Green Zoro Control",
-                "Control-oriented green deck with Zoro as leader.",
-                zoroLeader,
-                Arrays.asList(
-                        new DeckCard(zoroChar, 4),
-                        new DeckCard(usopp, 4),
-                        new DeckCard(chopper, 4)
-                ),
-                "SwordMaster"
-        );
-        deckRepository.addDeck(greenZoroDeck);
-
-        // Deck 3 - Blue Nami
-        Card namiLeader = cardRepository.findById("card-003").orElseThrow();
-        Card jinbe = cardRepository.findById("card-009").orElseThrow();
-        Card doflamingo = cardRepository.findById("card-010").orElseThrow();
-
-        Deck blueNamiDeck = createDeck(
-                "deck-003",
-                "Blue Nami Bounce",
-                "Bounce strategy with Nami, returning opponent's characters.",
-                namiLeader,
-                Arrays.asList(
-                        new DeckCard(jinbe, 4),
-                        new DeckCard(doflamingo, 2)
-                ),
-                "Navigator99"
-        );
-        deckRepository.addDeck(blueNamiDeck);
-
-        // Deck 4 - Purple Katakuri
-        Card katakuriLeader = cardRepository.findById("card-005").orElseThrow();
-        Card moria = cardRepository.findById("card-014").orElseThrow();
-        Card perona = cardRepository.findById("card-015").orElseThrow();
-
-        Deck purpleKatakuriDeck = createDeck(
-                "deck-004",
-                "Purple Katakuri Events",
-                "Event-focused purple deck with Katakuri.",
-                katakuriLeader,
-                Arrays.asList(
-                        new DeckCard(moria, 3),
-                        new DeckCard(perona, 4)
-                ),
-                "MochiKing"
-        );
-        deckRepository.addDeck(purpleKatakuriDeck);
-
-        // Deck 5 - Law Blue/Purple
-        Card lawLeader = cardRepository.findById("card-004").orElseThrow();
-
-        Deck lawDeck = createDeck(
-                "deck-005",
-                "Law Dual Color",
-                "Blue/Purple deck utilizing Law's dual color advantage.",
-                lawLeader,
-                Arrays.asList(
-                        new DeckCard(jinbe, 3),
-                        new DeckCard(moria, 2),
-                        new DeckCard(perona, 3)
-                ),
-                "SurgeonOfDeath"
-        );
-        deckRepository.addDeck(lawDeck);
-
-        // Deck 6-10 (simplified versions)
-        for (int i = 6; i <= 10; i++) {
-            Deck deck = createDeck(
-                    "deck-00" + i,
-                    "Sample Deck " + i,
-                    "This is a sample deck for testing purposes.",
-                    luffyLeader,
-                    Arrays.asList(
-                            new DeckCard(ace, 4),
-                            new DeckCard(sanji, 3)
-                    ),
-                    "TestUser" + i
-            );
-            deckRepository.addDeck(deck);
-        }
-
-        log.info("Loaded {} decks", 10);
-    }
-
-    private Deck createDeck(String id, String name, String description, Card leader,
-                           List<DeckCard> cards, String author) {
-        return Deck.builder()
-                .id(id)
-                .name(name)
-                .description(description)
-                .leader(leader)
-                .cards(cards != null ? new ArrayList<>(cards) : new ArrayList<>())
-                .createdAt(LocalDateTime.now().minusDays((long) (Math.random() * 30)))
-                .updatedAt(LocalDateTime.now())
-                .author(author)
-                .build();
-    }
-
-    private void loadShops() {
-        shopRepository.addShop(createShop("shop-001", "Kamerat Games", "Warszawa",
-                "ul. Marszałkowska 115, 00-102 Warszawa", "https://kameratgames.pl",
-                "+48 22 123 4567", "kontakt@kameratgames.pl",
-                "Sklep z kartami kolekcjonerskimi i grami planszowymi w centrum Warszawy.",
-                "Pn-Pt: 12:00-20:00, Sb: 10:00-18:00, Nd: nieczynne"));
-
-        shopRepository.addShop(createShop("shop-002", "Magia i Miecz", "Kraków",
-                "ul. Floriańska 34, 31-021 Kraków", "https://magiaimiecz.pl",
-                "+48 12 234 5678", "sklep@magiaimiecz.pl",
-                "Krakowski sklep specjalizujący się w TCG i RPG.",
-                "Pn-Sb: 11:00-19:00, Nd: 12:00-17:00"));
-
-        shopRepository.addShop(createShop("shop-003", "Rebel Games", "Gdańsk",
-                "ul. Długa 45, 80-831 Gdańsk", "https://rebelgames.pl",
-                "+48 58 345 6789", "info@rebelgames.pl",
-                "Sklep z kartami One Piece TCG i innymi grami kolekcjonerskimi.",
-                "Pn-Pt: 10:00-19:00, Sb-Nd: 10:00-16:00"));
-
-        shopRepository.addShop(createShop("shop-004", "BlackLotus", "Wrocław",
-                "ul. Świdnicka 23, 50-066 Wrocław", "https://blacklotus.pl",
-                "+48 71 456 7890", "sklep@blacklotus.pl",
-                "Profesjonalny sklep TCG z bogatym asortymentem One Piece.",
-                "Pn-Pt: 11:00-20:00, Sb: 10:00-18:00, Nd: nieczynne"));
-
-        shopRepository.addShop(createShop("shop-005", "GameZone", "Poznań",
-                "ul. Półwiejska 42, 61-888 Poznań", "https://gamezone-poznan.pl",
-                "+48 61 567 8901", "kontakt@gamezone.pl",
-                "Sklep i miejsce spotkań dla fanów TCG w Poznaniu.",
-                "Pn-Sb: 12:00-20:00, Nd: 12:00-18:00"));
-
-        shopRepository.addShop(createShop("shop-006", "Karciana Przystań", "Łódź",
-                "ul. Piotrkowska 96, 90-006 Łódź", "https://karcianaprzymstan.pl",
-                "+48 42 678 9012", "info@karcianaprzymstan.pl",
-                "Łódzki sklep z kartami One Piece TCG i organizowane turnieje.",
-                "Pn-Pt: 13:00-21:00, Sb-Nd: 11:00-19:00"));
-
-        shopRepository.addShop(createShop("shop-007", "Dragon's Lair", "Katowice",
-                "ul. Mariacka 12, 40-014 Katowice", "https://dragonslair.pl",
-                "+48 32 789 0123", "sklep@dragonslair.pl",
-                "Śląski sklep TCG z friendly atmosferą i regularnymi eventami.",
-                "Pn-Pt: 12:00-20:00, Sb: 10:00-18:00, Nd: nieczynne"));
-
-        shopRepository.addShop(createShop("shop-008", "Strefa Gier", "Szczecin",
-                "ul. Bogurodzicy 8, 70-440 Szczecin", "https://strefagier.pl",
-                "+48 91 890 1234", "kontakt@strefagier.pl",
-                "Sklep z kartami i grami w Szczecinie. Specjalizacja One Piece TCG.",
-                "Pn-Sb: 11:00-19:00, Nd: 12:00-17:00"));
-
-        shopRepository.addShop(createShop("shop-009", "Nerd Kingdom", "Lublin",
-                "ul. Krakowskie Przedmieście 62, 20-002 Lublin", "https://nerdkingdom.pl",
-                "+48 81 901 2345", "info@nerdkingdom.pl",
-                "Królestwo nerdów w Lublinie - TCG, RPG, gry planszowe.",
-                "Pn-Pt: 10:00-20:00, Sb: 10:00-18:00, Nd: nieczynne"));
-
-        shopRepository.addShop(createShop("shop-010", "Cardverse", "Bydgoszcz",
-                "ul. Gdańska 141, 85-021 Bydgoszcz", "https://cardverse.pl",
-                "+48 52 012 3456", "sklep@cardverse.pl",
-                "Uniwersum kart w Bydgoszczy. Najlepsze ceny na One Piece TCG!",
-                "Pn-Pt: 12:00-20:00, Sb-Nd: 11:00-18:00"));
-
-        log.info("Loaded {} shops", 10);
-    }
-
-    private Shop createShop(String id, String name, String location, String address,
-                           String website, String phone, String email, String description,
-                           String openingHours) {
-        return Shop.builder()
-                .id(id)
-                .name(name)
-                .location(location)
-                .address(address)
-                .website(website)
-                .phone(phone)
-                .email(email)
-                .description(description)
-                .openingHours(openingHours)
                 .build();
     }
 }

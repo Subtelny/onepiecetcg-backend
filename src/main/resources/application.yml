@@ -4,6 +4,19 @@ server:
 spring:
   application:
     name: onepiecetcg-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/onepiecetcg
+    username: ${DB_USERNAME:onepiecetcg}
+    password: ${DB_PASSWORD:onepiecetcg}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+
+sets:
+  sync:
+    cron: "0 0 3 * * *"
 
 springdoc:
   api-docs:
