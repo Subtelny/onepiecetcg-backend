@@ -14,7 +14,10 @@ spring:
     open-in-view: false
     show-sql: false
 
-sets:
+optcgapi:
+  base-url: https://www.optcgapi.com/api
+
+card-sets:
   sync:
     cron: "0 0 3 * * *"
 
