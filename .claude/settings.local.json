@@ -12,7 +12,23 @@
       "Bash(kill %1)",
       "Bash(kill:*)",
       "Bash(curl:*)",
-      "Bash(jobs)"
+      "Bash(jobs)",
+      "Bash(python3:*)",
+      "Bash(jobs:*)",
+      "Bash(xargs:*)",
+      "Bash(pgrep:*)",
+      "Bash(__NEW_LINE_0c0d467a75513a31__ echo \"=== filter color=RED costMin=3 costMax=6 ===\")",
+      "Bash(__NEW_LINE_b20699b0629e9717__ echo \"=== filter rarity=TR ===\")",
+      "Bash(__NEW_LINE_36fb9e6ba2ba0518__ echo \"=== 404 for nonexistent id ===\")",
+      "Bash(__NEW_LINE_36fb9e6ba2ba0518__ echo \"=== 404-style for non-numeric id ===\")",
+      "Bash(for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)",
+      "Bash(do)",
+      "Bash(if grep -q \"Started OnePieceTcgApplication\" /tmp/spring-boot-run.log)",
+      "Bash(then)",
+      "Bash(break)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(unzip:*)"
     ]
   }
 }

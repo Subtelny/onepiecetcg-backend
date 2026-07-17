@@ -8,14 +8,18 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import pl.janda.onepiecetcg.application.model.Card;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
-import pl.janda.onepiecetcg.application.model.CardType;
+import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.service.CardService;
 import pl.janda.onepiecetcg.web.dto.CardDto;
+import pl.janda.onepiecetcg.web.dto.CardSearchRequest;
 import pl.janda.onepiecetcg.web.mapper.CardMapper;
 
 import java.util.List;
@@ -28,65 +32,51 @@ import java.util.stream.Collectors;
 public class CardController {
 
     private final CardService cardService;
+
     private final CardMapper cardMapper;
 
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
-               description = "Returns all cards or filtered cards based on query parameters")
+            description = "Returns all cards or filtered cards based on query parameters")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(implementation = CardDto.class)))
+            @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CardDto.class)))
     })
-    public ResponseEntity<List<CardDto>> searchCards(
-            @Parameter(description = "Card name or card number to search")
-            @RequestParam(required = false) String name,
+    public ResponseEntity<List<CardDto>> searchCards(@ParameterObject CardSearchRequest request) {
+        List<CardColor> colors = request.getColor() != null ?
+                request.getColor().stream().map(CardColor::valueOf).collect(Collectors.toList()) : null;
 
-            @Parameter(description = "Card type (LEADER, CHARACTER, EVENT, STAGE)")
-            @RequestParam(required = false) CardType type,
+        List<CardRarity> rarities = request.getRarity() != null ?
+                request.getRarity().stream().map(CardRarity::valueOf).collect(Collectors.toList()) : null;
 
-            @Parameter(description = "Card colors (RED, BLUE, GREEN, PURPLE, YELLOW, BLACK)")
-            @RequestParam(required = false) List<String> color,
-
-            @Parameter(description = "Card rarities (C, UC, R, SR, L, PR, SEC)")
-            @RequestParam(required = false) List<String> rarity,
-
-            @Parameter(description = "Minimum cost")
-            @RequestParam(required = false) Integer costMin,
-
-            @Parameter(description = "Maximum cost")
-            @RequestParam(required = false) Integer costMax,
-
-            @Parameter(description = "Minimum power")
-            @RequestParam(required = false) Integer powerMin,
-
-            @Parameter(description = "Maximum power")
-            @RequestParam(required = false) Integer powerMax
-    ) {
-        List<CardColor> colors = color != null ?
-                color.stream().map(CardColor::valueOf).collect(Collectors.toList()) : null;
-
-        List<CardRarity> rarities = rarity != null ?
-                rarity.stream().map(CardRarity::valueOf).collect(Collectors.toList()) : null;
-
-        List<Card> cards = cardService.searchCards(name, type, colors, rarities,
-                                                   costMin, costMax, powerMin, powerMax);
+        List<SetCard> cards = cardService.searchCards(
+                request.getName(),
+                request.getType(),
+                colors,
+                rarities,
+                request.getCost(),
+                request.getPower(),
+                request.getSetId(),
+                request.getCounterAmount(),
+                request.getAttribute(),
+                request.getSubTypes());
         return ResponseEntity.ok(cardMapper.toDtoList(cards));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get card by ID",
-               description = "Returns a single card by its ID (includes embedded errata and FAQ)")
+            description = "Returns a single card by its ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Card found",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(implementation = CardDto.class))),
-        @ApiResponse(responseCode = "404", description = "Card not found")
+            @ApiResponse(responseCode = "200", description = "Card found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CardDto.class))),
+            @ApiResponse(responseCode = "404", description = "Card not found")
     })
     public ResponseEntity<CardDto> getCardById(
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
-        Card card = cardService.getCardById(id);
+        SetCard card = cardService.getCardById(id);
         return ResponseEntity.ok(cardMapper.toDto(card));
     }
 }

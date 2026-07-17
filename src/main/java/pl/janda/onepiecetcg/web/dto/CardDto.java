@@ -21,10 +21,7 @@ public class CardDto {
     private Integer counter;
     private String attribute;
     private String effect;
-    private String trigger;
     private String rarity;
     private String cardNumber;
     private String imageUrl;
-    private List<CardErrataDto> errata;
-    private List<CardFaqEntryDto> faq;
 }

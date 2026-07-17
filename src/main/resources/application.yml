@@ -18,6 +18,14 @@ sets:
   sync:
     cron: "0 0 3 * * *"
 
+set-cards:
+  sync:
+    cron: "0 15 3 * * *"
+
+promo-cards:
+  sync:
+    cron: "0 30 3 * * *"
+
 springdoc:
   api-docs:
     path: /api-docs

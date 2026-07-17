@@ -11,7 +11,8 @@ This is a Spring Boot 3.4.1 backend for the One Piece Trading Card Game applicat
 - Spring Validation
 - SpringDoc OpenAPI 3.0 (Swagger)
 - Lombok
-- In-memory data storage (ConcurrentHashMap)
+- PostgreSQL (via Docker Compose) + Spring Data JPA/Hibernate for `CardSet`, `SetCard` (`/api/cards` is served directly from `SetCard`, synced from optcgapi.com — no mocked `Card` entity)
+- In-memory data storage (ConcurrentHashMap) for `Deck`/`Shop`
 
 **Server Configuration:**
 - Port: 3000
@@ -62,43 +63,48 @@ pl.janda.onepiecetcg/
 ├── application/                    # CORE APPLICATION - Framework independent (+ bootstrap)
 │   ├── OnePieceTcgApplication.java # Main Spring Boot class
 │   ├── model/                      # Domain entities (POJOs)
-│   │   ├── Card.java
 │   │   ├── CardType.java          # Enums
 │   │   ├── CardColor.java
 │   │   ├── CardRarity.java
-│   │   ├── CardErrata.java
-│   │   ├── CardFaqEntry.java
 │   │   ├── Deck.java
 │   │   ├── DeckCard.java
 │   │   ├── Shop.java
-│   │   └── CardSet.java            # JPA entity (synced from optcgapi.com)
+│   │   ├── CardSet.java            # JPA entity (synced from optcgapi.com)
+│   │   └── SetCard.java            # JPA entity (synced card + promo catalog from optcgapi.com, `is_promo` flag), backs `/api/cards`
 │   ├── repository/                 # Repository INTERFACES (Ports)
-│   │   ├── CardRepository.java
 │   │   ├── DeckRepository.java
 │   │   ├── ShopRepository.java
-│   │   └── CardSetRepository.java
+│   │   ├── CardSetRepository.java
+│   │   └── SetCardRepository.java
 │   ├── client/                     # Outbound client INTERFACES (Ports)
-│   │   └── CardSetApiClient.java
+│   │   ├── CardSetApiClient.java
+│   │   ├── SetCardApiClient.java
+│   │   └── PromoCardApiClient.java  # returns List<SetCard> (promo=true), not a separate model
 │   └── service/                    # Business logic (Application services)
 │       ├── CardService.java
 │       ├── DeckService.java
 │       ├── ShopService.java
-│       └── CardSetSyncService.java
+│       ├── CardSetSyncService.java
+│       ├── SetCardSyncService.java
+│       └── PromoCardSyncService.java
 │
 ├── infrastructure/                 # Infrastructure adapters
 │   ├── persistence/                # Repository implementations
-│   │   ├── InMemoryCardRepository.java
 │   │   ├── InMemoryDeckRepository.java
 │   │   ├── InMemoryShopRepository.java
-│   │   └── JpaCardSetRepository.java  # Spring Data JPA (PostgreSQL)
+│   │   ├── JpaCardSetRepository.java  # Spring Data JPA (PostgreSQL)
+│   │   └── JpaSetCardRepository.java  # Spring Data JPA (PostgreSQL), also backs PromoCard sync (shared set_cards table)
 │   ├── client/                     # External HTTP client adapters
 │   │   ├── OptcgApiCardSetClient.java
+│   │   ├── OptcgApiSetCardClient.java
+│   │   ├── OptcgApiPromoCardClient.java # reuses OptcgSetCardResponse (identical JSON shape as /allSetCards/), builds SetCard(promo=true)
 │   │   └── dto/
-│   │       └── OptcgSetResponse.java
-│   ├── scheduler/
-│   │   └── CardSetSyncScheduler.java  # Daily @Scheduled sync + startup sync
-│   └── data/
-│       └── MockDataLoader.java     # Loads initial data (@PostConstruct)
+│   │       ├── OptcgSetResponse.java
+│   │       └── OptcgSetCardResponse.java
+│   └── scheduler/
+│       ├── CardSetSyncScheduler.java  # Daily @Scheduled sync + startup sync
+│       ├── SetCardSyncScheduler.java  # Daily @Scheduled sync + startup sync (full refresh)
+│       └── PromoCardSyncScheduler.java # Daily @Scheduled sync + startup sync (full refresh)
 │
 └── web/                            # Web/REST layer (HTTP adapters)
     ├── config/
@@ -111,8 +117,6 @@ pl.janda.onepiecetcg/
     │   └── GlobalExceptionHandler.java
     ├── dto/                        # Data Transfer Objects (API contracts)
     │   ├── CardDto.java
-    │   ├── CardErrataDto.java
-    │   ├── CardFaqEntryDto.java
     │   ├── DeckDto.java
     │   ├── DeckCardDto.java
     │   ├── ShopDto.java
@@ -150,7 +154,6 @@ The frontend (`~/WebstormProjects/onepiecetcg`) defines TypeScript interfaces. B
 | `boolean` | `boolean` / `Boolean` | Use wrapper for nullable |
 | `'Leader' \| 'Character'` | `String` (from enum) | Serialize enum as uppercase string |
 | `Date` (ISO 8601) | `String` | Use `ISO_DATE_TIME` format |
-| `CardErrata[]?` | `List<CardErrataDto>` | Can be null |
 
 ### API Contract Rules
 
@@ -302,13 +305,9 @@ public class CardService {
 **Repository Implementations (`infrastructure/persistence/`):**
 - Implement repository interfaces
 - Use `@Repository` annotation
-- Current implementation: `ConcurrentHashMap<String, T>`
-- Package-private helper methods: `public void addCard(Card card)` (for MockDataLoader)
-
-**Data Loading (`infrastructure/data/`):**
-- `MockDataLoader` - loads sample data on startup
-- Uses `@Component` + `@PostConstruct`
-- Calls repository `addCard/addDeck/addShop` methods
+- `CardSet`, `SetCard`: Spring Data JPA against PostgreSQL (e.g. `JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetCardRepository`); `/api/cards` is served directly from `SetCard` (no separate mocked `Card` entity)
+- `Deck`, `Shop`: still in-memory (`ConcurrentHashMap<String, T>`), not yet migrated
+- Port methods that don't map to a derived-query method name (e.g. `SetCardRepository.search(...)`) are implemented as **default methods** directly on the `JpaXRepository` interface, calling `findAll()` + Java Streams — avoids Specifications/Criteria API, keeps behavior identical to the old in-memory filtering logic
 
 **Future: Database Migration:**
 - When switching to JPA/Hibernate:
@@ -518,24 +517,24 @@ public ResponseEntity<DeckDto> createDeck(@Valid @RequestBody CreateDeckRequest 
 
 ## 🔄 Data Flow Example
 
-**GET /api/cards/card-001:**
+**GET /api/cards/27781:**
 
 ```
 1. HTTP Request
    ↓
-2. CardController.getCardById("card-001")
+2. CardController.getCardById("27781")
    ↓
-3. cardService.getCardById("card-001")       // Returns Card (domain model)
+3. cardService.getCardById("27781")           // Returns SetCard (domain model)
    ↓
-4. cardRepository.findById("card-001")       // Returns Optional<Card>
+4. setCardRepository.findById(27781L)         // Returns Optional<SetCard>
    ↓
-5. InMemoryCardRepository (ConcurrentHashMap lookup)
+5. JpaSetCardRepository (PostgreSQL lookup)
    ↓
-6. Card object returned to Service
+6. SetCard object returned to Service
    ↓
-7. Service returns Card to Controller
+7. Service returns SetCard to Controller
    ↓
-8. cardMapper.toDto(card)                     // Convert Card → CardDto
+8. cardMapper.toDto(setCard)                  // Convert SetCard → CardDto (safe parsing of dirty String fields)
    ↓
 9. ResponseEntity.ok(cardDto)
    ↓
@@ -981,7 +980,15 @@ public interface JpaCardRepository extends JpaRepository<Card, String>, CardRepo
 
 4. **Services remain unchanged** - they depend on `CardRepository` interface, not implementation
 
-**✅ Implemented for `CardSet`:** PostgreSQL (via Docker Compose) + JPA is already wired up for the `CardSet` entity (`application/model/CardSet.java`, `infrastructure/persistence/JpaCardSetRepository.java`). The `Card`/`Deck`/`Shop` in-memory repositories are unaffected and can follow the same pattern when migrated.
+**✅ Implemented for `CardSet`:** PostgreSQL (via Docker Compose) + JPA is already wired up for the `CardSet` entity (`application/model/CardSet.java`, `infrastructure/persistence/JpaCardSetRepository.java`). The `Deck`/`Shop` in-memory repositories are unaffected and can follow the same pattern when migrated.
+
+**✅ Implemented for `/api/cards`:** the mocked `Card`/`CardRepository`/`JpaCardRepository`/`MockDataLoader` stack has been removed entirely. `/api/cards` is now served directly from `SetCard` (the same entity synced from optcgapi.com, see below), via `CardService` → `SetCardRepository` → `JpaSetCardRepository`. Key design decisions, driven by the real (occasionally dirty) scraped data:
+- `SetCard.id` (surrogate `Long`) is the URL identifier (`/api/cards/{id}`), because the business key `cardSetId` (e.g. `"OP01-001"`) is **not unique** — Parallel/Promo variants share it. `cardSetId` is still exposed as `CardDto.cardNumber`.
+- `CardRarity` gained a `TR` (Treasure Rare) value — present in real data but missing from the original mock enum.
+- `CardMapper` safely parses `SetCard`'s raw `String` fields (`cardCost`, `cardPower`, `cardType`, `cardColor` — multi-token, e.g. `"Blue Green"`) into `CardDto`'s typed fields, returning `null`/empty on unparseable or unrecognized values instead of throwing.
+- `CardDto.errata`/`faq`/`trigger` were removed — that data doesn't exist on `SetCard`.
+- `CardService.getCardById(String id)` parses the id via `Long.valueOf(id)`; a non-numeric id throws `NumberFormatException` (a subclass of `IllegalArgumentException`), which `GlobalExceptionHandler` already maps to 404 — no extra validation needed.
+- Since promo cards are also `SetCard` rows (`is_promo = true`, see below), `/api/cards` now returns both regular and promo cards together (4567 total, not just 3485). `CardDto`/`CardMapper` do **not** expose the `promo` flag — not part of the frontend contract yet; add it only if the frontend needs to filter/display it.
 
 ### Authentication & Authorization
 
@@ -996,7 +1003,13 @@ public interface JpaCardRepository extends JpaRepository<Card, String>, CardRepo
 - Scheduled jobs (`@Scheduled`) to update card database
 - Cache external API responses
 
-**✅ Implemented for card sets:** `CardSetSyncScheduler` (`infrastructure/scheduler/`) syncs `GET https://www.optcgapi.com/api/allSets/` once on startup and daily via cron (`sets.sync.cron`, default `0 0 3 * * *`), persisting results into PostgreSQL through `CardSetSyncService` → `CardSetRepository` → `JpaCardSetRepository`. Card-level sync from the same API remains a future enhancement.
+**✅ Implemented for card sets:** `CardSetSyncScheduler` (`infrastructure/scheduler/`) syncs `GET https://www.optcgapi.com/api/allSets/` once on startup and daily via cron (`sets.sync.cron`, default `0 0 3 * * *`), persisting results into PostgreSQL through `CardSetSyncService` → `CardSetRepository` → `JpaCardSetRepository`.
+
+**✅ Implemented for set cards + promo cards (shared `set_cards` table):** `SetCard` stores **both** regular set cards and promo cards in the same `set_cards` table, distinguished by a boolean `is_promo` column (`SetCard.promo`). Two independent sync jobs write into this one table:
+- `SetCardSyncScheduler` (`infrastructure/scheduler/`) syncs `GET https://www.optcgapi.com/api/allSetCards/` once on startup and daily via cron (`set-cards.sync.cron`, default `0 15 3 * * *`), through `SetCardSyncService` → `SetCardRepository` → `JpaSetCardRepository`.
+- `PromoCardSyncScheduler` (`infrastructure/scheduler/`) syncs `GET https://www.optcgapi.com/api/allPromos/` once on startup and daily via cron (`promo-cards.sync.cron`, default `0 30 3 * * *`), through `PromoCardSyncService` → `SetCardRepository` → `JpaSetCardRepository`. The response has the exact same JSON shape as `/allSetCards/`, so `OptcgApiPromoCardClient` reuses the existing `OptcgSetCardResponse` record for parsing (builds `SetCard` with `promo(true)`) rather than duplicating a model/DTO.
+
+Since `card_set_id` is not unique in the source data for either feed (print/rarity variants share the same id — up to 13 variants for a single promo card in the current dataset), `SetCard` uses a surrogate `@GeneratedValue` primary key instead of upsert-by-key. Because both jobs share one table, each uses a **scoped** full-refresh instead of `deleteAll()`: `SetCardSyncService` calls `setCardRepository.deleteByPromo(false)` and `PromoCardSyncService` calls `setCardRepository.deleteByPromo(true)`, each followed by `saveAll(fetched)` in a `@Transactional` method — so one job's refresh never wipes the other's rows. `deleteByPromo(boolean)` is a Spring Data derived-query method declared on the `SetCardRepository` port with no implementation needed (same pattern as `findById`). `date_scraped` is stored as a plain `String` (not `LocalDate`) because the source data mixes date formats (`yyyy-MM-dd` and `M/d/yyyy`). `SetCard` also directly backs the `/api/cards` endpoint (see the "✅ Implemented for `/api/cards`" note above), so promo cards are included in that endpoint's results.
 
 ### Advanced Features
 

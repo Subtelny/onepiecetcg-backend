@@ -22,7 +22,7 @@ public class OptcgApiCardSetClient implements CardSetApiClient {
 
     @Override
     public List<CardSet> fetchAllSets() {
-        OptcgSetResponse[] response = restClient.get()
+        var response = restClient.get()
                 .uri("/allSets/")
                 .retrieve()
                 .body(OptcgSetResponse[].class);

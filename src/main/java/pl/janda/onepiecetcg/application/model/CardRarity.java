@@ -7,5 +7,6 @@ public enum CardRarity {
     SR,   // Super Rare
     L,    // Leader
     PR,   // Promo
-    SEC   // Secret Rare
+    SEC,  // Secret Rare
+    TR    // Treasure Rare
 }
