@@ -20,14 +20,14 @@ public interface SetCardRepository {
 
     List<SetCard> search(
         String name,
-        CardType type,
+        List<CardType> types,
         List<CardColor> colors,
         List<CardRarity> rarities,
         Integer cost,
         Integer power,
-        String setId,
+        List<String> setIds,
         Integer counterAmount,
-        String attribute,
+        List<String> attributes,
         String subTypes
     );
 }

@@ -11,7 +11,7 @@ Spring Boot 3.4.1 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
 - **Persistence status:**
   - `CardSet`, `SetCard` → PostgreSQL via Spring Data JPA (`JpaCardSetRepository`, `JpaSetCardRepository`).
   - `Deck`, `Shop` → in-memory `ConcurrentHashMap` (`InMemoryDeckRepository`, `InMemoryShopRepository`), not yet migrated.
-- **`/api/cards` is served directly from `SetCard`** (synced from optcgapi.com) — there is no separate mocked `Card` entity. `SetCard` holds **both** regular set cards and promo cards in one `set_cards` table, distinguished by `SetCard.promo` (boolean).
+- **`/api/cards` is served directly from `SetCard`** (synced from optcgapi.com) — there is no separate mocked `Card` entity. `SetCard` holds **both** regular set cards and promo cards in one `set_cards` table, distinguished by `SetCard.promo` (boolean). This is the frontend's card-search data source (see `onepiecetcg` `CLAUDE.md`) — `GET /api/cards` accepts `name` (matches card name or card number, contains/case-insensitive) plus multi-value filters `types`, `color`, `rarity`, `setIds`, `attributes` (each OR-matched against the card, all params ANDed together), and exact-match `cost`/`power`/`counterAmount`/`subTypes`. `GET /api/cards/filters` returns the full set of valid values for `types`/`color`/`rarity`/`attributes`/sets — enum-backed filter values (`types`, `color`, `rarity`) must be sent exactly as returned there (Java `valueOf()` is case-sensitive). `CardDto` also exposes `marketPrice`/`inventoryPrice` (nullable `Double`, from the synced data).
 - **External sync:** three independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via `optcgapi.base-url`) and write into Postgres: card sets, set cards, promo cards. See §4 for the extension pattern they follow.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`.
 - Reference key endpoints: `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
@@ -62,6 +62,8 @@ infrastructure ──X──► web          (forbidden)
 
 ## 4. Change Rules (Safe Extension Points)
 
+**Before implementing a feature with unclear code context:** if the flow you're about to touch (existing conventions, affected layers, risks, extension points) isn't already clear from this document or files you've read, run `/repo-discovery` first with details of the specific flow you intend to touch, to understand the current implementation before proposing changes.
+
 **Adding a new optcgapi.com sync feed** (new endpoint, e.g. `/allBans/`):
 1. Port: add `fetchAllX()` to a new/existing `application/client/*ApiClient` interface.
 2. Adapter: create a class in `infrastructure/client/` extending `AbstractOptcgApiClient` (or `AbstractSetCardApiClient` if the response shape matches `OptcgSetCardResponse`) — reuse `fetchAndMap(uri, ResponseType[].class, mapper)`, do not duplicate the fetch/null-check/stream logic.
@@ -106,6 +108,7 @@ infrastructure ──X──► web          (forbidden)
 - [ ] Repositories never throw — return `Optional`/empty `List`.
 - [ ] Any new sync job sharing a table with an existing one uses a **scoped delete**, never `deleteAll()`.
 - [ ] Cron property names and sync-service method names follow the existing verb+entity pattern (§5).
+- [ ] Use var instead of explicit types for local variables
 
 ---
 

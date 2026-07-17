@@ -2,9 +2,12 @@ package pl.janda.onepiecetcg.web.mapper;
 
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.CardColor;
+import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.web.dto.CardDto;
+import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
+import pl.janda.onepiecetcg.web.dto.CardSetOptionDto;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,12 +34,27 @@ public class CardMapper {
                 .rarity(card.getRarity())
                 .cardNumber(card.getCardSetId())
                 .imageUrl(card.getCardImage())
+                .marketPrice(card.getMarketPrice())
+                .inventoryPrice(card.getInventoryPrice())
                 .build();
     }
 
     public List<CardDto> toDtoList(List<SetCard> cards) {
         return cards != null ?
                 cards.stream().map(this::toDto).collect(Collectors.toList()) : List.of();
+    }
+
+    public CardFilterOptionsDto toFilterOptionsDto(CardFilterOptions options) {
+        return CardFilterOptionsDto.builder()
+                .types(options.getTypes())
+                .colors(options.getColors())
+                .rarities(options.getRarities())
+                .sets(options.getSets().stream()
+                        .map(s -> CardSetOptionDto.builder().setId(s.getSetId()).setName(s.getSetName()).build())
+                        .toList())
+                .attributes(options.getAttributes())
+                .subTypes(options.getSubTypes())
+                .build();
     }
 
     private String parseCardType(String cardType) {

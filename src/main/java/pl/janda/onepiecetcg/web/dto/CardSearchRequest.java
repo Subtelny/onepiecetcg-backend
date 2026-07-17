@@ -18,8 +18,8 @@ public class CardSearchRequest {
     @Parameter(description = "Card name or card number to search")
     private String name;
 
-    @Parameter(description = "Card type (LEADER, CHARACTER, EVENT, STAGE)")
-    private CardType type;
+    @Parameter(description = "Card types (LEADER, CHARACTER, EVENT, STAGE)")
+    private List<CardType> types;
 
     @Parameter(description = "Card colors (RED, BLUE, GREEN, PURPLE, YELLOW, BLACK)")
     private List<String> color;
@@ -33,14 +33,14 @@ public class CardSearchRequest {
     @Parameter(description = "Exact card power")
     private Integer power;
 
-    @Parameter(description = "Set ID the card belongs to, e.g. OP01")
-    private String setId;
+    @Parameter(description = "Set IDs the card belongs to, e.g. OP01")
+    private List<String> setIds;
 
     @Parameter(description = "Exact counter amount")
     private Integer counterAmount;
 
-    @Parameter(description = "Card attribute, e.g. Slash, Strike")
-    private String attribute;
+    @Parameter(description = "Card attributes, e.g. Slash, Strike")
+    private List<String> attributes;
 
     @Parameter(description = "Sub-type to search for (e.g. Straw Hat Crew)")
     private String subTypes;

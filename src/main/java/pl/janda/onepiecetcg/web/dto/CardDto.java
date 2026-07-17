@@ -24,4 +24,6 @@ public class CardDto {
     private String rarity;
     private String cardNumber;
     private String imageUrl;
+    private Double marketPrice;
+    private Double inventoryPrice;
 }

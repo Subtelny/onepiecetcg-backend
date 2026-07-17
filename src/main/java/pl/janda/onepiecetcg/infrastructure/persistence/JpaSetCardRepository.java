@@ -17,29 +17,32 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
     @Override
     default List<SetCard> search(
             String name,
-            CardType type,
+            List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
             Integer cost,
             Integer power,
-            String setId,
+            List<String> setIds,
             Integer counterAmount,
-            String attribute,
+            List<String> attributes,
             String subTypes
     ) {
         return findAll().stream()
                 .filter(c -> name == null ||
                         (c.getCardName() != null && c.getCardName().toLowerCase().contains(name.toLowerCase())) ||
                         (c.getCardSetId() != null && c.getCardSetId().toLowerCase().contains(name.toLowerCase())))
-                .filter(c -> type == null || type.name().equalsIgnoreCase(c.getCardType()))
+                .filter(c -> types == null || types.isEmpty() ||
+                        types.stream().anyMatch(t -> t.name().equalsIgnoreCase(c.getCardType())))
                 .filter(c -> colors == null || colors.isEmpty() || matchesAnyColor(c.getCardColor(), colors))
                 .filter(c -> rarities == null || rarities.isEmpty() ||
                         rarities.stream().anyMatch(r -> r.name().equalsIgnoreCase(c.getRarity())))
                 .filter(c -> cost == null || cost.equals(parseIntSafe(c.getCardCost())))
                 .filter(c -> power == null || power.equals(parseIntSafe(c.getCardPower())))
-                .filter(c -> setId == null || (c.getSetId() != null && c.getSetId().equalsIgnoreCase(setId)))
+                .filter(c -> setIds == null || setIds.isEmpty() ||
+                        (c.getSetId() != null && setIds.stream().anyMatch(s -> s.equalsIgnoreCase(c.getSetId()))))
                 .filter(c -> counterAmount == null || counterAmount.equals(c.getCounterAmount()))
-                .filter(c -> attribute == null || (c.getAttribute() != null && c.getAttribute().equalsIgnoreCase(attribute)))
+                .filter(c -> attributes == null || attributes.isEmpty() ||
+                        (c.getAttribute() != null && attributes.stream().anyMatch(a -> a.equalsIgnoreCase(c.getAttribute()))))
                 .filter(c -> subTypes == null || containsToken(c.getSubTypes(), subTypes))
                 .toList();
     }

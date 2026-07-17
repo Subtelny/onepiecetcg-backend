@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.janda.onepiecetcg.application.model.CardColor;
+import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardRarity;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.service.CardService;
 import pl.janda.onepiecetcg.web.dto.CardDto;
+import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
 import pl.janda.onepiecetcg.web.dto.CardSearchRequest;
 import pl.janda.onepiecetcg.web.mapper.CardMapper;
 
@@ -52,16 +54,29 @@ public class CardController {
 
         List<SetCard> cards = cardService.searchCards(
                 request.getName(),
-                request.getType(),
+                request.getTypes(),
                 colors,
                 rarities,
                 request.getCost(),
                 request.getPower(),
-                request.getSetId(),
+                request.getSetIds(),
                 request.getCounterAmount(),
-                request.getAttribute(),
+                request.getAttributes(),
                 request.getSubTypes());
         return ResponseEntity.ok(cardMapper.toDtoList(cards));
+    }
+
+    @GetMapping("/filters")
+    @Operation(summary = "Get all available card filters",
+            description = "Returns all distinct filter values currently present in the card data: types, colors, rarities, sets, attributes, and sub-types")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Filter options retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CardFilterOptionsDto.class)))
+    })
+    public ResponseEntity<CardFilterOptionsDto> getFilterOptions() {
+        CardFilterOptions options = cardService.getFilterOptions();
+        return ResponseEntity.ok(cardMapper.toFilterOptionsDto(options));
     }
 
     @GetMapping("/{id}")
