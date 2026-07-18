@@ -12,8 +12,6 @@ Spring Boot 3.4.1 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
   - Filter option values → PostgreSQL via Spring Data JPA, one row per distinct filterable value — a precomputed cache, not user-facing data.
   - Decks and shops → in-memory, not yet migrated to persistent storage.
-- **`/api/cards` is served directly from the synced card data** (pulled from optcgapi.com) — there is no separate mocked entity. Regular set cards and promo cards share one table, distinguished by a boolean flag. This is the frontend's card-search data source (see `onepiecetcg` `CLAUDE.md`) — `GET /api/cards` accepts a `name` search (matches card name or card number, contains/case-insensitive) plus multi-value filters for type, color, rarity, set, and attribute (each OR-matched against the card, all params ANDed together), and exact-match filters for cost, power, counter amount, and sub-type. `GET /api/cards/filters` returns the full set of valid values for each enum-backed filter — send filter values exactly as returned there (case-sensitive).
-- **`/api/cards/filters` is served from a precomputed cache table, not computed live** on every request. The cache is refreshed at the end of any sync job that writes card data — not the sync job that only writes set metadata. If you add a new filterable field to the card data, add its aggregation to the cache-refresh step, not to a live query.
 - **External sync:** independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via an externalized base-url property) and write into Postgres: card sets, set cards, promo cards. See §4 for the extension pattern they follow.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`.
 - Reference key endpoints: `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
@@ -139,4 +137,5 @@ Before considering a change complete, verify:
 - OpenAPI annotations present on any new/changed controller method.
 - `mvn clean compile` (and `mvn test`, once a test suite exists) passes.
 - No stale references left behind after a rename (property names, method names) — grep for the old name.
+- No exact code references in CLAUDE.md
 - If the change alters architecture, naming conventions, or extension points described here, **update this file in the same change** — CLAUDE.md must stay in sync with the codebase it governs.

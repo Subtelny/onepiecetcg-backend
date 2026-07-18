@@ -33,9 +33,6 @@ public class CardSearchRequest {
     @Parameter(description = "Exact card power")
     private Integer power;
 
-    @Parameter(description = "Set IDs the card belongs to, e.g. OP01")
-    private List<String> setIds;
-
     @Parameter(description = "Exact counter amount")
     private Integer counterAmount;
 
@@ -47,4 +44,10 @@ public class CardSearchRequest {
 
     @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
     private List<String> prefixes;
+
+    @Parameter(description = "Page number, 0-indexed. Defaults to 0.")
+    private Integer page;
+
+    @Parameter(description = "Page size. Defaults to 50.")
+    private Integer limit;
 }

@@ -22,7 +22,6 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
             List<CardRarity> rarities,
             Integer cost,
             Integer power,
-            List<String> setIds,
             Integer counterAmount,
             List<String> attributes,
             String subTypes,
@@ -39,8 +38,6 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
                         rarities.stream().anyMatch(r -> r.name().equalsIgnoreCase(c.getRarity())))
                 .filter(c -> cost == null || cost.equals(parseIntSafe(c.getCardCost())))
                 .filter(c -> power == null || power.equals(parseIntSafe(c.getCardPower())))
-                .filter(c -> setIds == null || setIds.isEmpty() ||
-                        (c.getSetId() != null && setIds.stream().anyMatch(s -> s.equalsIgnoreCase(c.getSetId()))))
                 .filter(c -> counterAmount == null || counterAmount.equals(c.getCounterAmount()))
                 .filter(c -> attributes == null || attributes.isEmpty() ||
                         (c.getAttribute() != null && attributes.stream().anyMatch(a -> a.equalsIgnoreCase(c.getAttribute()))))

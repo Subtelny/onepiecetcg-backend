@@ -19,12 +19,13 @@ import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardRarity;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.service.CardService;
+import pl.janda.onepiecetcg.application.service.PagedCards;
 import pl.janda.onepiecetcg.web.dto.CardDto;
 import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
 import pl.janda.onepiecetcg.web.dto.CardSearchRequest;
+import pl.janda.onepiecetcg.web.dto.CardSearchResponse;
 import pl.janda.onepiecetcg.web.mapper.CardMapper;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
@@ -39,32 +40,42 @@ public class CardController {
 
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
-            description = "Returns all cards or filtered cards based on query parameters")
+            description = "Returns filtered cards based on query parameters, paginated by page/limit")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = CardDto.class)))
+                            schema = @Schema(implementation = CardSearchResponse.class)))
     })
-    public ResponseEntity<List<CardDto>> searchCards(@ParameterObject CardSearchRequest request) {
-        List<CardColor> colors = request.getColor() != null ?
+    public ResponseEntity<CardSearchResponse> searchCards(@ParameterObject CardSearchRequest request) {
+        var colors = request.getColor() != null ?
                 request.getColor().stream().map(CardColor::valueOf).collect(Collectors.toList()) : null;
 
-        List<CardRarity> rarities = request.getRarity() != null ?
+        var rarities = request.getRarity() != null ?
                 request.getRarity().stream().map(CardRarity::valueOf).collect(Collectors.toList()) : null;
 
-        List<SetCard> cards = cardService.searchCards(
+        PagedCards pagedCards = cardService.searchCards(
                 request.getName(),
                 request.getTypes(),
                 colors,
                 rarities,
                 request.getCost(),
                 request.getPower(),
-                request.getSetIds(),
                 request.getCounterAmount(),
                 request.getAttributes(),
                 request.getSubTypes(),
-                request.getPrefixes());
-        return ResponseEntity.ok(cardMapper.toDtoList(cards));
+                request.getPrefixes(),
+                request.getPage(),
+                request.getLimit());
+
+        var response = CardSearchResponse.builder()
+                .cards(cardMapper.toDtoList(pagedCards.cards()))
+                .totalCount(pagedCards.totalCount())
+                .page(pagedCards.page())
+                .limit(pagedCards.limit())
+                .hasMore(pagedCards.hasMore())
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/filters")

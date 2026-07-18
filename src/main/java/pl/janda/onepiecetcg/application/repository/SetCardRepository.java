@@ -25,7 +25,6 @@ public interface SetCardRepository {
         List<CardRarity> rarities,
         Integer cost,
         Integer power,
-        List<String> setIds,
         Integer counterAmount,
         List<String> attributes,
         String subTypes,

@@ -28,20 +28,30 @@ public class CardService {
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id: " + id));
     }
 
-    public List<SetCard> searchCards(
+    public PagedCards searchCards(
             String name,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
             Integer cost,
             Integer power,
-            List<String> setIds,
             Integer counterAmount,
             List<String> attributes,
             String subTypes,
-            List<String> prefixes
+            List<String> prefixes,
+            Integer page,
+            Integer limit
     ) {
-        return setCardRepository.search(name, types, colors, rarities, cost, power, setIds, counterAmount, attributes, subTypes, prefixes);
+        var resolvedPage = page != null ? page : 0;
+        var resolvedLimit = limit != null ? limit : 50;
+
+        var filtered = setCardRepository.search(name, types, colors, rarities, cost, power, counterAmount, attributes, subTypes, prefixes);
+
+        var fromIndex = Math.min(resolvedPage * resolvedLimit, filtered.size());
+        var toIndex = Math.min(fromIndex + resolvedLimit, filtered.size());
+        var pageContent = filtered.subList(fromIndex, toIndex);
+
+        return new PagedCards(pageContent, filtered.size(), resolvedPage, resolvedLimit);
     }
 
     public CardFilterOptions getFilterOptions() {
