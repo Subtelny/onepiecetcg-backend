@@ -28,8 +28,6 @@ public class CardService {
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id: " + id));
     }
 
-    // All printed variants (different rarity/promo) sharing the same card number
-    // as the given card, ordered the same way the representative one is picked.
     public List<SetCard> getVariantsByCardId(String id) {
         var card = getCardById(id);
         var cardSetId = card.getCardSetId();
@@ -59,8 +57,6 @@ public class CardService {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
 
-        // Only representative (non-variant) cards are returned by search(); the
-        // representative flag is precomputed by CardRepresentativeService on sync.
         var filtered = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, subTypes, prefixes);
 
         var fromIndex = Math.min(resolvedPage * resolvedLimit, filtered.size());

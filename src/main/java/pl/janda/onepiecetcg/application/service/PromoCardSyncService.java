@@ -41,12 +41,9 @@ public class PromoCardSyncService {
         cardFilterOptionService.refresh();
     }
 
-    // Promo cards are always tagged "PR" by optcgapi.com regardless of what's
-    // actually printed (e.g. judge pack reprints). The physically printed
-    // rarity is recovered from the non-promo card sharing the same cardSetId.
     private Map<String, String> flatRarityLookup() {
         return setCardRepository.findAll().stream()
-                .filter(c -> !c.isPromo() && c.getCardSetId() != null && c.getRarity() != null)
+                .filter(c -> c.getCardSetId() != null && c.getRarity() != null)
                 .collect(Collectors.toMap(SetCard::getCardSetId, SetCard::getRarity, (a, b) -> a));
     }
 }

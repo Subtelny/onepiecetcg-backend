@@ -28,7 +28,7 @@ public class SetCardSyncService {
         var now = LocalDateTime.now();
         fetched.forEach(setCard -> {
             setCard.setLastSyncedAt(now);
-            setCard.setFlatRarity(setCard.getRarity());
+            setCard.setFlatRarity("P".equals(setCard.getCardPrefix()) ? "P" : setCard.getRarity());
         });
         setCardRepository.deleteByPromo(false);
         setCardRepository.saveAll(fetched);

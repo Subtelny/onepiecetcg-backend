@@ -32,7 +32,6 @@ public class CardFilterOptionValue {
     @Column(name = "value", nullable = false)
     private String value;
 
-    // Only populated for category == SET, holding the set's display name (setId is stored in `value`).
     @Column(name = "label")
     private String label;
 }

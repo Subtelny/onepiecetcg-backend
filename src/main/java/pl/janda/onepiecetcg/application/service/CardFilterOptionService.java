@@ -31,8 +31,6 @@ public class CardFilterOptionService {
 
     @Transactional
     public void refresh() {
-        // Alt arts/promos/judges/winners are excluded - only the representative
-        // card per cardSetId group should drive the filter dropdown values.
         var cards = setCardRepository.findAll().stream()
                 .filter(SetCard::isRepresentative)
                 .toList();
