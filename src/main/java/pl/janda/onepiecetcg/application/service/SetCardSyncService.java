@@ -24,7 +24,10 @@ public class SetCardSyncService {
     public void syncSetCards() {
         var fetched = setCardApiClient.fetchAllSetCards();
         var now = LocalDateTime.now();
-        fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
+        fetched.forEach(setCard -> {
+            setCard.setLastSyncedAt(now);
+            setCard.setFlatRarity(setCard.getRarity());
+        });
         setCardRepository.deleteByPromo(false);
         setCardRepository.saveAll(fetched);
         log.info("Synced {} set cards from optcgapi.com", fetched.size());

@@ -56,6 +56,13 @@ public class CardFilterOptionService {
                 .distinct()
                 .toList();
 
+        var flatRarities = cards.stream()
+                .map(SetCard::getFlatRarity)
+                .filter(Objects::nonNull)
+                .map(String::toUpperCase)
+                .distinct()
+                .toList();
+
         var attributes = cards.stream()
                 .map(SetCard::getAttribute)
                 .filter(a -> a != null && !a.isBlank())
@@ -87,6 +94,7 @@ public class CardFilterOptionService {
         types.forEach(t -> entries.add(entry(CardFilterOptionCategory.TYPE, t, null)));
         colors.forEach(c -> entries.add(entry(CardFilterOptionCategory.COLOR, c, null)));
         rarities.forEach(r -> entries.add(entry(CardFilterOptionCategory.RARITY, r, null)));
+        flatRarities.forEach(r -> entries.add(entry(CardFilterOptionCategory.FLAT_RARITY, r, null)));
         attributes.forEach(a -> entries.add(entry(CardFilterOptionCategory.ATTRIBUTE, a, null)));
         subTypes.forEach(s -> entries.add(entry(CardFilterOptionCategory.SUB_TYPE, s, null)));
         prefixes.forEach(p -> entries.add(entry(CardFilterOptionCategory.PREFIX, p, null)));
@@ -105,6 +113,7 @@ public class CardFilterOptionService {
                 .types(valuesOf(grouped, CardFilterOptionCategory.TYPE))
                 .colors(valuesOf(grouped, CardFilterOptionCategory.COLOR))
                 .rarities(valuesOf(grouped, CardFilterOptionCategory.RARITY))
+                .flatRarities(valuesOf(grouped, CardFilterOptionCategory.FLAT_RARITY))
                 .attributes(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))
                 .prefixes(valuesOf(grouped, CardFilterOptionCategory.PREFIX))

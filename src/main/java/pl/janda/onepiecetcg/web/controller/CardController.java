@@ -54,11 +54,15 @@ public class CardController {
         var rarities = request.getRarity() != null ?
                 request.getRarity().stream().map(CardRarity::valueOf).collect(Collectors.toList()) : null;
 
+        var flatRarities = request.getFlatRarity() != null ?
+                request.getFlatRarity().stream().map(CardRarity::valueOf).collect(Collectors.toList()) : null;
+
         PagedCards pagedCards = cardService.searchCards(
                 request.getName(),
                 request.getTypes(),
                 colors,
                 rarities,
+                flatRarities,
                 request.getCost(),
                 request.getPower(),
                 request.getCounterAmount(),

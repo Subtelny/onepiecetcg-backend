@@ -86,6 +86,7 @@ infrastructure ──X──► web          (forbidden)
 - **DTOs:** match frontend TypeScript interfaces exactly — camelCase fields, enums as uppercase `String`, `List<T>` never arrays, dates as ISO 8601 `String`, wrapper types (`Integer`, not `int`) for nullable fields.
 - **Mappers:** explicit, no MapStruct. Enum→String via `.name()`. Handle dirty/unparseable source data by returning `null`/empty instead of throwing.
 - **Config over hardcoding:** external base URLs and cron schedules live in `application.yml`, injected via constructor (`@Value` on a constructor parameter, never a field).
+- **Comments:** Dont over-comment, only when it's not obvious from the code itself.
 
 ---
 

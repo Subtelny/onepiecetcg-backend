@@ -20,6 +20,7 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
+            List<CardRarity> flatRarities,
             Integer cost,
             Integer power,
             Integer counterAmount,
@@ -36,6 +37,8 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
                 .filter(c -> colors == null || colors.isEmpty() || matchesAnyColor(c.getCardColor(), colors))
                 .filter(c -> rarities == null || rarities.isEmpty() ||
                         rarities.stream().anyMatch(r -> r.name().equalsIgnoreCase(c.getRarity())))
+                .filter(c -> flatRarities == null || flatRarities.isEmpty() ||
+                        flatRarities.stream().anyMatch(r -> r.name().equalsIgnoreCase(c.getFlatRarity())))
                 .filter(c -> cost == null || cost.equals(parseIntSafe(c.getCardCost())))
                 .filter(c -> power == null || power.equals(parseIntSafe(c.getCardPower())))
                 .filter(c -> counterAmount == null || counterAmount.equals(c.getCounterAmount()))

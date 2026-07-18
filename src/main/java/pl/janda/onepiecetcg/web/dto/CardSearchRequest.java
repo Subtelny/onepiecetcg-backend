@@ -27,6 +27,9 @@ public class CardSearchRequest {
     @Parameter(description = "Card rarities (C, UC, R, SR, L, PR, SEC, TR)")
     private List<String> rarity;
 
+    @Parameter(description = "Physically printed card rarities (C, UC, R, SR, L, PR, SEC, TR) - the rarity actually printed on the card, which can differ from `rarity` for promo reprints like judge packs")
+    private List<String> flatRarity;
+
     @Parameter(description = "Exact card cost")
     private Integer cost;
 

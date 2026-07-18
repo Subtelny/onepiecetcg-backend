@@ -6,7 +6,7 @@ public enum CardRarity {
     R,    // Rare
     SR,   // Super Rare
     L,    // Leader
-    PR,   // Promo
     SEC,  // Secret Rare
-    TR    // Treasure Rare
+    TR,   // Treasure Rare
+    PR    // Promo - always the lowest-priority rarity for canonical-variant ranking (CardService.rarityRank)
 }

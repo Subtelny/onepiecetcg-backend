@@ -25,6 +25,7 @@ public interface SetCardRepository {
         List<CardType> types,
         List<CardColor> colors,
         List<CardRarity> rarities,
+        List<CardRarity> flatRarities,
         Integer cost,
         Integer power,
         Integer counterAmount,

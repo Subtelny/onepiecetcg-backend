@@ -22,6 +22,7 @@ public class CardDto {
     private String attribute;
     private String effect;
     private String rarity;
+    private String flatRarity;
     private String cardNumber;
     private String imageUrl;
     private Double marketPrice;

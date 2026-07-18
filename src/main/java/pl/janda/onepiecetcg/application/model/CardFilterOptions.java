@@ -19,6 +19,8 @@ public class CardFilterOptions {
 
     private List<String> rarities;
 
+    private List<String> flatRarities;
+
     private List<CardSet> sets;
 
     private List<String> attributes;

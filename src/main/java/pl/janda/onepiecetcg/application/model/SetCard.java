@@ -46,6 +46,9 @@ public class SetCard {
     @Column(name = "rarity")
     private String rarity;
 
+    @Column(name = "flat_rarity")
+    private String flatRarity;
+
     @Column(name = "card_color")
     private String cardColor;
 

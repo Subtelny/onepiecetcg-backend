@@ -56,6 +56,7 @@ public class CardService {
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
+            List<CardRarity> flatRarities,
             Integer cost,
             Integer power,
             Integer counterAmount,
@@ -68,7 +69,7 @@ public class CardService {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
 
-        var filtered = setCardRepository.search(name, types, colors, rarities, cost, power, counterAmount, attributes, subTypes, prefixes);
+        var filtered = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, subTypes, prefixes);
         var deduplicated = deduplicateVariants(filtered);
 
         var fromIndex = Math.min(resolvedPage * resolvedLimit, deduplicated.size());
