@@ -26,6 +26,7 @@ import pl.janda.onepiecetcg.web.dto.CardSearchRequest;
 import pl.janda.onepiecetcg.web.dto.CardSearchResponse;
 import pl.janda.onepiecetcg.web.mapper.CardMapper;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
@@ -105,5 +106,21 @@ public class CardController {
     ) {
         SetCard card = cardService.getCardById(id);
         return ResponseEntity.ok(cardMapper.toDto(card));
+    }
+
+    @GetMapping("/{id}/variants")
+    @Operation(summary = "Get all variants of a card",
+            description = "Returns every printed variant (different rarity/promo) sharing the same card number as the given card")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Variants retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CardDto.class))),
+            @ApiResponse(responseCode = "404", description = "Card not found")
+    })
+    public ResponseEntity<List<CardDto>> getCardVariants(
+            @Parameter(description = "Card ID") @PathVariable String id
+    ) {
+        List<SetCard> variants = cardService.getVariantsByCardId(id);
+        return ResponseEntity.ok(cardMapper.toDtoList(variants));
     }
 }

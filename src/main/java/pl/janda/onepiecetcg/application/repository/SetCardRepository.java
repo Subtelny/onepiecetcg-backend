@@ -18,6 +18,8 @@ public interface SetCardRepository {
 
     Optional<SetCard> findById(Long id);
 
+    List<SetCard> findByCardSetId(String cardSetId);
+
     List<SetCard> search(
         String name,
         List<CardType> types,
