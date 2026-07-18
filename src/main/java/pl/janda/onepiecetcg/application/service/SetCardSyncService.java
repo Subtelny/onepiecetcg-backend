@@ -18,6 +18,8 @@ public class SetCardSyncService {
 
     private final SetCardApiClient setCardApiClient;
 
+    private final CardFilterOptionService cardFilterOptionService;
+
     @Transactional
     public void syncSetCards() {
         var fetched = setCardApiClient.fetchAllSetCards();
@@ -26,5 +28,6 @@ public class SetCardSyncService {
         setCardRepository.deleteByPromo(false);
         setCardRepository.saveAll(fetched);
         log.info("Synced {} set cards from optcgapi.com", fetched.size());
+        cardFilterOptionService.refresh();
     }
 }

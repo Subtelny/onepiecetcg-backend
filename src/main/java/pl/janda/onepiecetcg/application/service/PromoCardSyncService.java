@@ -18,6 +18,8 @@ public class PromoCardSyncService {
 
     private final PromoCardApiClient promoCardApiClient;
 
+    private final CardFilterOptionService cardFilterOptionService;
+
     @Transactional
     public void syncPromoCards() {
         var fetched = promoCardApiClient.fetchAllPromoCards();
@@ -26,5 +28,6 @@ public class PromoCardSyncService {
         setCardRepository.deleteByPromo(true);
         setCardRepository.saveAll(fetched);
         log.info("Synced {} promo cards from optcgapi.com", fetched.size());
+        cardFilterOptionService.refresh();
     }
 }
