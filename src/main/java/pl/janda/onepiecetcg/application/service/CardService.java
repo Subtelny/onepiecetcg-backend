@@ -38,9 +38,10 @@ public class CardService {
             List<String> setIds,
             Integer counterAmount,
             List<String> attributes,
-            String subTypes
+            String subTypes,
+            List<String> prefixes
     ) {
-        return setCardRepository.search(name, types, colors, rarities, cost, power, setIds, counterAmount, attributes, subTypes);
+        return setCardRepository.search(name, types, colors, rarities, cost, power, setIds, counterAmount, attributes, subTypes, prefixes);
     }
 
     public CardFilterOptions getFilterOptions() {

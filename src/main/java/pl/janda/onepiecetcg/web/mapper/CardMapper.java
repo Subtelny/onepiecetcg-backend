@@ -54,6 +54,7 @@ public class CardMapper {
                         .toList())
                 .attributes(options.getAttributes())
                 .subTypes(options.getSubTypes())
+                .prefixes(options.getPrefixes())
                 .build();
     }
 

@@ -28,6 +28,7 @@ public interface SetCardRepository {
         List<String> setIds,
         Integer counterAmount,
         List<String> attributes,
-        String subTypes
+        String subTypes,
+        List<String> prefixes
     );
 }

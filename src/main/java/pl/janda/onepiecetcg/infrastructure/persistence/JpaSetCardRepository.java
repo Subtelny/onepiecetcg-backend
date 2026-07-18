@@ -25,7 +25,8 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
             List<String> setIds,
             Integer counterAmount,
             List<String> attributes,
-            String subTypes
+            String subTypes,
+            List<String> prefixes
     ) {
         return findAll().stream()
                 .filter(c -> name == null ||
@@ -44,6 +45,8 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
                 .filter(c -> attributes == null || attributes.isEmpty() ||
                         (c.getAttribute() != null && attributes.stream().anyMatch(a -> a.equalsIgnoreCase(c.getAttribute()))))
                 .filter(c -> subTypes == null || containsToken(c.getSubTypes(), subTypes))
+                .filter(c -> prefixes == null || prefixes.isEmpty() ||
+                        (c.getCardPrefix() != null && prefixes.stream().anyMatch(p -> p.equalsIgnoreCase(c.getCardPrefix()))))
                 .toList();
     }
 

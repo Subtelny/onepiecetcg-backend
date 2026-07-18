@@ -28,7 +28,8 @@
       "Bash(break)",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(grep:*)"
     ]
   }
 }

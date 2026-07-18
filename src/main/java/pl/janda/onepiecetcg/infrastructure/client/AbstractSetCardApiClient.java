@@ -13,6 +13,7 @@ public abstract class AbstractSetCardApiClient extends AbstractOptcgApiClient {
     protected SetCard toSetCard(OptcgSetCardResponse r, boolean promo) {
         return SetCard.builder()
                 .cardSetId(r.cardSetId())
+                .cardPrefix(extractPrefix(r.cardSetId()))
                 .cardName(r.cardName())
                 .setId(r.setId())
                 .setName(r.setName())
@@ -33,5 +34,16 @@ public abstract class AbstractSetCardApiClient extends AbstractOptcgApiClient {
                 .marketPrice(r.marketPrice())
                 .promo(promo)
                 .build();
+    }
+
+    private static String extractPrefix(String cardSetId) {
+        if (cardSetId == null) {
+            return null;
+        }
+        int idx = cardSetId.indexOf('-');
+        if (idx <= 0) {
+            return null;
+        }
+        return cardSetId.substring(0, idx);
     }
 }

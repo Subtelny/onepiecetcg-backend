@@ -44,4 +44,7 @@ public class CardSearchRequest {
 
     @Parameter(description = "Sub-type to search for (e.g. Straw Hat Crew)")
     private String subTypes;
+
+    @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
+    private List<String> prefixes;
 }

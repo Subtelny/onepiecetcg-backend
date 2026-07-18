@@ -70,6 +70,12 @@ public class CardFilterOptionService {
                 .distinct()
                 .toList();
 
+        var prefixes = cards.stream()
+                .map(SetCard::getCardPrefix)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
         var sets = cards.stream()
                 .filter(c -> c.getSetId() != null)
                 .collect(Collectors.toMap(SetCard::getSetId,
@@ -83,6 +89,7 @@ public class CardFilterOptionService {
         rarities.forEach(r -> entries.add(entry(CardFilterOptionCategory.RARITY, r, null)));
         attributes.forEach(a -> entries.add(entry(CardFilterOptionCategory.ATTRIBUTE, a, null)));
         subTypes.forEach(s -> entries.add(entry(CardFilterOptionCategory.SUB_TYPE, s, null)));
+        prefixes.forEach(p -> entries.add(entry(CardFilterOptionCategory.PREFIX, p, null)));
         sets.forEach(s -> entries.add(entry(CardFilterOptionCategory.SET, s.getSetId(), s.getSetName())));
 
         cardFilterOptionRepository.deleteAll();
@@ -100,6 +107,7 @@ public class CardFilterOptionService {
                 .rarities(valuesOf(grouped, CardFilterOptionCategory.RARITY))
                 .attributes(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))
+                .prefixes(valuesOf(grouped, CardFilterOptionCategory.PREFIX))
                 .sets(setsOf(grouped.getOrDefault(CardFilterOptionCategory.SET, List.of())))
                 .build();
     }

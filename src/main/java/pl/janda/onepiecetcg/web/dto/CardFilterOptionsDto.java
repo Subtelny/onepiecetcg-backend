@@ -18,4 +18,5 @@ public class CardFilterOptionsDto {
     private List<CardSetOptionDto> sets;
     private List<String> attributes;
     private List<String> subTypes;
+    private List<String> prefixes;
 }

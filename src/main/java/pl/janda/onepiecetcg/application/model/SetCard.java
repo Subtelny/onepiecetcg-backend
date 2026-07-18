@@ -28,6 +28,9 @@ public class SetCard {
     @Column(name = "card_set_id")
     private String cardSetId;
 
+    @Column(name = "card_prefix")
+    private String cardPrefix;
+
     @Column(name = "card_name")
     private String cardName;
 

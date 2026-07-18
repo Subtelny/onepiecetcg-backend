@@ -62,13 +62,14 @@ public class CardController {
                 request.getSetIds(),
                 request.getCounterAmount(),
                 request.getAttributes(),
-                request.getSubTypes());
+                request.getSubTypes(),
+                request.getPrefixes());
         return ResponseEntity.ok(cardMapper.toDtoList(cards));
     }
 
     @GetMapping("/filters")
     @Operation(summary = "Get all available card filters",
-            description = "Returns all distinct filter values currently present in the card data: types, colors, rarities, sets, attributes, and sub-types")
+            description = "Returns all distinct filter values currently present in the card data: types, colors, rarities, sets, attributes, sub-types, and prefixes")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Filter options retrieved successfully",
                     content = @Content(mediaType = "application/json",
