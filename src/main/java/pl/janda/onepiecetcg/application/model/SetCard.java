@@ -93,4 +93,9 @@ public class SetCard {
 
     @Column(name = "is_promo", nullable = false)
     private boolean promo;
+
+    // Single canonical variant per cardSetId group (alt arts/promos/judges/winners
+    // excluded), computed by CardRepresentativeService at the end of every sync.
+    @Column(name = "is_representative", nullable = false, columnDefinition = "boolean default false")
+    private boolean representative;
 }

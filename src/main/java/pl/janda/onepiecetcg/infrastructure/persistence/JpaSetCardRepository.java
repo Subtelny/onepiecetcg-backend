@@ -29,6 +29,7 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
             List<String> prefixes
     ) {
         return findAll().stream()
+                .filter(SetCard::isRepresentative)
                 .filter(c -> name == null ||
                         (c.getCardName() != null && c.getCardName().toLowerCase().contains(name.toLowerCase())) ||
                         (c.getCardSetId() != null && c.getCardSetId().toLowerCase().contains(name.toLowerCase())))
