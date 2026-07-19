@@ -1,12 +1,12 @@
 # One Piece TCG Backend - Rules for AI-Assisted Development
 
-Spring Boot 3.4.1 / Java 21 REST backend for a One Piece TCG app. Consumed by a React frontend at `~/WebstormProjects/onepiecetcg`. This document is a **rulebook**, not a tutorial — read the referenced files for concrete patterns before writing code.
+Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a React frontend at `~/WebstormProjects/onepiecetcg`. This document is a **rulebook**, not a tutorial — read the referenced files for concrete patterns before writing code.
 
 ---
 
 ## 1. Project Context
 
-- **Stack:** Java 21, Spring Boot 3.4.1 (Web, Validation, Data JPA), JOOQ (complex/read-heavy queries only, see §3), SpringDoc OpenAPI 3.0, Lombok, PostgreSQL (Docker Compose).
+- **Stack:** Java 21, Spring Boot 4.1.0 (WebMvc, Validation, Data JPA), JOOQ (complex/read-heavy queries only, see §3), SpringDoc OpenAPI 3.0, Lombok, PostgreSQL (Docker Compose).
 - **Server:** port `3000`, base path `/api`, CORS enabled for `http://localhost:5173`.
 - **Persistence status:**
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
@@ -94,7 +94,7 @@ infrastructure ──X──► web          (forbidden)
 
 ## 6. Testing Rules
 
-- No test suite exists yet (`src/test/` is empty). When adding tests:
+- When adding tests:
   - **Services:** `@ExtendWith(MockitoExtension.class)`, mock repositories/clients, assert business logic in isolation.
   - **Controllers:** `@SpringBootTest` + `MockMvc`, assert HTTP status + JSON shape (enum casing, date format, field names) — this is the actual frontend contract, treat it as such.
   - Prefer testing behavior through the public port (service method, controller endpoint) over testing private helper methods directly.

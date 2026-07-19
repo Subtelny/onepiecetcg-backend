@@ -2,9 +2,9 @@ package pl.janda.onepiecetcg.web.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.application.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.application.model.CardSearchField;
@@ -29,7 +29,7 @@ class CardControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private CardService cardService;
 
     // CardService.searchCards has 17 params, in this order:

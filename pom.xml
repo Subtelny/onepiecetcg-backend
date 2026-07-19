@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.1</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
@@ -22,7 +22,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <springdoc.version>2.8.4</springdoc.version>
+        <springdoc.version>3.0.3</springdoc.version>
         <!-- jOOQ codegen connects to the local dev DB (docker-compose) to read the Hibernate-managed schema; no migration tool exists yet, see CLAUDE.md §3. Override with -D if your local DB credentials differ from docker-compose.yml. -->
         <jooq.codegen.jdbc.url>jdbc:postgresql://localhost:5432/onepiecetcg</jooq.codegen.jdbc.url>
         <jooq.codegen.jdbc.username>onepiecetcg</jooq.codegen.jdbc.username>
@@ -33,7 +33,13 @@
         <!-- Spring Boot Web - REST API support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- RestClient.Builder auto-configuration - no longer pulled in transitively by webmvc starter -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
         <!-- Spring Boot Validation - Request validation -->
@@ -90,6 +96,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- MockMvc test autoconfiguration - no longer pulled in transitively by spring-boot-starter-test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Testcontainers - real Postgres for JooqSetCardQueryAdapterIT (full-text search can't be verified against a mocked DSLContext) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -98,12 +111,12 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
