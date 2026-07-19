@@ -56,7 +56,6 @@ public class CardService {
             List<String> attributeCombos,
             String subTypes,
             List<String> prefixes,
-            List<String> effects,
             CardSortField sortBy,
             SortDirection sortOrder,
             Integer page,
@@ -66,8 +65,8 @@ public class CardService {
         var resolvedLimit = limit != null ? limit : 50;
         var resolvedSearchField = searchField != null ? searchField : CardSearchField.NAME;
 
-        var pageContent = setCardRepository.search(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, resolvedPage, resolvedLimit);
-        var totalCount = setCardRepository.countSearch(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects);
+        var pageContent = setCardRepository.search(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit);
+        var totalCount = setCardRepository.countSearch(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }

@@ -57,9 +57,6 @@ public class CardSearchRequest {
     @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
     private List<String> prefixes;
 
-    @Parameter(description = "Card effect tags, e.g. On Play, On K.O., Blocker")
-    private List<String> effects;
-
     @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to insertion order if omitted.")
     private CardSortField sortBy;
 

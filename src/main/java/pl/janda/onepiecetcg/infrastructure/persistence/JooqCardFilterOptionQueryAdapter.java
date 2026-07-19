@@ -97,14 +97,6 @@ class JooqCardFilterOptionQueryAdapter {
             insert.values(CardFilterOptionCategory.PREFIX.name(), value, null);
             count++;
         }
-        for (var value : distinctValues("""
-                SELECT DISTINCT sce.effect AS v FROM set_card_effects sce
-                JOIN set_cards sc ON sc.id = sce.set_card_id
-                WHERE sc.is_representative
-                """)) {
-            insert.values(CardFilterOptionCategory.EFFECT.name(), value, null);
-            count++;
-        }
         for (var record : dsl.fetch("""
                 SELECT DISTINCT ON (set_id) set_id, set_name FROM set_cards
                 WHERE is_representative AND set_id IS NOT NULL

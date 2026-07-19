@@ -33,15 +33,15 @@ class CardServiceTest {
         stubRepository();
 
         // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-        // attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit
+        // attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit
         cardService.searchCards(
                 "Luffy", null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         var searchFieldCaptor = ArgumentCaptor.forClass(CardSearchField.class);
         verify(setCardRepository).search(
                 any(), searchFieldCaptor.capture(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
+                any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
         assertThat(searchFieldCaptor.getValue()).isEqualTo(CardSearchField.NAME);
     }
 
@@ -52,27 +52,27 @@ class CardServiceTest {
 
         cardService.searchCards(
                 "DON", CardSearchField.DESCRIPTION, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
 
         var searchFieldCaptor = ArgumentCaptor.forClass(CardSearchField.class);
         verify(setCardRepository).search(
                 any(), searchFieldCaptor.capture(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
+                any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
         assertThat(searchFieldCaptor.getValue()).isEqualTo(CardSearchField.DESCRIPTION);
     }
 
     private void stubRepository() {
         // search(): name, searchField, types, colors, rarities, flatRarities, costs, power,
-        // counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit
+        // counterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit
         when(setCardRepository.search(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+                any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of());
         // countSearch(): name, searchField, types, colors, rarities, flatRarities, costs, power,
-        // counterAmount, attributes, attributeCombos, subTypes, prefixes, effects
+        // counterAmount, attributes, attributeCombos, subTypes, prefixes
         when(setCardRepository.countSearch(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any()))
+                any(), any(), any(), any()))
                 .thenReturn(0L);
     }
 }

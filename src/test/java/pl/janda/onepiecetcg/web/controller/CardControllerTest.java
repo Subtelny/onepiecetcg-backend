@@ -32,9 +32,9 @@ class CardControllerTest {
     @MockBean
     private CardService cardService;
 
-    // CardService.searchCards has 18 params, in this order:
+    // CardService.searchCards has 17 params, in this order:
     // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-    // attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit
+    // attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit
 
     @Test
     void searchCards_deserializesSearchInEnumAndForwardsToService() throws Exception {
@@ -52,7 +52,6 @@ class CardControllerTest {
                 any(), // attributeCombos
                 any(), // subTypes
                 any(), // prefixes
-                any(), // effects
                 any(), // sortBy
                 any(), // sortOrder
                 any(), // page
@@ -66,14 +65,14 @@ class CardControllerTest {
                 eq("foo"),
                 eq(CardSearchField.DESCRIPTION),
                 any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void searchCards_omittingSearchInLeavesItNullForServiceToDefault() throws Exception {
         when(cardService.searchCards(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any(), any()
+                any(), any(), any(), any(), any(), any(), any(), any()
         )).thenReturn(new PagedCards(List.of(), 0, 0, 50));
 
         mockMvc.perform(get("/api/cards").param("name", "Luffy"))
@@ -83,6 +82,6 @@ class CardControllerTest {
                 eq("Luffy"),
                 eq(null),
                 any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any(), any());
     }
 }

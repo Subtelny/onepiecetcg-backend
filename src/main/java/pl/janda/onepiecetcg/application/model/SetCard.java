@@ -1,15 +1,10 @@
 package pl.janda.onepiecetcg.application.model;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,8 +12,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "set_cards")
@@ -103,12 +96,4 @@ public class SetCard {
 
     @Column(name = "is_representative", nullable = false, columnDefinition = "boolean default false")
     private boolean representative;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "set_card_effects",
-            joinColumns = @JoinColumn(name = "set_card_id"),
-            indexes = @Index(name = "idx_set_card_effects_effect", columnList = "effect"))
-    @Column(name = "effect")
-    @Builder.Default
-    private List<String> effects = new ArrayList<>();
 }

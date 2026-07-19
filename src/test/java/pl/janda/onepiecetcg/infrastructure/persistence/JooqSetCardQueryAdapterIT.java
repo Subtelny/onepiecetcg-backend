@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * scripts/db/add-card-text-search-vector.sql) that a mocked DSLContext cannot exercise.
  *
  * JooqSetCardQueryAdapter.search()/countSearch() take (name, searchField, types, colors, rarities,
- * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects,
- * sortBy, sortOrder, page, limit) - 18 params. Only name/searchField/sortBy/page/limit vary below.
+ * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes,
+ * sortBy, sortOrder, page, limit) - 17 params. Only name/searchField/sortBy/page/limit vary below.
  *
  * OnePieceTcgApplication lives under application/, not the root package, so @SpringBootTest's
  * upward package scan can't find it - declared explicitly here.
@@ -109,7 +109,7 @@ class JooqSetCardQueryAdapterIT {
     void searchField_name_matchesOnlyOnNameAndCardNumber_notOnDescriptionOnlyContent() {
         var results = adapter.search(
                 "Luffy", CardSearchField.NAME,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
 
         assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
@@ -117,7 +117,7 @@ class JooqSetCardQueryAdapterIT {
         // "Blocker" only appears in Nami's card text, never in a card name - NAME mode must not match it.
         var noMatch = adapter.search(
                 "Blocker", CardSearchField.NAME,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
         assertThat(noMatch).isEmpty();
     }
@@ -126,7 +126,7 @@ class JooqSetCardQueryAdapterIT {
     void searchField_description_matchesOnCardTextIncludingMultiWordPhrase() {
         var results = adapter.search(
                 "Straw Hat", CardSearchField.DESCRIPTION,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
 
         assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
@@ -134,7 +134,7 @@ class JooqSetCardQueryAdapterIT {
         // Card name "Luffy" does not appear anywhere in any card's text - DESCRIPTION mode must not match it.
         var noMatch = adapter.search(
                 "Luffy", CardSearchField.DESCRIPTION,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
         assertThat(noMatch).isEmpty();
     }
@@ -143,13 +143,13 @@ class JooqSetCardQueryAdapterIT {
     void searchField_both_matchesEitherNameOrDescription() {
         var byName = adapter.search(
                 "Zoro", CardSearchField.BOTH,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
         assertThat(byName).extracting(SetCard::getCardName).containsExactly("Roronoa Zoro");
 
         var byDescription = adapter.search(
                 "Blocker", CardSearchField.BOTH,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
         assertThat(byDescription).extracting(SetCard::getCardName).containsExactly("Nami");
     }
@@ -158,7 +158,7 @@ class JooqSetCardQueryAdapterIT {
     void descriptionSearch_doesNotAffectDefaultSortOrder() {
         var results = adapter.search(
                 null, CardSearchField.NAME,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 CardSortField.CARD_NUMBER, null, 0, 50);
 
         assertThat(results).extracting(SetCard::getCardSetId)
@@ -169,7 +169,7 @@ class JooqSetCardQueryAdapterIT {
     void costs_filtersToOnlyMatchingValues_whenNonEmpty() {
         var results = adapter.search(
                 null, CardSearchField.NAME,
-                null, null, null, null, List.of(1, 5), null, null, null, null, null, null, null,
+                null, null, null, null, List.of(1, 5), null, null, null, null, null, null,
                 null, null, 0, 50);
 
         assertThat(results).extracting(SetCard::getCardName)
@@ -180,13 +180,13 @@ class JooqSetCardQueryAdapterIT {
     void costs_doesNotFilter_whenNullOrEmpty() {
         var withNull = adapter.search(
                 null, CardSearchField.NAME,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50);
         assertThat(withNull).hasSize(3);
 
         var withEmpty = adapter.search(
                 null, CardSearchField.NAME,
-                null, null, null, null, List.of(), null, null, null, null, null, null, null,
+                null, null, null, null, List.of(), null, null, null, null, null, null,
                 null, null, 0, 50);
         assertThat(withEmpty).hasSize(3);
     }

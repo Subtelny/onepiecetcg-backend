@@ -39,7 +39,6 @@ public class CardFilterOptionService {
                 .attributeCombos(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE_COMBO))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))
                 .prefixes(valuesOf(grouped, CardFilterOptionCategory.PREFIX))
-                .effects(valuesOf(grouped, CardFilterOptionCategory.EFFECT))
                 .sets(setsOf(grouped.getOrDefault(CardFilterOptionCategory.SET, List.of())))
                 .build();
     }

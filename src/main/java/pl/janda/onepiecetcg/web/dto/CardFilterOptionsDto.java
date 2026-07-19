@@ -22,5 +22,4 @@ public class CardFilterOptionsDto {
     private List<String> attributeCombos;
     private List<String> subTypes;
     private List<String> prefixes;
-    private List<String> effects;
 }

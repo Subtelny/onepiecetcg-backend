@@ -31,7 +31,6 @@ public class CardMapper {
                 .counter(card.getCounterAmount())
                 .attribute(parseAttributes(card.getAttribute()))
                 .effect(card.getCardText())
-                .effects(card.getEffects() != null ? card.getEffects() : List.of())
                 .rarity(card.getRarity())
                 .flatRarity(card.getFlatRarity())
                 .cardNumber(card.getCardSetId())
@@ -60,7 +59,6 @@ public class CardMapper {
                 .attributeCombos(options.getAttributeCombos())
                 .subTypes(options.getSubTypes())
                 .prefixes(options.getPrefixes())
-                .effects(options.getEffects())
                 .build();
     }
 

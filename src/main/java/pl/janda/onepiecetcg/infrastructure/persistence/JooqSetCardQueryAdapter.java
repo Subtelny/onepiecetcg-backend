@@ -18,23 +18,19 @@ import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records.SetCa
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static org.jooq.impl.DSL.case_;
 import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.concat;
 import static org.jooq.impl.DSL.condition;
-import static org.jooq.impl.DSL.exists;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.inline;
 import static org.jooq.impl.DSL.length;
 import static org.jooq.impl.DSL.lower;
 import static org.jooq.impl.DSL.or;
 import static org.jooq.impl.DSL.rowNumber;
-import static org.jooq.impl.DSL.selectOne;
 import static org.jooq.impl.DSL.upper;
 import static org.jooq.impl.DSL.when;
-import static pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.SetCardEffects.SET_CARD_EFFECTS;
 import static pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.SetCards.SET_CARDS;
 
 /**
@@ -141,14 +137,13 @@ class JooqSetCardQueryAdapter {
             List<String> attributeCombos,
             String subTypes,
             List<String> prefixes,
-            List<String> effects,
             CardSortField sortBy,
             SortDirection sortOrder,
             int page,
             int limit
     ) {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, effects);
+                attributes, attributeCombos, subTypes, prefixes);
 
         var records = dsl.selectFrom(SET_CARDS)
                 .where(conditions)
@@ -157,10 +152,8 @@ class JooqSetCardQueryAdapter {
                 .offset(page * limit)
                 .fetch();
 
-        var effectsByCardId = fetchEffects(records.stream().map(SetCardsRecord::getId).toList());
-
         return records.stream()
-                .map(r -> toSetCard(r, effectsByCardId.getOrDefault(r.getId(), List.of())))
+                .map(JooqSetCardQueryAdapter::toSetCard)
                 .toList();
     }
 
@@ -177,11 +170,10 @@ class JooqSetCardQueryAdapter {
             List<String> attributes,
             List<String> attributeCombos,
             String subTypes,
-            List<String> prefixes,
-            List<String> effects
+            List<String> prefixes
     ) {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, effects);
+                attributes, attributeCombos, subTypes, prefixes);
 
         return dsl.selectCount()
                 .from(SET_CARDS)
@@ -202,8 +194,7 @@ class JooqSetCardQueryAdapter {
             List<String> attributes,
             List<String> attributeCombos,
             String subTypes,
-            List<String> prefixes,
-            List<String> effects
+            List<String> prefixes
     ) {
         var conditions = new ArrayList<Condition>();
         conditions.add(SET_CARDS.IS_REPRESENTATIVE.isTrue());
@@ -248,13 +239,6 @@ class JooqSetCardQueryAdapter {
         if (prefixes != null && !prefixes.isEmpty()) {
             conditions.add(upper(SET_CARDS.CARD_PREFIX).in(prefixes.stream().map(String::toUpperCase).toList()));
         }
-        if (effects != null && !effects.isEmpty()) {
-            conditions.add(exists(
-                    selectOne().from(SET_CARD_EFFECTS)
-                            .where(SET_CARD_EFFECTS.SET_CARD_ID.eq(SET_CARDS.ID))
-                            .and(upper(SET_CARD_EFFECTS.EFFECT).in(effects.stream().map(String::toUpperCase).toList()))
-            ));
-        }
         return conditions;
     }
 
@@ -291,16 +275,7 @@ class JooqSetCardQueryAdapter {
                 String.class, column);
     }
 
-    private Map<Long, List<String>> fetchEffects(List<Long> cardIds) {
-        if (cardIds.isEmpty()) {
-            return Map.of();
-        }
-        return dsl.selectFrom(SET_CARD_EFFECTS)
-                .where(SET_CARD_EFFECTS.SET_CARD_ID.in(cardIds))
-                .fetchGroups(SET_CARD_EFFECTS.SET_CARD_ID, SET_CARD_EFFECTS.EFFECT);
-    }
-
-    private static SetCard toSetCard(SetCardsRecord r, List<String> effects) {
+    private static SetCard toSetCard(SetCardsRecord r) {
         return SetCard.builder()
                 .id(r.getId())
                 .cardSetId(r.getCardSetId())
@@ -327,7 +302,6 @@ class JooqSetCardQueryAdapter {
                 .lastSyncedAt(r.getLastSyncedAt())
                 .promo(Boolean.TRUE.equals(r.getIsPromo()))
                 .representative(Boolean.TRUE.equals(r.getIsRepresentative()))
-                .effects(effects)
                 .build();
     }
 }

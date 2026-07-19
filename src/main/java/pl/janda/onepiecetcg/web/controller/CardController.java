@@ -71,7 +71,6 @@ public class CardController {
                 request.getAttributeCombos(),
                 request.getSubTypes(),
                 request.getPrefixes(),
-                request.getEffects(),
                 request.getSortBy(),
                 request.getSortOrder(),
                 request.getPage(),
@@ -90,7 +89,7 @@ public class CardController {
 
     @GetMapping("/filters")
     @Operation(summary = "Get all available card filters",
-            description = "Returns all distinct filter values currently present in the card data: types, colors, rarities, sets, attributes, merged attribute combos, sub-types, prefixes, and effects")
+            description = "Returns all distinct filter values currently present in the card data: types, colors, rarities, sets, attributes, merged attribute combos, sub-types, and prefixes")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Filter options retrieved successfully",
                     content = @Content(mediaType = "application/json",

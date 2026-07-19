@@ -36,8 +36,8 @@ public class JpaSetCardRepository implements SetCardRepository {
     public <S extends SetCard> List<S> saveAll(Iterable<S> setCards) {
         // Flush is required here: recomputeRepresentative()/search() run raw JOOQ SQL against the same
         // transaction's connection, bypassing the Hibernate session, so pending writes (including the
-        // deleteAll() that normally precedes this call, and @ElementCollection effect rows) must be
-        // physically written first or those JOOQ queries would see stale/incomplete data.
+        // deleteAll() that normally precedes this call) must be physically written first or those
+        // JOOQ queries would see stale/incomplete data.
         return jpaRepository.saveAllAndFlush(setCards);
     }
 
@@ -71,14 +71,13 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<String> attributeCombos,
             String subTypes,
             List<String> prefixes,
-            List<String> effects,
             CardSortField sortBy,
             SortDirection sortOrder,
             int page,
             int limit
     ) {
         return jooqQueryAdapter.search(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit);
+                attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit);
     }
 
     @Override
@@ -95,10 +94,9 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<String> attributes,
             List<String> attributeCombos,
             String subTypes,
-            List<String> prefixes,
-            List<String> effects
+            List<String> prefixes
     ) {
         return jooqQueryAdapter.countSearch(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, effects);
+                attributes, attributeCombos, subTypes, prefixes);
     }
 }
