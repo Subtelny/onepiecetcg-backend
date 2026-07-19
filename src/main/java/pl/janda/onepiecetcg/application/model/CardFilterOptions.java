@@ -21,6 +21,8 @@ public class CardFilterOptions {
 
     private List<String> flatRarities;
 
+    private List<String> costs;
+
     private List<CardSet> sets;
 
     private List<String> attributes;

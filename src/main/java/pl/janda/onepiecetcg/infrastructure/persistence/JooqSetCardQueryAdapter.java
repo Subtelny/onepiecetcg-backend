@@ -118,7 +118,11 @@ class JooqSetCardQueryAdapter {
         return List.of(primary.nullsLast(), SET_CARDS.ID.asc());
     }
 
-    /** Mirrors the cost/power filter cast in buildConditions() - card_cost/card_power are stored as String. */
+    /**
+     * Casts card_cost/card_power (stored as String) to Integer where numeric, else NULL. Used for
+     * ORDER BY (buildOrderBy) and for the cost IN-list filter in buildConditions(); power keeps its
+     * own separate inline regex+cast condition there.
+     */
     private static Field<Integer> safeIntCast(Field<String> column) {
         return field("CASE WHEN {0} ~ '^-?[0-9]+$' THEN {0}::int ELSE NULL END", Integer.class, column);
     }
@@ -130,7 +134,7 @@ class JooqSetCardQueryAdapter {
             List<CardColor> colors,
             List<CardRarity> rarities,
             List<CardRarity> flatRarities,
-            Integer cost,
+            List<Integer> costs,
             Integer power,
             Integer counterAmount,
             List<String> attributes,
@@ -143,7 +147,7 @@ class JooqSetCardQueryAdapter {
             int page,
             int limit
     ) {
-        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects);
 
         var records = dsl.selectFrom(SET_CARDS)
@@ -167,7 +171,7 @@ class JooqSetCardQueryAdapter {
             List<CardColor> colors,
             List<CardRarity> rarities,
             List<CardRarity> flatRarities,
-            Integer cost,
+            List<Integer> costs,
             Integer power,
             Integer counterAmount,
             List<String> attributes,
@@ -176,7 +180,7 @@ class JooqSetCardQueryAdapter {
             List<String> prefixes,
             List<String> effects
     ) {
-        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects);
 
         return dsl.selectCount()
@@ -192,7 +196,7 @@ class JooqSetCardQueryAdapter {
             List<CardColor> colors,
             List<CardRarity> rarities,
             List<CardRarity> flatRarities,
-            Integer cost,
+            List<Integer> costs,
             Integer power,
             Integer counterAmount,
             List<String> attributes,
@@ -223,8 +227,8 @@ class JooqSetCardQueryAdapter {
         if (flatRarities != null && !flatRarities.isEmpty()) {
             conditions.add(upper(SET_CARDS.FLAT_RARITY).in(flatRarities.stream().map(Enum::name).toList()));
         }
-        if (cost != null) {
-            conditions.add(condition("{0} ~ '^-?[0-9]+$' AND {0}::int = {1}", SET_CARDS.CARD_COST, cost));
+        if (costs != null && !costs.isEmpty()) {
+            conditions.add(safeIntCast(SET_CARDS.CARD_COST).in(costs));
         }
         if (power != null) {
             conditions.add(condition("{0} ~ '^-?[0-9]+$' AND {0}::int = {1}", SET_CARDS.CARD_POWER, power));

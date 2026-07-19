@@ -56,6 +56,13 @@ class JooqCardFilterOptionQueryAdapter {
             count++;
         }
         for (var value : distinctValues("""
+                SELECT DISTINCT card_cost AS v FROM set_cards
+                WHERE is_representative AND card_cost ~ '^-?[0-9]+$'
+                """)) {
+            insert.values(CardFilterOptionCategory.COST.name(), value, null);
+            count++;
+        }
+        for (var value : distinctValues("""
                 SELECT DISTINCT t AS v FROM set_cards, regexp_split_to_table(attribute, '[\\s/]+') AS t
                 WHERE is_representative AND attribute IS NOT NULL AND trim(attribute) <> ''
                   AND t <> '' AND lower(t) <> 'null'

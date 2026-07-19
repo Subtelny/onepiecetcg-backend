@@ -34,6 +34,7 @@ public class CardFilterOptionService {
                 .colors(valuesOf(grouped, CardFilterOptionCategory.COLOR))
                 .rarities(valuesOf(grouped, CardFilterOptionCategory.RARITY))
                 .flatRarities(valuesOf(grouped, CardFilterOptionCategory.FLAT_RARITY))
+                .costs(valuesOf(grouped, CardFilterOptionCategory.COST))
                 .attributes(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE))
                 .attributeCombos(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE_COMBO))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))

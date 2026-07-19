@@ -64,7 +64,7 @@ public class CardController {
                 colors,
                 rarities,
                 flatRarities,
-                request.getCost(),
+                request.getCosts(),
                 request.getPower(),
                 request.getCounterAmount(),
                 request.getAttributes(),

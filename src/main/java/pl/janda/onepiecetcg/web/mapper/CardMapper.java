@@ -52,6 +52,7 @@ public class CardMapper {
                 .colors(options.getColors())
                 .rarities(options.getRarities())
                 .flatRarities(options.getFlatRarities())
+                .costs(options.getCosts())
                 .sets(options.getSets().stream()
                         .map(s -> CardSetOptionDto.builder().setId(s.getSetId()).setName(s.getSetName()).build())
                         .toList())

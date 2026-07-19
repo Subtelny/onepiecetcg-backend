@@ -64,7 +64,7 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<CardColor> colors,
             List<CardRarity> rarities,
             List<CardRarity> flatRarities,
-            Integer cost,
+            List<Integer> costs,
             Integer power,
             Integer counterAmount,
             List<String> attributes,
@@ -77,7 +77,7 @@ public class JpaSetCardRepository implements SetCardRepository {
             int page,
             int limit
     ) {
-        return jooqQueryAdapter.search(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        return jooqQueryAdapter.search(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit);
     }
 
@@ -89,7 +89,7 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<CardColor> colors,
             List<CardRarity> rarities,
             List<CardRarity> flatRarities,
-            Integer cost,
+            List<Integer> costs,
             Integer power,
             Integer counterAmount,
             List<String> attributes,
@@ -98,7 +98,7 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<String> prefixes,
             List<String> effects
     ) {
-        return jooqQueryAdapter.countSearch(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        return jooqQueryAdapter.countSearch(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects);
     }
 }

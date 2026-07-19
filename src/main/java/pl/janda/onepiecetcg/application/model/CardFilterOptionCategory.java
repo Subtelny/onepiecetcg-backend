@@ -5,6 +5,7 @@ public enum CardFilterOptionCategory {
     COLOR,
     RARITY,
     FLAT_RARITY,
+    COST,
     ATTRIBUTE,
     ATTRIBUTE_COMBO,
     SUB_TYPE,

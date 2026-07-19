@@ -36,8 +36,8 @@ public class CardSearchRequest {
     @Parameter(description = "Physically printed card rarities (C, UC, R, SR, L, PR, SEC, TR) - the rarity actually printed on the card, which can differ from `rarity` for promo reprints like judge packs")
     private List<String> flatRarity;
 
-    @Parameter(description = "Exact card cost")
-    private Integer cost;
+    @Parameter(description = "Accepted card costs (exact-match list, e.g. from a UI range selection expanded to individual values)")
+    private List<Integer> costs;
 
     @Parameter(description = "Exact card power")
     private Integer power;

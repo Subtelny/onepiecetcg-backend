@@ -33,7 +33,7 @@ class CardControllerTest {
     private CardService cardService;
 
     // CardService.searchCards has 18 params, in this order:
-    // name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
+    // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
     // attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit
 
     @Test
@@ -45,7 +45,7 @@ class CardControllerTest {
                 any(), // colors
                 any(), // rarities
                 any(), // flatRarities
-                any(), // cost
+                any(), // costs
                 any(), // power
                 any(), // counterAmount
                 any(), // attributes

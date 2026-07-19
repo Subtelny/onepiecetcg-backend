@@ -32,7 +32,7 @@ class CardServiceTest {
         cardService = new CardService(setCardRepository, cardFilterOptionService);
         stubRepository();
 
-        // name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
         // attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit
         cardService.searchCards(
                 "Luffy", null, null, null, null, null, null, null, null,
@@ -62,13 +62,13 @@ class CardServiceTest {
     }
 
     private void stubRepository() {
-        // search(): name, searchField, types, colors, rarities, flatRarities, cost, power,
+        // search(): name, searchField, types, colors, rarities, flatRarities, costs, power,
         // counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit
         when(setCardRepository.search(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of());
-        // countSearch(): name, searchField, types, colors, rarities, flatRarities, cost, power,
+        // countSearch(): name, searchField, types, colors, rarities, flatRarities, costs, power,
         // counterAmount, attributes, attributeCombos, subTypes, prefixes, effects
         when(setCardRepository.countSearch(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),

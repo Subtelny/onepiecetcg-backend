@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * scripts/db/add-card-text-search-vector.sql) that a mocked DSLContext cannot exercise.
  *
  * JooqSetCardQueryAdapter.search()/countSearch() take (name, searchField, types, colors, rarities,
- * flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects,
+ * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects,
  * sortBy, sortOrder, page, limit) - 18 params. Only name/searchField/sortBy/page/limit vary below.
  *
  * OnePieceTcgApplication lives under application/, not the root package, so @SpringBootTest's
@@ -85,18 +85,21 @@ class JooqSetCardQueryAdapterIT {
                         .cardName("Monkey D. Luffy")
                         .cardSetId("OP01-001")
                         .cardText("If you have a [Straw Hat] type Character: draw 1 card.")
+                        .cardCost("1")
                         .representative(true)
                         .build(),
                 SetCard.builder()
                         .cardName("Roronoa Zoro")
                         .cardSetId("OP01-002")
                         .cardText("[On Play] Give up to 1 of your Leader or Character cards +1000 power for this turn.")
+                        .cardCost("3")
                         .representative(true)
                         .build(),
                 SetCard.builder()
                         .cardName("Nami")
                         .cardSetId("OP01-003")
                         .cardText("[DON!!x1] This Character gains [Blocker].")
+                        .cardCost("5")
                         .representative(true)
                         .build()
         ));
@@ -160,5 +163,31 @@ class JooqSetCardQueryAdapterIT {
 
         assertThat(results).extracting(SetCard::getCardSetId)
                 .containsExactly("OP01-001", "OP01-002", "OP01-003");
+    }
+
+    @Test
+    void costs_filtersToOnlyMatchingValues_whenNonEmpty() {
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, List.of(1, 5), null, null, null, null, null, null, null,
+                null, null, 0, 50);
+
+        assertThat(results).extracting(SetCard::getCardName)
+                .containsExactlyInAnyOrder("Monkey D. Luffy", "Nami");
+    }
+
+    @Test
+    void costs_doesNotFilter_whenNullOrEmpty() {
+        var withNull = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50);
+        assertThat(withNull).hasSize(3);
+
+        var withEmpty = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, List.of(), null, null, null, null, null, null, null,
+                null, null, 0, 50);
+        assertThat(withEmpty).hasSize(3);
     }
 }
