@@ -68,6 +68,16 @@ public class CardFilterOptionService {
         var attributes = cards.stream()
                 .map(SetCard::getAttribute)
                 .filter(a -> a != null && !a.isBlank())
+                .flatMap(a -> Arrays.stream(a.split("[\\s/]+")))
+                .filter(token -> !token.isBlank() && !token.equalsIgnoreCase("null"))
+                .distinct()
+                .toList();
+
+        var attributeCombos = cards.stream()
+                .map(SetCard::getAttribute)
+                .filter(a -> a != null && !a.isBlank())
+                .map(CardFilterOptionService::canonicalAttributeCombo)
+                .filter(combo -> combo.contains(" & "))
                 .distinct()
                 .toList();
 
@@ -105,6 +115,7 @@ public class CardFilterOptionService {
         rarities.forEach(r -> entries.add(entry(CardFilterOptionCategory.RARITY, r, null)));
         flatRarities.forEach(r -> entries.add(entry(CardFilterOptionCategory.FLAT_RARITY, r, null)));
         attributes.forEach(a -> entries.add(entry(CardFilterOptionCategory.ATTRIBUTE, a, null)));
+        attributeCombos.forEach(c -> entries.add(entry(CardFilterOptionCategory.ATTRIBUTE_COMBO, c, null)));
         subTypes.forEach(s -> entries.add(entry(CardFilterOptionCategory.SUB_TYPE, s, null)));
         prefixes.forEach(p -> entries.add(entry(CardFilterOptionCategory.PREFIX, p, null)));
         effects.forEach(e -> entries.add(entry(CardFilterOptionCategory.EFFECT, e, null)));
@@ -125,11 +136,19 @@ public class CardFilterOptionService {
                 .rarities(valuesOf(grouped, CardFilterOptionCategory.RARITY))
                 .flatRarities(valuesOf(grouped, CardFilterOptionCategory.FLAT_RARITY))
                 .attributes(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE))
+                .attributeCombos(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE_COMBO))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))
                 .prefixes(valuesOf(grouped, CardFilterOptionCategory.PREFIX))
                 .effects(valuesOf(grouped, CardFilterOptionCategory.EFFECT))
                 .sets(setsOf(grouped.getOrDefault(CardFilterOptionCategory.SET, List.of())))
                 .build();
+    }
+
+    private static String canonicalAttributeCombo(String attribute) {
+        return Arrays.stream(attribute.trim().split("[\\s/]+"))
+                .filter(token -> !token.isBlank() && !token.equalsIgnoreCase("null"))
+                .sorted()
+                .collect(Collectors.joining(" & "));
     }
 
     private static CardFilterOptionValue entry(CardFilterOptionCategory category, String value, String label) {

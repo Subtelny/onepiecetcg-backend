@@ -42,6 +42,9 @@ public class CardSearchRequest {
     @Parameter(description = "Card attributes, e.g. Slash, Strike")
     private List<String> attributes;
 
+    @Parameter(description = "Merged attribute combinations, e.g. 'Slash & Wisdom', 'Slash & Special'")
+    private List<String> attributeCombos;
+
     @Parameter(description = "Sub-type to search for (e.g. Straw Hat Crew)")
     private String subTypes;
 

@@ -19,7 +19,7 @@ public class CardDto {
     private Integer cost;
     private Integer power;
     private Integer counter;
-    private String attribute;
+    private List<String> attribute;
     private String effect;
     private List<String> effects;
     private String rarity;

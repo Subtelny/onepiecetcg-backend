@@ -10,6 +10,7 @@ import pl.janda.onepiecetcg.application.repository.SetCardRepository;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository
 public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetCardRepository {
@@ -25,6 +26,7 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
             Integer power,
             Integer counterAmount,
             List<String> attributes,
+            List<String> attributeCombos,
             String subTypes,
             List<String> prefixes,
             List<String> effects
@@ -45,7 +47,9 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
                 .filter(c -> power == null || power.equals(parseIntSafe(c.getCardPower())))
                 .filter(c -> counterAmount == null || counterAmount.equals(c.getCounterAmount()))
                 .filter(c -> attributes == null || attributes.isEmpty() ||
-                        (c.getAttribute() != null && attributes.stream().anyMatch(a -> a.equalsIgnoreCase(c.getAttribute()))))
+                        matchesAnyAttribute(c.getAttribute(), attributes))
+                .filter(c -> attributeCombos == null || attributeCombos.isEmpty() ||
+                        matchesAnyAttributeCombo(c.getAttribute(), attributeCombos))
                 .filter(c -> subTypes == null || containsToken(c.getSubTypes(), subTypes))
                 .filter(c -> prefixes == null || prefixes.isEmpty() ||
                         (c.getCardPrefix() != null && prefixes.stream().anyMatch(p -> p.equalsIgnoreCase(c.getCardPrefix()))))
@@ -61,6 +65,25 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
         }
         return Arrays.stream(cardColor.split("\\s+"))
                 .anyMatch(token -> colors.stream().anyMatch(c -> c.name().equalsIgnoreCase(token)));
+    }
+
+    private static boolean matchesAnyAttribute(String cardAttribute, List<String> attributes) {
+        if (cardAttribute == null) {
+            return false;
+        }
+        return Arrays.stream(cardAttribute.split("[\\s/]+"))
+                .anyMatch(token -> attributes.stream().anyMatch(a -> a.equalsIgnoreCase(token)));
+    }
+
+    private static boolean matchesAnyAttributeCombo(String cardAttribute, List<String> attributeCombos) {
+        if (cardAttribute == null) {
+            return false;
+        }
+        var canonical = Arrays.stream(cardAttribute.trim().split("[\\s/]+"))
+                .filter(token -> !token.isBlank() && !token.equalsIgnoreCase("null"))
+                .sorted()
+                .collect(Collectors.joining(" & "));
+        return attributeCombos.stream().anyMatch(c -> c.equalsIgnoreCase(canonical));
     }
 
     private static boolean containsToken(String tokens, String value) {

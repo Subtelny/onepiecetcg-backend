@@ -30,6 +30,7 @@ public interface SetCardRepository {
         Integer power,
         Integer counterAmount,
         List<String> attributes,
+        List<String> attributeCombos,
         String subTypes,
         List<String> prefixes,
         List<String> effects

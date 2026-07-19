@@ -25,6 +25,8 @@ public class CardFilterOptions {
 
     private List<String> attributes;
 
+    private List<String> attributeCombos;
+
     private List<String> subTypes;
 
     private List<String> prefixes;

@@ -29,7 +29,7 @@ public class CardMapper {
                 .cost(parseIntSafe(card.getCardCost()))
                 .power(parseIntSafe(card.getCardPower()))
                 .counter(card.getCounterAmount())
-                .attribute(card.getAttribute())
+                .attribute(parseAttributes(card.getAttribute()))
                 .effect(card.getCardText())
                 .effects(card.getEffects() != null ? card.getEffects() : List.of())
                 .rarity(card.getRarity())
@@ -56,6 +56,7 @@ public class CardMapper {
                         .map(s -> CardSetOptionDto.builder().setId(s.getSetId()).setName(s.getSetName()).build())
                         .toList())
                 .attributes(options.getAttributes())
+                .attributeCombos(options.getAttributeCombos())
                 .subTypes(options.getSubTypes())
                 .prefixes(options.getPrefixes())
                 .effects(options.getEffects())
@@ -80,6 +81,15 @@ public class CardMapper {
         return Arrays.stream(cardColor.split("\\s+"))
                 .map(String::toUpperCase)
                 .filter(token -> Arrays.stream(CardColor.values()).anyMatch(c -> c.name().equals(token)))
+                .toList();
+    }
+
+    private List<String> parseAttributes(String attribute) {
+        if (attribute == null || attribute.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(attribute.split("[\\s/]+"))
+                .filter(token -> !token.isBlank() && !token.equalsIgnoreCase("null"))
                 .toList();
     }
 

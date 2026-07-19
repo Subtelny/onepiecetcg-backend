@@ -18,6 +18,7 @@ public class CardFilterOptionsDto {
     private List<String> flatRarities;
     private List<CardSetOptionDto> sets;
     private List<String> attributes;
+    private List<String> attributeCombos;
     private List<String> subTypes;
     private List<String> prefixes;
     private List<String> effects;
