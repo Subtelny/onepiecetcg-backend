@@ -2,8 +2,10 @@ package pl.janda.onepiecetcg.application.repository;
 
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
+import pl.janda.onepiecetcg.application.model.SortDirection;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +38,8 @@ public interface SetCardRepository {
         String subTypes,
         List<String> prefixes,
         List<String> effects,
+        CardSortField sortBy,
+        SortDirection sortOrder,
         int page,
         int limit
     );

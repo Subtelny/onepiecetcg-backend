@@ -5,11 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
+import org.jooq.SortField;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
+import pl.janda.onepiecetcg.application.model.SortDirection;
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records.SetCardsRecord;
 
 import java.util.ArrayList;
@@ -89,6 +92,36 @@ class JooqSetCardQueryAdapter {
         return when(column.isNull(), Integer.MAX_VALUE).else_(length(column));
     }
 
+    /**
+     * Builds the ORDER BY clause for search(). SET_CARDS.ID.asc() is always appended as a stable
+     * tie-breaker so pagination doesn't skip/duplicate rows when the sorted field has equal values.
+     */
+    private static List<SortField<?>> buildOrderBy(CardSortField sortBy, SortDirection sortOrder) {
+        if (sortBy == null) {
+            return List.of(SET_CARDS.ID.asc());
+        }
+        Field<?> sortColumn = switch (sortBy) {
+            case CARD_NUMBER -> SET_CARDS.CARD_SET_ID;
+            case COST -> safeIntCast(SET_CARDS.CARD_COST);
+            case POWER -> safeIntCast(SET_CARDS.CARD_POWER);
+            case FLAT_RARITY -> rarityRank(SET_CARDS.FLAT_RARITY);
+        };
+        SortField<?> primary;
+        if (sortOrder == SortDirection.DESC) {
+            primary = sortColumn.desc();
+        } else {
+            primary = sortColumn.asc();
+        }
+        // Postgres defaults to NULLS FIRST on DESC; force NULLS LAST so cards without a value for the
+        // sorted field (e.g. LEADER cards have no cost) always sink to the bottom, regardless of direction.
+        return List.of(primary.nullsLast(), SET_CARDS.ID.asc());
+    }
+
+    /** Mirrors the cost/power filter cast in buildConditions() - card_cost/card_power are stored as String. */
+    private static Field<Integer> safeIntCast(Field<String> column) {
+        return field("CASE WHEN {0} ~ '^-?[0-9]+$' THEN {0}::int ELSE NULL END", Integer.class, column);
+    }
+
     List<SetCard> search(
             String name,
             List<CardType> types,
@@ -103,6 +136,8 @@ class JooqSetCardQueryAdapter {
             String subTypes,
             List<String> prefixes,
             List<String> effects,
+            CardSortField sortBy,
+            SortDirection sortOrder,
             int page,
             int limit
     ) {
@@ -111,7 +146,7 @@ class JooqSetCardQueryAdapter {
 
         var records = dsl.selectFrom(SET_CARDS)
                 .where(conditions)
-                .orderBy(SET_CARDS.ID.asc())
+                .orderBy(buildOrderBy(sortBy, sortOrder))
                 .limit(limit)
                 .offset(page * limit)
                 .fetch();

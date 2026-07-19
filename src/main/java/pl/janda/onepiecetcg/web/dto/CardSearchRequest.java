@@ -5,7 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
+import pl.janda.onepiecetcg.application.model.SortDirection;
 
 import java.util.List;
 
@@ -53,6 +55,12 @@ public class CardSearchRequest {
 
     @Parameter(description = "Card effect tags, e.g. On Play, On K.O., Blocker")
     private List<String> effects;
+
+    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to insertion order if omitted.")
+    private CardSortField sortBy;
+
+    @Parameter(description = "Sort direction (ASC, DESC). Defaults to ASC.")
+    private SortDirection sortOrder;
 
     @Parameter(description = "Page number, 0-indexed. Defaults to 0.")
     private Integer page;

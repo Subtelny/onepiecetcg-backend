@@ -5,8 +5,10 @@ import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
+import pl.janda.onepiecetcg.application.model.SortDirection;
 import pl.janda.onepiecetcg.application.repository.SetCardRepository;
 
 import java.util.List;
@@ -53,13 +55,15 @@ public class CardService {
             String subTypes,
             List<String> prefixes,
             List<String> effects,
+            CardSortField sortBy,
+            SortDirection sortOrder,
             Integer page,
             Integer limit
     ) {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
 
-        var pageContent = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, resolvedPage, resolvedLimit);
+        var pageContent = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, resolvedPage, resolvedLimit);
         var totalCount = setCardRepository.countSearch(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);

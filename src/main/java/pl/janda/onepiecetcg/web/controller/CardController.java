@@ -71,6 +71,8 @@ public class CardController {
                 request.getSubTypes(),
                 request.getPrefixes(),
                 request.getEffects(),
+                request.getSortBy(),
+                request.getSortOrder(),
                 request.getPage(),
                 request.getLimit());
 

@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
+import pl.janda.onepiecetcg.application.model.SortDirection;
 import pl.janda.onepiecetcg.application.repository.SetCardRepository;
 
 import java.util.List;
@@ -68,11 +70,13 @@ public class JpaSetCardRepository implements SetCardRepository {
             String subTypes,
             List<String> prefixes,
             List<String> effects,
+            CardSortField sortBy,
+            SortDirection sortOrder,
             int page,
             int limit
     ) {
         return jooqQueryAdapter.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, effects, page, limit);
+                attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit);
     }
 
     @Override
