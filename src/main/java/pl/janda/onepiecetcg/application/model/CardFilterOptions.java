@@ -28,4 +28,6 @@ public class CardFilterOptions {
     private List<String> subTypes;
 
     private List<String> prefixes;
+
+    private List<String> effects;
 }

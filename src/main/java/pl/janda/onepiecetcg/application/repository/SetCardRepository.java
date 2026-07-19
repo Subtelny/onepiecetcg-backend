@@ -31,6 +31,7 @@ public interface SetCardRepository {
         Integer counterAmount,
         List<String> attributes,
         String subTypes,
-        List<String> prefixes
+        List<String> prefixes,
+        List<String> effects
     );
 }

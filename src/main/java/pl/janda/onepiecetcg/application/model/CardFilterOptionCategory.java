@@ -8,5 +8,6 @@ public enum CardFilterOptionCategory {
     ATTRIBUTE,
     SUB_TYPE,
     SET,
-    PREFIX
+    PREFIX,
+    EFFECT
 }

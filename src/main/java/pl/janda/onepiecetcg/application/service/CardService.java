@@ -51,13 +51,14 @@ public class CardService {
             List<String> attributes,
             String subTypes,
             List<String> prefixes,
+            List<String> effects,
             Integer page,
             Integer limit
     ) {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
 
-        var filtered = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, subTypes, prefixes);
+        var filtered = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, subTypes, prefixes, effects);
 
         var fromIndex = Math.min(resolvedPage * resolvedLimit, filtered.size());
         var toIndex = Math.min(fromIndex + resolvedLimit, filtered.size());

@@ -48,6 +48,9 @@ public class CardSearchRequest {
     @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
     private List<String> prefixes;
 
+    @Parameter(description = "Card effect tags, e.g. On Play, On K.O., Blocker")
+    private List<String> effects;
+
     @Parameter(description = "Page number, 0-indexed. Defaults to 0.")
     private Integer page;
 

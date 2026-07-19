@@ -85,6 +85,13 @@ public class CardFilterOptionService {
                 .distinct()
                 .toList();
 
+        var effects = cards.stream()
+                .map(SetCard::getEffects)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .distinct()
+                .toList();
+
         var sets = cards.stream()
                 .filter(c -> c.getSetId() != null)
                 .collect(Collectors.toMap(SetCard::getSetId,
@@ -100,6 +107,7 @@ public class CardFilterOptionService {
         attributes.forEach(a -> entries.add(entry(CardFilterOptionCategory.ATTRIBUTE, a, null)));
         subTypes.forEach(s -> entries.add(entry(CardFilterOptionCategory.SUB_TYPE, s, null)));
         prefixes.forEach(p -> entries.add(entry(CardFilterOptionCategory.PREFIX, p, null)));
+        effects.forEach(e -> entries.add(entry(CardFilterOptionCategory.EFFECT, e, null)));
         sets.forEach(s -> entries.add(entry(CardFilterOptionCategory.SET, s.getSetId(), s.getSetName())));
 
         cardFilterOptionRepository.deleteAll();
@@ -119,6 +127,7 @@ public class CardFilterOptionService {
                 .attributes(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))
                 .prefixes(valuesOf(grouped, CardFilterOptionCategory.PREFIX))
+                .effects(valuesOf(grouped, CardFilterOptionCategory.EFFECT))
                 .sets(setsOf(grouped.getOrDefault(CardFilterOptionCategory.SET, List.of())))
                 .build();
     }

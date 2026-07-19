@@ -26,7 +26,8 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
             Integer counterAmount,
             List<String> attributes,
             String subTypes,
-            List<String> prefixes
+            List<String> prefixes,
+            List<String> effects
     ) {
         return findAll().stream()
                 .filter(SetCard::isRepresentative)
@@ -48,6 +49,9 @@ public interface JpaSetCardRepository extends JpaRepository<SetCard, Long>, SetC
                 .filter(c -> subTypes == null || containsToken(c.getSubTypes(), subTypes))
                 .filter(c -> prefixes == null || prefixes.isEmpty() ||
                         (c.getCardPrefix() != null && prefixes.stream().anyMatch(p -> p.equalsIgnoreCase(c.getCardPrefix()))))
+                .filter(c -> effects == null || effects.isEmpty() ||
+                        (c.getEffects() != null && effects.stream()
+                                .anyMatch(e -> c.getEffects().stream().anyMatch(ce -> ce.equalsIgnoreCase(e)))))
                 .toList();
     }
 

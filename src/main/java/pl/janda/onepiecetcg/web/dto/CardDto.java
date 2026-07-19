@@ -21,6 +21,7 @@ public class CardDto {
     private Integer counter;
     private String attribute;
     private String effect;
+    private List<String> effects;
     private String rarity;
     private String flatRarity;
     private String cardNumber;

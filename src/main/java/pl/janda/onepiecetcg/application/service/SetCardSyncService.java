@@ -20,6 +20,8 @@ public class SetCardSyncService {
 
     private final FlatRarityCalculatorService flatRarityCalculatorService;
 
+    private final CardEffectExtractionService cardEffectExtractionService;
+
     private final CardRepresentativeService cardRepresentativeService;
 
     private final CardFilterOptionService cardFilterOptionService;
@@ -30,6 +32,7 @@ public class SetCardSyncService {
         var now = LocalDateTime.now();
         fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
         flatRarityCalculatorService.assignFlatRarities(fetched);
+        cardEffectExtractionService.assignEffects(fetched);
         setCardRepository.deleteAll();
         setCardRepository.saveAll(fetched);
         log.info("Synced {} set cards from optcgapi.com", fetched.size());
