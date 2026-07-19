@@ -8,6 +8,7 @@ import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.infrastructure.client.dto.OptcgSetCardResponse;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @Component
 public class OptcgApiSetCardClient extends AbstractSetCardApiClient implements SetCardApiClient {
@@ -19,6 +20,8 @@ public class OptcgApiSetCardClient extends AbstractSetCardApiClient implements S
 
     @Override
     public List<SetCard> fetchAllSetCards() {
-        return fetchAndMap("/allSetCards/", OptcgSetCardResponse[].class, r -> toSetCard(r, false));
+        var setCards = fetchAndMap("/allSetCards/", OptcgSetCardResponse[].class, r -> toSetCard(r, false));
+        var promoCards = fetchAndMap("/allPromos/", OptcgSetCardResponse[].class, r -> toSetCard(r, true));
+        return Stream.concat(setCards.stream(), promoCards.stream()).toList();
     }
 }

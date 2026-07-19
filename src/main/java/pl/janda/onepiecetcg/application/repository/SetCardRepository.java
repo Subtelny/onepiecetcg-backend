@@ -12,7 +12,7 @@ public interface SetCardRepository {
 
     List<SetCard> findAll();
 
-    void deleteByPromo(boolean promo);
+    void deleteAll();
 
     <S extends SetCard> List<S> saveAll(Iterable<S> setCards);
 

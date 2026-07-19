@@ -12,7 +12,7 @@ Spring Boot 3.4.1 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
   - Filter option values → PostgreSQL via Spring Data JPA, one row per distinct filterable value — a precomputed cache, not user-facing data.
   - Decks and shops → in-memory, not yet migrated to persistent storage.
-- **External sync:** independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via an externalized base-url property) and write into Postgres: card sets, set cards, promo cards. See §4 for the extension pattern they follow.
+- **External sync:** independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via an externalized base-url property) and write into Postgres: card sets; set cards (a single job that fetches both regular set cards and promo cards from OPTCG and combines them). See §4 for the extension pattern they follow.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`.
 - Reference key endpoints: `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
 
@@ -62,7 +62,7 @@ infrastructure ──X──► web          (forbidden)
 
 ## 4. Change Rules (Safe Extension Points)
 
-**Before implementing a feature with unclear code context:** if the flow you're about to touch (existing conventions, affected layers, risks, extension points) isn't already clear from this document or files you've read, run `/repo-discovery` first with details of the specific flow you intend to touch, to understand the current implementation before proposing changes.
+**Before implementing a feature:** if the flow you're about to touch (existing conventions, affected layers, risks, extension points) isn't already clear from this document or files you've read, run `/repo-discovery` first with details of the specific flow you intend to touch, to understand the current implementation before proposing changes.
 
 **Adding a new external sync feed** (new source endpoint):
 1. Port: add a fetch method to a new/existing client interface in `application/client/`.
