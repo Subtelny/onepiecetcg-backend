@@ -42,6 +42,20 @@ public class CardService {
                 .toList();
     }
 
+    public SetCard getVariantByCardCode(String cardCode, Integer variant) {
+        var variants = setCardRepository.findByCardSetId(cardCode).stream()
+                .sorted(CardRepresentativeService.CANONICAL_VARIANT_ORDER)
+                .toList();
+        if (variants.isEmpty()) {
+            throw new IllegalArgumentException("Card not found with code: " + cardCode);
+        }
+        var index = variant != null ? variant : 0;
+        if (index < 0 || index >= variants.size()) {
+            throw new IllegalArgumentException("Variant index out of range for card code: " + cardCode + ", variant: " + index);
+        }
+        return variants.get(index);
+    }
+
     public PagedCards searchCards(
             String name,
             CardSearchField searchField,
