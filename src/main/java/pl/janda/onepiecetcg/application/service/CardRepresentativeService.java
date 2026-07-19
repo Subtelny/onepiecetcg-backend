@@ -19,7 +19,7 @@ import java.util.List;
 public class CardRepresentativeService {
 
     public static final Comparator<SetCard> CANONICAL_VARIANT_ORDER = Comparator
-            .comparingInt((SetCard card) -> rarityRank(card.getRarity()))
+            .comparingInt((SetCard card) -> rarityRank(card.getFlatRarity()))
             .thenComparing(SetCard::getId, Comparator.reverseOrder());
 
     private final SetCardRepository setCardRepository;
