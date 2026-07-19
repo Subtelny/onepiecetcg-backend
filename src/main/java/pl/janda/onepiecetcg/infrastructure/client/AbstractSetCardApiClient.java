@@ -21,7 +21,7 @@ public abstract class AbstractSetCardApiClient extends AbstractOptcgApiClient {
                 .rarity(r.rarity())
                 .cardColor(r.cardColor())
                 .cardType(r.cardType())
-                .life(r.life())
+                .life(normalizeLife(r.life()))
                 .cardCost(r.cardCost())
                 .cardPower(r.cardPower())
                 .subTypes(r.subTypes())
@@ -34,6 +34,13 @@ public abstract class AbstractSetCardApiClient extends AbstractOptcgApiClient {
                 .marketPrice(r.marketPrice())
                 .promo(promo)
                 .build();
+    }
+
+    private static String normalizeLife(String life) {
+        if (life == null || life.isBlank() || life.equalsIgnoreCase("NULL")) {
+            return null;
+        }
+        return life;
     }
 
     private static String extractPrefix(String cardSetId) {
