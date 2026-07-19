@@ -23,6 +23,10 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>2.8.4</springdoc.version>
+        <!-- jOOQ codegen connects to the local dev DB (docker-compose) to read the Hibernate-managed schema; no migration tool exists yet, see CLAUDE.md §3. Override with -D if your local DB credentials differ from docker-compose.yml. -->
+        <jooq.codegen.jdbc.url>jdbc:postgresql://localhost:5432/onepiecetcg</jooq.codegen.jdbc.url>
+        <jooq.codegen.jdbc.username>onepiecetcg</jooq.codegen.jdbc.username>
+        <jooq.codegen.jdbc.password>onepiecetcg</jooq.codegen.jdbc.password>
     </properties>
 
     <dependencies>
@@ -49,6 +53,12 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- JOOQ - typesafe SQL for complex/read-heavy queries (auto-configures DSLContext against the existing datasource) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jooq</artifactId>
         </dependency>
 
         <!-- SpringDoc OpenAPI - Swagger UI and API documentation -->
@@ -93,6 +103,41 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- Generates JOOQ classes from the running local dev DB schema (started via docker-compose.yml). Requires the DB to be up and Hibernate to have created the schema (ddl-auto: update) before running `mvn generate-sources`. -->
+            <plugin>
+                <groupId>org.jooq</groupId>
+                <artifactId>jooq-codegen-maven</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-jooq-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jdbc>
+                        <driver>org.postgresql.Driver</driver>
+                        <url>${jooq.codegen.jdbc.url}</url>
+                        <user>${jooq.codegen.jdbc.username}</user>
+                        <password>${jooq.codegen.jdbc.password}</password>
+                    </jdbc>
+                    <generator>
+                        <database>
+                            <name>org.jooq.meta.postgres.PostgresDatabase</name>
+                            <inputSchema>public</inputSchema>
+                            <includes>set_cards|set_card_effects|card_filter_options|card_sets</includes>
+                            <excludes/>
+                        </database>
+                        <target>
+                            <packageName>pl.janda.onepiecetcg.infrastructure.persistence.jooq</packageName>
+                            <directory>target/generated-sources/jooq</directory>
+                        </target>
+                    </generator>
                 </configuration>
             </plugin>
         </plugins>

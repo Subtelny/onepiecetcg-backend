@@ -20,7 +20,27 @@ public interface SetCardRepository {
 
     List<SetCard> findByCardSetId(String cardSetId);
 
+    void recomputeRepresentative();
+
     List<SetCard> search(
+        String name,
+        List<CardType> types,
+        List<CardColor> colors,
+        List<CardRarity> rarities,
+        List<CardRarity> flatRarities,
+        Integer cost,
+        Integer power,
+        Integer counterAmount,
+        List<String> attributes,
+        List<String> attributeCombos,
+        String subTypes,
+        List<String> prefixes,
+        List<String> effects,
+        int page,
+        int limit
+    );
+
+    long countSearch(
         String name,
         List<CardType> types,
         List<CardColor> colors,

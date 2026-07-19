@@ -6,7 +6,7 @@ Spring Boot 3.4.1 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
 
 ## 1. Project Context
 
-- **Stack:** Java 21, Spring Boot 3.4.1 (Web, Validation, Data JPA), SpringDoc OpenAPI 3.0, Lombok, PostgreSQL (Docker Compose).
+- **Stack:** Java 21, Spring Boot 3.4.1 (Web, Validation, Data JPA), JOOQ (complex/read-heavy queries only, see §3), SpringDoc OpenAPI 3.0, Lombok, PostgreSQL (Docker Compose).
 - **Server:** port `3000`, base path `/api`, CORS enabled for `http://localhost:5173`.
 - **Persistence status:**
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
@@ -56,7 +56,9 @@ infrastructure ──X──► web          (forbidden)
 - One port method per external capability — do not bundle unrelated operations into one method.
 - Schedulers (`infrastructure/scheduler/*`) and controllers (`web/controller/*`) are **entrypoints**: they call `application/service/*`, never call adapters directly.
 - Derived-query methods with no custom filtering logic are declared directly on the JPA repository interface (Spring Data generates them) — no need for a manual implementation.
-- Methods that need Java-side filtering (no matching derived-query shape) are implemented as **default methods** on the JPA repository interface using `findAll()` + Streams — avoids the Specifications/Criteria API.
+- Complex/read-heavy queries (multi-field dynamic search/filtering, cross-row aggregation, bulk recompute) are implemented with **JOOQ** (`DSLContext`) in a dedicated class in `infrastructure/persistence/` (e.g. `Jooq{Noun}QueryAdapter`), called from the corresponding `Jpa{Noun}Repository` method — pushes filtering, sorting, pagination (`LIMIT`/`OFFSET`), counting, and grouping to the database instead of loading full tables into memory and processing them with Java Streams. This superseded the earlier `findAll()` + Streams default-method convention for these cases; simple derived queries with no such logic still don't need it.
+- JOOQ generated sources (jOOQ codegen, target `generated-sources`), `DSLContext`, and JOOQ record/table types are adapter-only — they must never appear in `application/repository/*` port signatures or in `application/service/*`; ports keep returning plain domain types (`Optional<T>`, `List<T>`).
+- If a JPA-backed adapter method (e.g. `saveAll`) is followed, within the same transaction, by a JOOQ query reading/writing the same table (raw JDBC via `DSLContext`, bypassing the Hibernate session), that JPA adapter method must flush the persistence context first (e.g. `saveAllAndFlush` instead of `saveAll`) — otherwise the JOOQ query can see stale or incomplete data, since Hibernate cannot auto-flush ahead of non-Hibernate-session queries.
 
 ---
 
@@ -126,6 +128,7 @@ infrastructure ──X──► web          (forbidden)
 - ❌ Premature abstraction / over-engineering: don't introduce a shared base class, config flag, or generic utility for a single use case. Only extract shared abstractions when ≥3 near-identical implementations already exist.
 - ❌ `deleteAll()` on a table shared by multiple sync jobs.
 - ❌ Hardcoding an external base URL inline in more than one class — externalize to `application.yml` instead.
+- ❌ JOOQ `DSLContext`/generated record/table types leaking into `application/repository/*` ports or `application/service/*` — confine them to `infrastructure/persistence/*` adapters.
 
 ---
 

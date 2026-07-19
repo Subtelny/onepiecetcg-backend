@@ -11,4 +11,6 @@ public interface CardFilterOptionRepository {
     void deleteAll();
 
     <S extends CardFilterOptionValue> List<S> saveAll(Iterable<S> values);
+
+    void refresh();
 }

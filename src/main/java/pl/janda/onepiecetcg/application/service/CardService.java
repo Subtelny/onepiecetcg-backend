@@ -59,13 +59,10 @@ public class CardService {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
 
-        var filtered = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects);
+        var pageContent = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, resolvedPage, resolvedLimit);
+        var totalCount = setCardRepository.countSearch(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects);
 
-        var fromIndex = Math.min(resolvedPage * resolvedLimit, filtered.size());
-        var toIndex = Math.min(fromIndex + resolvedLimit, filtered.size());
-        var pageContent = filtered.subList(fromIndex, toIndex);
-
-        return new PagedCards(pageContent, filtered.size(), resolvedPage, resolvedLimit);
+        return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }
 
     public CardFilterOptions getFilterOptions() {

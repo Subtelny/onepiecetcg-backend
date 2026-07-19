@@ -1,11 +1,37 @@
 package pl.janda.onepiecetcg.infrastructure.persistence;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.application.model.CardFilterOptionValue;
 import pl.janda.onepiecetcg.application.repository.CardFilterOptionRepository;
 
+import java.util.List;
+
 @Repository
-public interface JpaCardFilterOptionRepository
-        extends JpaRepository<CardFilterOptionValue, Long>, CardFilterOptionRepository {
+@RequiredArgsConstructor
+public class JpaCardFilterOptionRepository implements CardFilterOptionRepository {
+
+    private final CardFilterOptionJpaRepository jpaRepository;
+
+    private final JooqCardFilterOptionQueryAdapter jooqQueryAdapter;
+
+    @Override
+    public List<CardFilterOptionValue> findAll() {
+        return jpaRepository.findAll();
+    }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
+    }
+
+    @Override
+    public <S extends CardFilterOptionValue> List<S> saveAll(Iterable<S> values) {
+        return jpaRepository.saveAll(values);
+    }
+
+    @Override
+    public void refresh() {
+        jooqQueryAdapter.refresh();
+    }
 }
