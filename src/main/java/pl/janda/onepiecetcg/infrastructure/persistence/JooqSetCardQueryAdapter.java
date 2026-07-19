@@ -140,10 +140,11 @@ class JooqSetCardQueryAdapter {
             CardSortField sortBy,
             SortDirection sortOrder,
             int page,
-            int limit
+            int limit,
+            boolean showAllVariants
     ) {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes);
+                attributes, attributeCombos, subTypes, prefixes, showAllVariants);
 
         var records = dsl.selectFrom(SET_CARDS)
                 .where(conditions)
@@ -170,10 +171,11 @@ class JooqSetCardQueryAdapter {
             List<String> attributes,
             List<String> attributeCombos,
             String subTypes,
-            List<String> prefixes
+            List<String> prefixes,
+            boolean showAllVariants
     ) {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes);
+                attributes, attributeCombos, subTypes, prefixes, showAllVariants);
 
         return dsl.selectCount()
                 .from(SET_CARDS)
@@ -194,10 +196,13 @@ class JooqSetCardQueryAdapter {
             List<String> attributes,
             List<String> attributeCombos,
             String subTypes,
-            List<String> prefixes
+            List<String> prefixes,
+            boolean showAllVariants
     ) {
         var conditions = new ArrayList<Condition>();
-        conditions.add(SET_CARDS.IS_REPRESENTATIVE.isTrue());
+        if (!showAllVariants) {
+            conditions.add(SET_CARDS.IS_REPRESENTATIVE.isTrue());
+        }
 
         if (name != null && !name.isBlank()) {
             conditions.add(switch (searchField) {

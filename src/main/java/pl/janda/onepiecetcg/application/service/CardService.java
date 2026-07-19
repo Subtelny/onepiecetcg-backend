@@ -73,14 +73,16 @@ public class CardService {
             CardSortField sortBy,
             SortDirection sortOrder,
             Integer page,
-            Integer limit
+            Integer limit,
+            Boolean showAllVariants
     ) {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
         var resolvedSearchField = searchField != null ? searchField : CardSearchField.NAME;
+        var resolvedShowAllVariants = Boolean.TRUE.equals(showAllVariants);
 
-        var pageContent = setCardRepository.search(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit);
-        var totalCount = setCardRepository.countSearch(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes);
+        var pageContent = setCardRepository.search(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit, resolvedShowAllVariants);
+        var totalCount = setCardRepository.countSearch(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, resolvedShowAllVariants);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }

@@ -74,10 +74,11 @@ public class JpaSetCardRepository implements SetCardRepository {
             CardSortField sortBy,
             SortDirection sortOrder,
             int page,
-            int limit
+            int limit,
+            boolean showAllVariants
     ) {
         return jooqQueryAdapter.search(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit);
+                attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit, showAllVariants);
     }
 
     @Override
@@ -94,9 +95,10 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<String> attributes,
             List<String> attributeCombos,
             String subTypes,
-            List<String> prefixes
+            List<String> prefixes,
+            boolean showAllVariants
     ) {
         return jooqQueryAdapter.countSearch(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes);
+                attributes, attributeCombos, subTypes, prefixes, showAllVariants);
     }
 }

@@ -68,4 +68,7 @@ public class CardSearchRequest {
 
     @Parameter(description = "Page size. Defaults to 50.")
     private Integer limit;
+
+    @Parameter(description = "If true, returns every printed variant instead of collapsing each card to its single representative variant. Defaults to false.")
+    private Boolean showAllVariants;
 }

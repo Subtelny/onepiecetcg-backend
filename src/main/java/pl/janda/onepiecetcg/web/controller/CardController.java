@@ -75,7 +75,8 @@ public class CardController {
                 request.getSortBy(),
                 request.getSortOrder(),
                 request.getPage(),
-                request.getLimit());
+                request.getLimit(),
+                request.getShowAllVariants());
 
         var response = CardSearchResponse.builder()
                 .cards(cardMapper.toDtoList(pagedCards.cards()))
