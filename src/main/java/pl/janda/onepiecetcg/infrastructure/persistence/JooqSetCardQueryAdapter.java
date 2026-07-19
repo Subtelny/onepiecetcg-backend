@@ -9,6 +9,7 @@ import org.jooq.SortField;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
@@ -124,6 +125,7 @@ class JooqSetCardQueryAdapter {
 
     List<SetCard> search(
             String name,
+            CardSearchField searchField,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
@@ -141,7 +143,7 @@ class JooqSetCardQueryAdapter {
             int page,
             int limit
     ) {
-        var conditions = buildConditions(name, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects);
 
         var records = dsl.selectFrom(SET_CARDS)
@@ -160,6 +162,7 @@ class JooqSetCardQueryAdapter {
 
     long countSearch(
             String name,
+            CardSearchField searchField,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
@@ -173,7 +176,7 @@ class JooqSetCardQueryAdapter {
             List<String> prefixes,
             List<String> effects
     ) {
-        var conditions = buildConditions(name, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects);
 
         return dsl.selectCount()
@@ -184,6 +187,7 @@ class JooqSetCardQueryAdapter {
 
     private List<Condition> buildConditions(
             String name,
+            CardSearchField searchField,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
@@ -200,9 +204,12 @@ class JooqSetCardQueryAdapter {
         var conditions = new ArrayList<Condition>();
         conditions.add(SET_CARDS.IS_REPRESENTATIVE.isTrue());
 
-        if (name != null) {
-            var pattern = "%" + name.toLowerCase() + "%";
-            conditions.add(lower(SET_CARDS.CARD_NAME).like(pattern).or(lower(SET_CARDS.CARD_SET_ID).like(pattern)));
+        if (name != null && !name.isBlank()) {
+            conditions.add(switch (searchField) {
+                case NAME -> nameMatch(name);
+                case DESCRIPTION -> descriptionMatch(name);
+                case BOTH -> nameMatch(name).or(descriptionMatch(name));
+            });
         }
         if (types != null && !types.isEmpty()) {
             conditions.add(upper(SET_CARDS.CARD_TYPE).in(types.stream().map(Enum::name).toList()));
@@ -253,6 +260,20 @@ class JooqSetCardQueryAdapter {
      */
     private static Condition wordMatch(Field<String> column, String value) {
         return condition("{0} ~* ('\\y' || {1} || '\\y')", column, value);
+    }
+
+    private static Condition nameMatch(String name) {
+        var pattern = "%" + name.toLowerCase() + "%";
+        return lower(SET_CARDS.CARD_NAME).like(pattern).or(lower(SET_CARDS.CARD_SET_ID).like(pattern));
+    }
+
+    /**
+     * Full-text match against the generated tsvector column (see
+     * scripts/db/add-card-text-search-vector.sql). The 'simple' config here must match the one baked
+     * into that generated column so lexeme tokenization agrees between index and query.
+     */
+    private static Condition descriptionMatch(String query) {
+        return condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_TEXT_SEARCH_VECTOR, query);
     }
 
     /**

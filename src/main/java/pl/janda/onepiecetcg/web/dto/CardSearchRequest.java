@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SortDirection;
@@ -17,8 +18,11 @@ import java.util.List;
 @AllArgsConstructor
 public class CardSearchRequest {
 
-    @Parameter(description = "Card name or card number to search")
+    @Parameter(description = "Card name, card number, or (depending on searchIn) card description text to search")
     private String name;
+
+    @Parameter(description = "Where to apply the `name` text: NAME (card name/number, default), DESCRIPTION (card effect text), or BOTH")
+    private CardSearchField searchIn;
 
     @Parameter(description = "Card types (LEADER, CHARACTER, EVENT, STAGE)")
     private List<CardType> types;

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
@@ -43,6 +44,7 @@ public class CardService {
 
     public PagedCards searchCards(
             String name,
+            CardSearchField searchField,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
@@ -62,9 +64,10 @@ public class CardService {
     ) {
         var resolvedPage = page != null ? page : 0;
         var resolvedLimit = limit != null ? limit : 50;
+        var resolvedSearchField = searchField != null ? searchField : CardSearchField.NAME;
 
-        var pageContent = setCardRepository.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, resolvedPage, resolvedLimit);
-        var totalCount = setCardRepository.countSearch(name, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects);
+        var pageContent = setCardRepository.search(name, resolvedSearchField, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, resolvedPage, resolvedLimit);
+        var totalCount = setCardRepository.countSearch(name, resolvedSearchField, types, colors, rarities, flatRarities, cost, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, effects);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }

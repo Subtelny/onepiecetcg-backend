@@ -2,6 +2,7 @@ package pl.janda.onepiecetcg.application.repository;
 
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
@@ -26,6 +27,7 @@ public interface SetCardRepository {
 
     List<SetCard> search(
         String name,
+        CardSearchField searchField,
         List<CardType> types,
         List<CardColor> colors,
         List<CardRarity> rarities,
@@ -46,6 +48,7 @@ public interface SetCardRepository {
 
     long countSearch(
         String name,
+        CardSearchField searchField,
         List<CardType> types,
         List<CardColor> colors,
         List<CardRarity> rarities,

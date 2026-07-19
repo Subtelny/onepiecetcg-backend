@@ -59,6 +59,7 @@ public class CardController {
 
         PagedCards pagedCards = cardService.searchCards(
                 request.getName(),
+                request.getSearchIn(),
                 request.getTypes(),
                 colors,
                 rarities,

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
+import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
@@ -58,6 +59,7 @@ public class JpaSetCardRepository implements SetCardRepository {
     @Override
     public List<SetCard> search(
             String name,
+            CardSearchField searchField,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
@@ -75,13 +77,14 @@ public class JpaSetCardRepository implements SetCardRepository {
             int page,
             int limit
     ) {
-        return jooqQueryAdapter.search(name, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        return jooqQueryAdapter.search(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects, sortBy, sortOrder, page, limit);
     }
 
     @Override
     public long countSearch(
             String name,
+            CardSearchField searchField,
             List<CardType> types,
             List<CardColor> colors,
             List<CardRarity> rarities,
@@ -95,7 +98,7 @@ public class JpaSetCardRepository implements SetCardRepository {
             List<String> prefixes,
             List<String> effects
     ) {
-        return jooqQueryAdapter.countSearch(name, types, colors, rarities, flatRarities, cost, power, counterAmount,
+        return jooqQueryAdapter.countSearch(name, searchField, types, colors, rarities, flatRarities, cost, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, effects);
     }
 }
