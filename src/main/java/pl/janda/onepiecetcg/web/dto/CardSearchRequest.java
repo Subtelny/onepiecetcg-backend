@@ -18,10 +18,10 @@ import java.util.List;
 @AllArgsConstructor
 public class CardSearchRequest {
 
-    @Parameter(description = "Card name, card number, or (depending on searchIn) card description text to search")
+    @Parameter(description = "Card name, card number, (depending on searchIn) card description text, or (SEMANTIC) a free-text description that may include inline shorthand tokens - `6c` = cost 6, `2kc` = counter 2000, `5kp` = power 5000 - stripped out and merged into costs/power/counterAmount before the remaining text is matched/ranked via full-text search (SEMANTIC mode) - wrap the text in single or double quotes (e.g. 'Straw Hat') for an exact, word-order-preserving phrase match instead of the default any-word match")
     private String name;
 
-    @Parameter(description = "Where to apply the `name` text: NAME (card name/number, default), DESCRIPTION (card effect text), or BOTH")
+    @Parameter(description = "Where to apply the `name` text: NAME (card name/number, default), DESCRIPTION (card effect text), BOTH, or SEMANTIC (full-text relevance search over name/effect/type/color/cost/power/counter/attribute/cardNumber/subTypes - a broader tsvector than DESCRIPTION's - ranked by ts_rank - see `name`'s inline token/quoting syntax)")
     private CardSearchField searchIn;
 
     @Parameter(description = "Card types (LEADER, CHARACTER, EVENT, STAGE)")
@@ -57,7 +57,7 @@ public class CardSearchRequest {
     @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
     private List<String> prefixes;
 
-    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to insertion order if omitted.")
+    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to insertion order if omitted. Ignored when searchIn=SEMANTIC and the query text is non-blank, which orders by full-text relevance (ts_rank) instead.")
     private CardSortField sortBy;
 
     @Parameter(description = "Sort direction (ASC, DESC). Defaults to ASC.")

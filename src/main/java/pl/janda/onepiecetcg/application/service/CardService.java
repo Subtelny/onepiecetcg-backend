@@ -13,6 +13,7 @@ import pl.janda.onepiecetcg.application.model.SortDirection;
 import pl.janda.onepiecetcg.application.repository.SetCardRepository;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +22,8 @@ public class CardService {
     private final SetCardRepository setCardRepository;
 
     private final CardFilterOptionService cardFilterOptionService;
+
+    private final SemanticQueryParser semanticQueryParser;
 
     public List<SetCard> getAllCards() {
         return setCardRepository.findAll();
@@ -81,8 +84,32 @@ public class CardService {
         var resolvedSearchField = searchField != null ? searchField : CardSearchField.NAME;
         var resolvedShowAllVariants = Boolean.TRUE.equals(showAllVariants);
 
-        var pageContent = setCardRepository.search(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit, resolvedShowAllVariants);
-        var totalCount = setCardRepository.countSearch(name, resolvedSearchField, types, colors, rarities, flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes, resolvedShowAllVariants);
+        var resolvedName = name;
+        var resolvedCosts = costs;
+        var resolvedPower = power;
+        var resolvedCounterAmount = counterAmount;
+
+        // SEMANTIC mode: pull inline "6c"/"2kc"/"5kp" tokens out of the free text into the same
+        // cost/power/counterAmount filters the sidebar uses - an explicit sidebar value always wins
+        // over a token - then full-text search/rank whatever text remains (see JooqSetCardQueryAdapter).
+        if (resolvedSearchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()) {
+            var parsed = semanticQueryParser.parse(name);
+            if (parsed.cost() != null) {
+                resolvedCosts = Stream.concat(costs == null ? Stream.<Integer>empty() : costs.stream(), Stream.of(parsed.cost()))
+                        .distinct()
+                        .toList();
+            }
+            if (parsed.power() != null && power == null) {
+                resolvedPower = parsed.power();
+            }
+            if (parsed.counter() != null && counterAmount == null) {
+                resolvedCounterAmount = parsed.counter();
+            }
+            resolvedName = parsed.remainingText();
+        }
+
+        var pageContent = setCardRepository.search(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit, resolvedShowAllVariants);
+        var totalCount = setCardRepository.countSearch(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, resolvedShowAllVariants);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }

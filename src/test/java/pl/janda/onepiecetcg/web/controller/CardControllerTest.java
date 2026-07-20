@@ -55,7 +55,8 @@ class CardControllerTest {
                 any(), // sortBy
                 any(), // sortOrder
                 any(), // page
-                any()  // limit
+                any(), // limit
+                any()  // showAllVariants
         )).thenReturn(new PagedCards(List.of(), 0, 0, 50));
 
         mockMvc.perform(get("/api/cards").param("name", "foo").param("searchIn", "DESCRIPTION"))
@@ -65,14 +66,14 @@ class CardControllerTest {
                 eq("foo"),
                 eq(CardSearchField.DESCRIPTION),
                 any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void searchCards_omittingSearchInLeavesItNullForServiceToDefault() throws Exception {
         when(cardService.searchCards(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any()
+                any(), any(), any(), any(), any(), any(), any(), any(), any()
         )).thenReturn(new PagedCards(List.of(), 0, 0, 50));
 
         mockMvc.perform(get("/api/cards").param("name", "Luffy"))
@@ -82,6 +83,6 @@ class CardControllerTest {
                 eq("Luffy"),
                 eq(null),
                 any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 }

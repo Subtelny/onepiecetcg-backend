@@ -18,6 +18,7 @@ import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records.SetCa
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.jooq.impl.DSL.case_;
 import static org.jooq.impl.DSL.coalesce;
@@ -146,9 +147,15 @@ class JooqSetCardQueryAdapter {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, showAllVariants);
 
+        // SEMANTIC mode ranks by full-text relevance instead of the requested sortBy/sortOrder -
+        // see the @Parameter javadoc on CardSearchRequest.sortBy.
+        var orderBy = searchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()
+                ? List.<SortField<?>>of(semanticRank(name).desc(), SET_CARDS.ID.asc())
+                : buildOrderBy(sortBy, sortOrder);
+
         var records = dsl.selectFrom(SET_CARDS)
                 .where(conditions)
-                .orderBy(buildOrderBy(sortBy, sortOrder))
+                .orderBy(orderBy)
                 .limit(limit)
                 .offset(page * limit)
                 .fetch();
@@ -209,6 +216,7 @@ class JooqSetCardQueryAdapter {
                 case NAME -> nameMatch(name);
                 case DESCRIPTION -> descriptionMatch(name);
                 case BOTH -> nameMatch(name).or(descriptionMatch(name));
+                case SEMANTIC -> semanticMatch(name);
             });
         }
         if (types != null && !types.isEmpty()) {
@@ -267,6 +275,41 @@ class JooqSetCardQueryAdapter {
      */
     private static Condition descriptionMatch(String query) {
         return condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_TEXT_SEARCH_VECTOR, query);
+    }
+
+    private static final Pattern QUOTED_PHRASE = Pattern.compile("^(['\"])(.*)\\1$");
+
+    /**
+     * If the query is wrapped entirely in matching single or double quotes (e.g. 'Straw Hat' or
+     * "Straw Hat"), returns the unquoted phrase - SEMANTIC mode uses this to switch from an
+     * any-word-order match (plainto_tsquery) to an exact, order-preserving phrase match
+     * (phraseto_tsquery). Returns null if the query isn't quoted.
+     */
+    private static String extractQuotedPhrase(String query) {
+        var matcher = QUOTED_PHRASE.matcher(query.trim());
+        return matcher.matches() ? matcher.group(2) : null;
+    }
+
+    /**
+     * Full-text match against the broader generated tsvector column used by SEMANTIC mode (see
+     * scripts/db/add-card-semantic-search-vector.sql) - covers name/type/color/cost/power/counter/
+     * attribute/cardSetId/subTypes/effect, a superset of descriptionMatch()'s card_text-only column.
+     * The 'simple' config here must match the one baked into that generated column. A query wrapped
+     * in single/double quotes is matched as an exact, word-order-preserving phrase instead of the
+     * default any-word-order match - see extractQuotedPhrase().
+     */
+    private static Condition semanticMatch(String query) {
+        var phrase = extractQuotedPhrase(query);
+        return phrase != null
+                ? condition("{0} @@ phraseto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, phrase)
+                : condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
+    }
+
+    private static Field<Double> semanticRank(String query) {
+        var phrase = extractQuotedPhrase(query);
+        return phrase != null
+                ? field("ts_rank_cd({0}, phraseto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, phrase)
+                : field("ts_rank_cd({0}, plainto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
     }
 
     /**

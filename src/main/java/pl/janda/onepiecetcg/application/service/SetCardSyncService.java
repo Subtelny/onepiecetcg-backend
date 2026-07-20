@@ -31,8 +31,8 @@ public class SetCardSyncService {
         fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
         flatRarityCalculatorService.assignFlatRarities(fetched);
         setCardRepository.deleteAll();
-        setCardRepository.saveAll(fetched);
-        log.info("Synced {} set cards from optcgapi.com", fetched.size());
+        var saved = setCardRepository.saveAll(fetched);
+        log.info("Synced {} set cards from optcgapi.com", saved.size());
         cardRepresentativeService.recompute();
         cardFilterOptionService.refresh();
     }
