@@ -73,10 +73,10 @@ class CardServiceTest {
         when(semanticQueryParser.parse("rush 6c 2kc"))
                 .thenReturn(new SemanticQueryParser.ParsedSemanticQuery("rush", 6, 2000, null));
 
-        // Sidebar already sets power=7000; the parsed token has no power, so this doesn't matter here,
-        // but counterAmount IS already set by the sidebar (5000) and must win over the parsed 2000.
+        // Sidebar already sets costs=[3] and counterAmount=5000; both must win over the parsed
+        // tokens (6 and 2000 respectively). power has no sidebar value, so it's left untouched here.
         cardService.searchCards(
-                "rush 6c 2kc", CardSearchField.SEMANTIC, null, null, null, null, List.of(3), 7000, 5000,
+                "rush 6c 2kc", CardSearchField.SEMANTIC, null, null, null, null, List.of(3), null, 5000,
                 null, null, null, null, null, null, null, null, null);
 
         var nameCaptor = ArgumentCaptor.forClass(String.class);
@@ -88,9 +88,29 @@ class CardServiceTest {
                 any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
 
         assertThat(nameCaptor.getValue()).isEqualTo("rush");
-        assertThat(costsCaptor.getValue()).containsExactlyInAnyOrder(3, 6);
-        assertThat(powerCaptor.getValue()).isEqualTo(7000);
+        assertThat(costsCaptor.getValue()).containsExactly(3);
+        assertThat(powerCaptor.getValue()).isNull();
         assertThat(counterCaptor.getValue()).isEqualTo(5000);
+    }
+
+    @Test
+    void searchCards_semanticMode_parsedCostTokenUsedWhenSidebarCostsAbsent() {
+        cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
+        stubRepository();
+        when(semanticQueryParser.parse("rush 6c"))
+                .thenReturn(new SemanticQueryParser.ParsedSemanticQuery("rush", 6, null, null));
+
+        // No sidebar costs filter provided, so the parsed token (6) is used as-is.
+        cardService.searchCards(
+                "rush 6c", CardSearchField.SEMANTIC, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null);
+
+        var costsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(setCardRepository).search(
+                any(), any(), any(), any(), any(), any(), costsCaptor.capture(), any(), any(),
+                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
+
+        assertThat(costsCaptor.getValue()).containsExactly(6);
     }
 
     @Test

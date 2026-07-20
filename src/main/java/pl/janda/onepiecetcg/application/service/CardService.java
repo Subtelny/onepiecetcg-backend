@@ -13,7 +13,6 @@ import pl.janda.onepiecetcg.application.model.SortDirection;
 import pl.janda.onepiecetcg.application.repository.SetCardRepository;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -94,10 +93,8 @@ public class CardService {
         // over a token - then full-text search/rank whatever text remains (see JooqSetCardQueryAdapter).
         if (resolvedSearchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()) {
             var parsed = semanticQueryParser.parse(name);
-            if (parsed.cost() != null) {
-                resolvedCosts = Stream.concat(costs == null ? Stream.<Integer>empty() : costs.stream(), Stream.of(parsed.cost()))
-                        .distinct()
-                        .toList();
+            if (parsed.cost() != null && (costs == null || costs.isEmpty())) {
+                resolvedCosts = List.of(parsed.cost());
             }
             if (parsed.power() != null && power == null) {
                 resolvedPower = parsed.power();
