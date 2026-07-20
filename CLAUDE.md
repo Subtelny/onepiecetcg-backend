@@ -12,7 +12,7 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
   - Filter option values → PostgreSQL via Spring Data JPA, one row per distinct filterable value — a precomputed cache, not user-facing data.
   - Decks and shops → in-memory, not yet migrated to persistent storage.
-- **External sync:** independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via an externalized base-url property) and write into Postgres: card sets; set cards (a single job that fetches both regular set cards and promo cards from OPTCG and combines them). See §4 for the extension pattern they follow.
+- **External sync:** independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via an externalized base-url property) and write into Postgres: card sets; set cards (a single job that fetches both regular set cards and promo cards from OPTCG and combines them). See §4 for the extension pattern they follow. Set-cards sync is gated behind card-sets diff detection: `SetCardSyncService` first calls `CardSetSyncService.syncCardSets()`, which returns `true` only if a card set present in the external `/allSets/` response is missing locally; if no new set is found, both the card-sets write and the expensive set-cards fetch + `CardRepresentativeService.recompute()` + `CardFilterOptionService.refresh()` are skipped entirely for that run.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`.
 - Reference key endpoints: `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
 

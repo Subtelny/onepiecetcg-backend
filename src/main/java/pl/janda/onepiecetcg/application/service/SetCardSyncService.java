@@ -24,8 +24,15 @@ public class SetCardSyncService {
 
     private final CardFilterOptionService cardFilterOptionService;
 
+    private final CardSetSyncService cardSetSyncService;
+
     @Transactional
     public void syncSetCards() {
+        if (!cardSetSyncService.syncCardSets()) {
+            log.info("No new card sets detected, skipping set cards sync");
+            return;
+        }
+
         var fetched = setCardApiClient.fetchAllSetCards();
         var now = LocalDateTime.now();
         fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
