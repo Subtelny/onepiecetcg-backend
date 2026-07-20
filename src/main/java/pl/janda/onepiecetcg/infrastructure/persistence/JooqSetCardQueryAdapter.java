@@ -266,39 +266,58 @@ class JooqSetCardQueryAdapter {
         return lower(SET_CARDS.CARD_NAME).like(pattern).or(lower(SET_CARDS.CARD_SET_ID).like(pattern));
     }
 
-    private static final Pattern QUOTED_PHRASE = Pattern.compile("^(['\"])(.*)\\1$");
+    private static final Pattern QUOTED_PHRASE = Pattern.compile("(['\"])(.*?)\\1");
+
+    private record QuotedQuery(String phrase, String remainder) {}
 
     /**
-     * If the query is wrapped entirely in matching single or double quotes (e.g. 'Straw Hat' or
-     * "Straw Hat"), returns the unquoted phrase - SEMANTIC mode uses this to switch from an
-     * any-word-order match (plainto_tsquery) to an exact, order-preserving phrase match
-     * (phraseto_tsquery). Returns null if the query isn't quoted.
+     * Finds the first single/double-quoted phrase anywhere in the query (e.g. 'Straw Hat' in
+     * `black "Straw Hat"`) and returns it alongside the remaining text with that quoted segment
+     * removed. SEMANTIC mode matches the phrase via phraseto_tsquery (exact, word-order-preserving)
+     * and the remainder via plainto_tsquery (any-word-order), AND-ing both together when both are
+     * present - see semanticMatch()/semanticRank(). QuotedQuery.phrase() is null if no quoted
+     * segment is found, in which case the full query is used as-is (remainder == query).
      */
-    private static String extractQuotedPhrase(String query) {
-        var matcher = QUOTED_PHRASE.matcher(query.trim());
-        return matcher.matches() ? matcher.group(2) : null;
+    private static QuotedQuery extractQuotedPhrase(String query) {
+        var matcher = QUOTED_PHRASE.matcher(query);
+        if (!matcher.find()) {
+            return new QuotedQuery(null, query);
+        }
+        var remainder = (query.substring(0, matcher.start()) + " " + query.substring(matcher.end()))
+                .trim().replaceAll("\\s+", " ");
+        return new QuotedQuery(matcher.group(2), remainder);
     }
 
     /**
      * Full-text match against the generated tsvector column used by SEMANTIC mode (see
      * scripts/db/add-card-semantic-search-vector.sql) - covers name/type/color/cost/power/counter/
      * attribute/cardSetId/subTypes/effect. The 'simple' config here must match the one baked into
-     * that generated column. A query wrapped
-     * in single/double quotes is matched as an exact, word-order-preserving phrase instead of the
-     * default any-word-order match - see extractQuotedPhrase().
+     * that generated column. A single/double-quoted segment anywhere in the query is matched as an
+     * exact, word-order-preserving phrase, AND-ed with any remaining plain words (any-word-order
+     * match) - see extractQuotedPhrase().
      */
     private static Condition semanticMatch(String query) {
-        var phrase = extractQuotedPhrase(query);
-        return phrase != null
-                ? condition("{0} @@ phraseto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, phrase)
-                : condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
+        var parsed = extractQuotedPhrase(query);
+        if (parsed.phrase() == null) {
+            return condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
+        }
+        if (parsed.remainder().isBlank()) {
+            return condition("{0} @@ phraseto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase());
+        }
+        return condition("{0} @@ (phraseto_tsquery('simple', {1}) && plainto_tsquery('simple', {2}))",
+                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase(), parsed.remainder());
     }
 
     private static Field<Double> semanticRank(String query) {
-        var phrase = extractQuotedPhrase(query);
-        return phrase != null
-                ? field("ts_rank_cd({0}, phraseto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, phrase)
-                : field("ts_rank_cd({0}, plainto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
+        var parsed = extractQuotedPhrase(query);
+        if (parsed.phrase() == null) {
+            return field("ts_rank_cd({0}, plainto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
+        }
+        if (parsed.remainder().isBlank()) {
+            return field("ts_rank_cd({0}, phraseto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase());
+        }
+        return field("ts_rank_cd({0}, phraseto_tsquery('simple', {1}) && plainto_tsquery('simple', {2}))", Double.class,
+                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase(), parsed.remainder());
     }
 
     /**

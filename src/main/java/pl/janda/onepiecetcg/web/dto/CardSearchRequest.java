@@ -18,7 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 public class CardSearchRequest {
 
-    @Parameter(description = "Card name, card number, or (SEMANTIC) a free-text description that may include inline shorthand tokens - `6c` = cost 6, `2kc` = counter 2000, `5kp` = power 5000 - stripped out and merged into costs/power/counterAmount before the remaining text is matched/ranked via full-text search (SEMANTIC mode) - wrap the text in single or double quotes (e.g. 'Straw Hat') for an exact, word-order-preserving phrase match instead of the default any-word match")
+    @Parameter(description = "Card name, card number, or (SEMANTIC) a free-text description that may include inline shorthand tokens - `6c` = cost 6, `2kc` = counter 2000, `5kp` = power 5000 - stripped out and merged into costs/power/counterAmount before the remaining text is matched/ranked via full-text search (SEMANTIC mode) - wrap part of the text in single or double quotes (e.g. `black 'Straw Hat'`) to require that segment as an exact, word-order-preserving phrase, AND-ed with any remaining plain words matched in any order")
     private String name;
 
     @Parameter(description = "Where to apply the `name` text: NAME (card name/number, default) or SEMANTIC (full-text relevance search over name/effect/type/color/cost/power/counter/attribute/cardNumber/subTypes - ranked by ts_rank - see `name`'s inline token/quoting syntax)")

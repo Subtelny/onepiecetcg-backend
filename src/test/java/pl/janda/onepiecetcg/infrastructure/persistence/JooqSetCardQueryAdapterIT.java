@@ -219,4 +219,24 @@ class JooqSetCardQueryAdapterIT {
                 null, null, 0, 50, false);
         assertThat(singleQuoted).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
     }
+
+    @Test
+    void semanticSearch_quotedPhraseMixedWithPlainWords_andsBothConditionsTogether() {
+        // Quoted segment doesn't have to span the whole query - remaining plain words are AND-ed
+        // with the exact phrase, not OR-ed. "Zoro" never appears alongside the "Straw Hat" phrase on
+        // the same row, so no card can satisfy both conditions.
+        var mismatched = adapter.search(
+                "\"Straw Hat\" Zoro", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(mismatched).isEmpty();
+
+        // "Luffy" (name) and the "Straw Hat" phrase (card text) both point at the same row, so the
+        // AND-combined condition still matches it.
+        var matched = adapter.search(
+                "\"Straw Hat\" Luffy", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(matched).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+    }
 }
