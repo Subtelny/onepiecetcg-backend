@@ -1,15 +1,11 @@
--- Adds full-text search support for card descriptions (searchIn=DESCRIPTION/BOTH on GET /api/cards).
+-- DESCRIPTION/BOTH search modes have been removed (searchIn now only supports NAME and SEMANTIC).
+-- card_text_search_vector was only read by those removed modes - drop it and its index.
 --
--- This repo has no migration tool (Flyway/Liquibase) - schema is created via Hibernate's
--- ddl-auto: update, which cannot express a GENERATED column or a non-default (GIN) index.
--- Run this manually, once per environment, against the target Postgres instance BEFORE
--- running `mvn generate-sources` so jOOQ codegen picks up the new column.
---
--- Idempotent: safe to re-run.
+-- This repo has no migration tool (Flyway/Liquibase) - run this manually, once per environment,
+-- against the target Postgres instance. Re-run `mvn generate-sources` afterward so jOOQ codegen
+-- drops the corresponding generated field.
+
+DROP INDEX IF EXISTS idx_set_cards_card_text_search_vector;
 
 ALTER TABLE set_cards
-    ADD COLUMN IF NOT EXISTS card_text_search_vector tsvector
-    GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, coalesce(card_text, ''))) STORED;
-
-CREATE INDEX IF NOT EXISTS idx_set_cards_card_text_search_vector
-    ON set_cards USING GIN (card_text_search_vector);
+    DROP COLUMN IF EXISTS card_text_search_vector;

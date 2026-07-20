@@ -53,16 +53,17 @@ class CardServiceTest {
     void searchCards_passesThroughExplicitSearchFieldUnchanged() {
         cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
         stubRepository();
+        when(semanticQueryParser.parse("DON")).thenReturn(new SemanticQueryParser.ParsedSemanticQuery("DON", null, null, null));
 
         cardService.searchCards(
-                "DON", CardSearchField.DESCRIPTION, null, null, null, null, null, null, null,
+                "DON", CardSearchField.SEMANTIC, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
 
         var searchFieldCaptor = ArgumentCaptor.forClass(CardSearchField.class);
         verify(setCardRepository).search(
                 any(), searchFieldCaptor.capture(), any(), any(), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
-        assertThat(searchFieldCaptor.getValue()).isEqualTo(CardSearchField.DESCRIPTION);
+        assertThat(searchFieldCaptor.getValue()).isEqualTo(CardSearchField.SEMANTIC);
     }
 
     @Test

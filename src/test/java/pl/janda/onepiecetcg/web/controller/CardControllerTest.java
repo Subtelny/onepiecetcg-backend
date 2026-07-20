@@ -59,12 +59,12 @@ class CardControllerTest {
                 any()  // showAllVariants
         )).thenReturn(new PagedCards(List.of(), 0, 0, 50));
 
-        mockMvc.perform(get("/api/cards").param("name", "foo").param("searchIn", "DESCRIPTION"))
+        mockMvc.perform(get("/api/cards").param("name", "foo").param("searchIn", "SEMANTIC"))
                 .andExpect(status().isOk());
 
         verify(cardService).searchCards(
                 eq("foo"),
-                eq(CardSearchField.DESCRIPTION),
+                eq(CardSearchField.SEMANTIC),
                 any(), any(), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any(), any(), any(), any());
     }

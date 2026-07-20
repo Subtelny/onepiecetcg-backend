@@ -20,10 +20,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * First Testcontainers-based test in this repo. Needed because the DESCRIPTION/BOTH/SEMANTIC search
- * modes rely on Postgres-only generated tsvector columns + GIN indexes (see
- * scripts/db/add-card-text-search-vector.sql and scripts/db/add-card-semantic-search-vector.sql) -
- * which a mocked DSLContext can't exercise.
+ * First Testcontainers-based test in this repo. Needed because the SEMANTIC search mode relies on a
+ * Postgres-only generated tsvector column + GIN index (see scripts/db/add-card-semantic-search-vector.sql)
+ * - which a mocked DSLContext can't exercise.
  *
  * JooqSetCardQueryAdapter.search()/countSearch() take (name, searchField, types, colors, rarities,
  * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes,
@@ -64,21 +63,11 @@ class JooqSetCardQueryAdapterIT {
     @BeforeEach
     void setUp() {
         // Hibernate (ddl-auto: update) has already created set_cards by the time this runs; apply the
-        // same generated-column migrations described in scripts/db/add-card-text-search-vector.sql and
-        // scripts/db/add-card-semantic-search-vector.sql.
+        // same generated-column migration described in scripts/db/add-card-semantic-search-vector.sql.
         // Run once for the whole class (not per-test): re-running this DDL before every test on the
         // same pooled connection makes Postgres invalidate an already-prepared INSERT plan, causing
         // "cached plan must not change result type" on a later saveAllAndFlush().
         if (!schemaMigrated) {
-            dsl.execute("""
-                    ALTER TABLE set_cards
-                        ADD COLUMN IF NOT EXISTS card_text_search_vector tsvector
-                        GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, coalesce(card_text, ''))) STORED
-                    """);
-            dsl.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_set_cards_card_text_search_vector
-                        ON set_cards USING GIN (card_text_search_vector)
-                    """);
             dsl.execute("""
                     ALTER TABLE set_cards
                         ADD COLUMN IF NOT EXISTS card_semantic_search_vector tsvector
@@ -157,38 +146,6 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
-    void searchField_description_matchesOnCardTextIncludingMultiWordPhrase() {
-        var results = adapter.search(
-                "Straw Hat", CardSearchField.DESCRIPTION,
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
-
-        assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
-
-        // Card name "Luffy" does not appear anywhere in any card's text - DESCRIPTION mode must not match it.
-        var noMatch = adapter.search(
-                "Luffy", CardSearchField.DESCRIPTION,
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
-        assertThat(noMatch).isEmpty();
-    }
-
-    @Test
-    void searchField_both_matchesEitherNameOrDescription() {
-        var byName = adapter.search(
-                "Zoro", CardSearchField.BOTH,
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
-        assertThat(byName).extracting(SetCard::getCardName).containsExactly("Roronoa Zoro");
-
-        var byDescription = adapter.search(
-                "Blocker", CardSearchField.BOTH,
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
-        assertThat(byDescription).extracting(SetCard::getCardName).containsExactly("Nami");
-    }
-
-    @Test
     void descriptionSearch_doesNotAffectDefaultSortOrder() {
         var results = adapter.search(
                 null, CardSearchField.NAME,
@@ -226,15 +183,9 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
-    void semanticSearch_matchesAcrossBroaderFieldsThanDescription() {
-        // "Slash" is only set on Zoro's attribute field, never in any card's text - DESCRIPTION mode
-        // must not match it, but SEMANTIC mode's broader tsvector (which folds in attribute) must.
-        var descriptionResults = adapter.search(
-                "Slash", CardSearchField.DESCRIPTION,
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
-        assertThat(descriptionResults).isEmpty();
-
+    void semanticSearch_matchesOnAttributeField() {
+        // "Slash" is only set on Zoro's attribute field, never in any card's name/text - SEMANTIC
+        // mode's broader tsvector (which folds in attribute) must still match it.
         var semanticResults = adapter.search(
                 "Slash", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,

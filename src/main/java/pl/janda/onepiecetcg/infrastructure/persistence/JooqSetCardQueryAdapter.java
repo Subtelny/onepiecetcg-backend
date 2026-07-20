@@ -214,8 +214,6 @@ class JooqSetCardQueryAdapter {
         if (name != null && !name.isBlank()) {
             conditions.add(switch (searchField) {
                 case NAME -> nameMatch(name);
-                case DESCRIPTION -> descriptionMatch(name);
-                case BOTH -> nameMatch(name).or(descriptionMatch(name));
                 case SEMANTIC -> semanticMatch(name);
             });
         }
@@ -268,15 +266,6 @@ class JooqSetCardQueryAdapter {
         return lower(SET_CARDS.CARD_NAME).like(pattern).or(lower(SET_CARDS.CARD_SET_ID).like(pattern));
     }
 
-    /**
-     * Full-text match against the generated tsvector column (see
-     * scripts/db/add-card-text-search-vector.sql). The 'simple' config here must match the one baked
-     * into that generated column so lexeme tokenization agrees between index and query.
-     */
-    private static Condition descriptionMatch(String query) {
-        return condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_TEXT_SEARCH_VECTOR, query);
-    }
-
     private static final Pattern QUOTED_PHRASE = Pattern.compile("^(['\"])(.*)\\1$");
 
     /**
@@ -291,10 +280,10 @@ class JooqSetCardQueryAdapter {
     }
 
     /**
-     * Full-text match against the broader generated tsvector column used by SEMANTIC mode (see
+     * Full-text match against the generated tsvector column used by SEMANTIC mode (see
      * scripts/db/add-card-semantic-search-vector.sql) - covers name/type/color/cost/power/counter/
-     * attribute/cardSetId/subTypes/effect, a superset of descriptionMatch()'s card_text-only column.
-     * The 'simple' config here must match the one baked into that generated column. A query wrapped
+     * attribute/cardSetId/subTypes/effect. The 'simple' config here must match the one baked into
+     * that generated column. A query wrapped
      * in single/double quotes is matched as an exact, word-order-preserving phrase instead of the
      * default any-word-order match - see extractQuotedPhrase().
      */
