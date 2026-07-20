@@ -253,12 +253,21 @@ class JooqSetCardQueryAdapter {
         return conditions;
     }
 
+    private static final Pattern REGEX_METACHARACTERS = Pattern.compile("[\\\\^$.|?*+()\\[\\]{}]");
+
     /**
      * Matches a value as a whole, case-insensitive token inside a space/slash-separated column
      * (mirrors the previous in-memory split + equalsIgnoreCase filtering in JpaSetCardRepository).
+     * The value is regex-escaped since it becomes part of a Postgres regex pattern, not just a
+     * bind parameter, so raw metacharacters (e.g. "?") would otherwise make the pattern invalid.
+     * Boundaries use explicit space/slash delimiters (matching the tokenizer in
+     * JooqCardFilterOptionQueryAdapter's regexp_split_to_table(attribute, '[\s/]+')) rather than
+     * "\y" word boundaries, since "\y" never matches around a token with no word characters at
+     * all (e.g. the literal value "?"), which would otherwise never be findable.
      */
     private static Condition wordMatch(Field<String> column, String value) {
-        return condition("{0} ~* ('\\y' || {1} || '\\y')", column, value);
+        var escaped = REGEX_METACHARACTERS.matcher(value).replaceAll("\\\\$0");
+        return condition("{0} ~* ('(^|[\\s/])' || {1} || '($|[\\s/])')", column, escaped);
     }
 
     private static Condition nameMatch(String name) {
@@ -298,14 +307,40 @@ class JooqSetCardQueryAdapter {
      */
     private static Condition semanticMatch(String query) {
         var parsed = extractQuotedPhrase(query);
-        if (parsed.phrase() == null) {
-            return condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
-        }
-        if (parsed.remainder().isBlank()) {
-            return condition("{0} @@ phraseto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase());
-        }
-        return condition("{0} @@ (phraseto_tsquery('simple', {1}) && plainto_tsquery('simple', {2}))",
-                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase(), parsed.remainder());
+        var ftsCondition = parsed.phrase() == null
+                ? condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query)
+                : parsed.remainder().isBlank()
+                        ? condition("{0} @@ phraseto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase())
+                        : condition("{0} @@ (phraseto_tsquery('simple', {1}) && plainto_tsquery('simple', {2}))",
+                                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase(), parsed.remainder());
+        return ftsCondition.or(emptyTsqueryFallback(query));
+    }
+
+    /**
+     * Postgres's 'simple' FTS parser discards punctuation-only input (e.g. "?"), producing an
+     * empty tsquery that can never match via "@@" regardless of column content. When that
+     * happens, fall back to a literal case-insensitive substring match across the same columns
+     * that feed card_semantic_search_vector, so symbol-only queries (matching e.g. the "?"
+     * placeholder attribute value) are still findable in SEMANTIC mode.
+     */
+    private static Condition emptyTsqueryFallback(String query) {
+        return condition("plainto_tsquery('simple', {0})::text = ''", query)
+                .and(combinedSemanticText().containsIgnoreCase(query));
+    }
+
+    private static Field<String> combinedSemanticText() {
+        return concat(
+                coalesce(SET_CARDS.CARD_NAME, inline("")), inline(" "),
+                coalesce(SET_CARDS.CARD_TYPE, inline("")), inline(" "),
+                coalesce(SET_CARDS.CARD_COLOR, inline("")), inline(" "),
+                coalesce(SET_CARDS.CARD_COST, inline("")), inline(" "),
+                coalesce(SET_CARDS.CARD_POWER, inline("")), inline(" "),
+                coalesce(SET_CARDS.COUNTER_AMOUNT.cast(String.class), inline("")), inline(" "),
+                coalesce(SET_CARDS.ATTRIBUTE, inline("")), inline(" "),
+                coalesce(SET_CARDS.CARD_SET_ID, inline("")), inline(" "),
+                coalesce(SET_CARDS.SUB_TYPES, inline("")), inline(" "),
+                coalesce(SET_CARDS.CARD_TEXT, inline(""))
+        );
     }
 
     private static Field<Double> semanticRank(String query) {
