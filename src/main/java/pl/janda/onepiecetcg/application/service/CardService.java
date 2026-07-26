@@ -87,10 +87,12 @@ public class CardService {
         var resolvedCosts = costs;
         var resolvedPower = power;
         var resolvedCounterAmount = counterAmount;
+        var resolvedErrataOnly = false;
 
         // SEMANTIC mode: pull inline "6c"/"2kc"/"5kp" tokens out of the free text into the same
         // cost/power/counterAmount filters the sidebar uses - an explicit sidebar value always wins
         // over a token - then full-text search/rank whatever text remains (see JooqSetCardQueryAdapter).
+        // The standalone "errata" keyword is also pulled out and turned into an errata-only filter.
         if (resolvedSearchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()) {
             var parsed = semanticQueryParser.parse(name);
             if (parsed.cost() != null && (costs == null || costs.isEmpty())) {
@@ -103,10 +105,11 @@ public class CardService {
                 resolvedCounterAmount = parsed.counter();
             }
             resolvedName = parsed.remainingText();
+            resolvedErrataOnly = parsed.errataOnly();
         }
 
-        var pageContent = setCardRepository.search(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit, resolvedShowAllVariants);
-        var totalCount = setCardRepository.countSearch(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, resolvedShowAllVariants);
+        var pageContent = setCardRepository.search(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit, resolvedShowAllVariants, resolvedErrataOnly);
+        var totalCount = setCardRepository.countSearch(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, resolvedShowAllVariants, resolvedErrataOnly);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }

@@ -44,7 +44,8 @@ public interface SetCardRepository {
         SortDirection sortOrder,
         int page,
         int limit,
-        boolean showAllVariants
+        boolean showAllVariants,
+        boolean errataOnly
     );
 
     long countSearch(
@@ -61,6 +62,7 @@ public interface SetCardRepository {
         List<String> attributeCombos,
         String subTypes,
         List<String> prefixes,
-        boolean showAllVariants
+        boolean showAllVariants,
+        boolean errataOnly
     );
 }

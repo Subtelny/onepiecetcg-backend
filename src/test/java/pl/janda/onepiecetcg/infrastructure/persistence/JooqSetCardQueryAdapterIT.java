@@ -16,6 +16,7 @@ import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.SetCard;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,8 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * JooqSetCardQueryAdapter.search()/countSearch() take (name, searchField, types, colors, rarities,
  * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes,
- * sortBy, sortOrder, page, limit, showAllVariants) - 18 params for search(). Only a handful vary per
- * test below. search() returns CardSummary (the projected list-view shape), not the full SetCard.
+ * sortBy, sortOrder, page, limit, showAllVariants, errataOnly) - 19 params for search(). Only a
+ * handful vary per test below. search() returns CardSummary (the projected list-view shape), not
+ * the full SetCard.
  *
  * OnePieceTcgApplication lives under application/, not the root package, so @SpringBootTest's
  * upward package scan can't find it - declared explicitly here.
@@ -95,6 +97,9 @@ class JooqSetCardQueryAdapterIT {
         }
 
         jpaRepository.deleteAll();
+        // card_errata isn't touched by jpaRepository.deleteAll() (separate table/entity) - reset it
+        // here too so errataOnly tests don't leak rows into other tests sharing this static container.
+        dsl.execute("DELETE FROM card_errata");
         jpaRepository.saveAllAndFlush(List.of(
                 SetCard.builder()
                         .cardName("Monkey D. Luffy")
@@ -142,7 +147,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "Luffy", CardSearchField.NAME,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
 
         assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
 
@@ -150,7 +155,7 @@ class JooqSetCardQueryAdapterIT {
         var noMatch = adapter.search(
                 "Blocker", CardSearchField.NAME,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(noMatch).isEmpty();
     }
 
@@ -159,7 +164,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 null, CardSearchField.NAME,
                 null, null, null, null, null, null, null, null, null, null, null,
-                CardSortField.CARD_NUMBER, null, 0, 50, false);
+                CardSortField.CARD_NUMBER, null, 0, 50, false, false);
 
         assertThat(results).extracting(CardSummary::getCardSetId)
                 .containsExactly("OP01-001", "OP01-002", "OP01-003", "OP01-004", "OP01-005");
@@ -170,7 +175,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 null, CardSearchField.NAME,
                 null, null, null, null, List.of(1, 5), null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
 
         assertThat(results).extracting(CardSummary::getCardName)
                 .containsExactlyInAnyOrder("Monkey D. Luffy", "Nami");
@@ -181,13 +186,13 @@ class JooqSetCardQueryAdapterIT {
         var withNull = adapter.search(
                 null, CardSearchField.NAME,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(withNull).hasSize(5);
 
         var withEmpty = adapter.search(
                 null, CardSearchField.NAME,
                 null, null, null, null, List.of(), null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(withEmpty).hasSize(5);
     }
 
@@ -198,7 +203,7 @@ class JooqSetCardQueryAdapterIT {
         var semanticResults = adapter.search(
                 "Slash", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(semanticResults).extracting(CardSummary::getCardName).containsExactly("Roronoa Zoro");
     }
 
@@ -209,7 +214,7 @@ class JooqSetCardQueryAdapterIT {
         var unquoted = adapter.search(
                 "Straw Hat", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(unquoted).extracting(CardSummary::getCardName)
                 .containsExactlyInAnyOrder("Monkey D. Luffy", "Usopp");
 
@@ -218,14 +223,14 @@ class JooqSetCardQueryAdapterIT {
         var doubleQuoted = adapter.search(
                 "\"Straw Hat\"", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(doubleQuoted).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
 
         // Single-quoted: same exact-phrase behavior as double-quoted.
         var singleQuoted = adapter.search(
                 "'Straw Hat'", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(singleQuoted).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
@@ -237,7 +242,7 @@ class JooqSetCardQueryAdapterIT {
         var mismatched = adapter.search(
                 "\"Straw Hat\" Zoro", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(mismatched).isEmpty();
 
         // "Luffy" (name) and the "Straw Hat" phrase (card text) both point at the same row, so the
@@ -245,7 +250,7 @@ class JooqSetCardQueryAdapterIT {
         var matched = adapter.search(
                 "\"Straw Hat\" Luffy", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(matched).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
@@ -256,7 +261,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "Luf", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
@@ -266,7 +271,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "Char", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(results).extracting(CardSummary::getCardName)
                 .containsExactlyInAnyOrder("Monkey D. Luffy", "Roronoa Zoro", "Nami");
     }
@@ -278,7 +283,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "Char Zoro", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(results).extracting(CardSummary::getCardName).containsExactly("Roronoa Zoro");
     }
 
@@ -289,7 +294,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "\"Straw Ha\"", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(results).isEmpty();
     }
 
@@ -301,7 +306,7 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "\"Straw Hat\" Luf", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
@@ -313,7 +318,46 @@ class JooqSetCardQueryAdapterIT {
         var results = adapter.search(
                 "?", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
-                null, null, 0, 50, false);
+                null, null, 0, 50, false, false);
         assertThat(results).extracting(CardSummary::getCardName).containsExactly("Nico Robin");
+    }
+
+    @Test
+    void errataOnly_filtersToCardsWithAtLeastOneErrataRow() {
+        dsl.execute("INSERT INTO card_errata (card_code, notice_date) VALUES ({0}, {1})", "OP01-001", LocalDate.now());
+
+        var results = adapter.search(
+                null, CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, true);
+
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
+    }
+
+    @Test
+    void errataOnly_combinedWithTextSearch_narrowsToIntersection() {
+        // Both Luffy and Zoro have an errata row, but only Luffy's card text matches "Straw Hat" -
+        // errataOnly must be AND-ed with the text search condition, not OR-ed.
+        dsl.execute("INSERT INTO card_errata (card_code, notice_date) VALUES ({0}, {1})", "OP01-001", LocalDate.now());
+        dsl.execute("INSERT INTO card_errata (card_code, notice_date) VALUES ({0}, {1})", "OP01-002", LocalDate.now());
+
+        var results = adapter.search(
+                "Straw Hat", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, true);
+
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
+    }
+
+    @Test
+    void errataOnly_false_doesNotFilterByErrataPresence() {
+        dsl.execute("INSERT INTO card_errata (card_code, notice_date) VALUES ({0}, {1})", "OP01-001", LocalDate.now());
+
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+
+        assertThat(results).hasSize(5);
     }
 }

@@ -144,10 +144,11 @@ class JooqSetCardQueryAdapter {
             SortDirection sortOrder,
             int page,
             int limit,
-            boolean showAllVariants
+            boolean showAllVariants,
+            boolean errataOnly
     ) {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, showAllVariants);
+                attributes, attributeCombos, subTypes, prefixes, showAllVariants, errataOnly);
 
         // SEMANTIC mode ranks by full-text relevance instead of the requested sortBy/sortOrder -
         // see the @Parameter javadoc on CardSearchRequest.sortBy.
@@ -184,10 +185,11 @@ class JooqSetCardQueryAdapter {
             List<String> attributeCombos,
             String subTypes,
             List<String> prefixes,
-            boolean showAllVariants
+            boolean showAllVariants,
+            boolean errataOnly
     ) {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, showAllVariants);
+                attributes, attributeCombos, subTypes, prefixes, showAllVariants, errataOnly);
 
         return dsl.selectCount()
                 .from(SET_CARDS)
@@ -209,11 +211,15 @@ class JooqSetCardQueryAdapter {
             List<String> attributeCombos,
             String subTypes,
             List<String> prefixes,
-            boolean showAllVariants
+            boolean showAllVariants,
+            boolean errataOnly
     ) {
         var conditions = new ArrayList<Condition>();
         if (!showAllVariants) {
             conditions.add(SET_CARDS.IS_REPRESENTATIVE.isTrue());
+        }
+        if (errataOnly) {
+            conditions.add(hasErrata());
         }
 
         if (name != null && !name.isBlank()) {
@@ -278,6 +284,17 @@ class JooqSetCardQueryAdapter {
     private static Condition nameMatch(String name) {
         var pattern = "%" + name.toLowerCase() + "%";
         return lower(SET_CARDS.CARD_NAME).like(pattern).or(lower(SET_CARDS.CARD_SET_ID).like(pattern));
+    }
+
+    /**
+     * Filters to cards that have at least one card_errata row (joined by card code, see
+     * CardController/CardMapper's use of getCardSetId() as the errata lookup key). card_errata
+     * isn't part of the jOOQ-codegen'd table set (see pom.xml), so it's referenced via a raw SQL
+     * escape hatch rather than a typed jOOQ table, same as the other cross-cutting raw-SQL
+     * conditions in this class.
+     */
+    private static Condition hasErrata() {
+        return condition("EXISTS (SELECT 1 FROM card_errata WHERE card_code = {0})", SET_CARDS.CARD_SET_ID);
     }
 
     private static final Pattern QUOTED_PHRASE = Pattern.compile("(['\"])(.*?)\\1");

@@ -97,5 +97,46 @@ class SemanticQueryParserTest {
         assertThat(result.cost()).isNull();
         assertThat(result.counter()).isNull();
         assertThat(result.power()).isNull();
+        assertThat(result.errataOnly()).isFalse();
+    }
+
+    @Test
+    void parse_errataKeywordAlone_setsErrataOnlyAndClearsText() {
+        var result = parser.parse("errata");
+
+        assertThat(result.errataOnly()).isTrue();
+        assertThat(result.remainingText()).isEmpty();
+    }
+
+    @Test
+    void parse_errataKeywordIsCaseInsensitive() {
+        var result = parser.parse("ERRATA");
+
+        assertThat(result.errataOnly()).isTrue();
+        assertThat(result.remainingText()).isEmpty();
+    }
+
+    @Test
+    void parse_errataKeywordMixedWithFreeTextAndNumericToken_stripsBothKeepsRemainder() {
+        var result = parser.parse("errata Luffy 6c");
+
+        assertThat(result.errataOnly()).isTrue();
+        assertThat(result.cost()).isEqualTo(6);
+        assertThat(result.remainingText()).isEqualTo("Luffy");
+    }
+
+    @Test
+    void parse_errataSubstringWithinAnotherWord_isNotTreatedAsKeyword() {
+        var result = parser.parse("errataful");
+
+        assertThat(result.errataOnly()).isFalse();
+        assertThat(result.remainingText()).isEqualTo("errataful");
+    }
+
+    @Test
+    void parse_noErrataKeyword_leavesErrataOnlyFalse() {
+        var result = parser.parse("straw hat crew");
+
+        assertThat(result.errataOnly()).isFalse();
     }
 }
