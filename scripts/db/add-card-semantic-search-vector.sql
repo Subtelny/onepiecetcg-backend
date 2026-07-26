@@ -2,6 +2,12 @@
 -- combining more fields than card_text_search_vector (DESCRIPTION/BOTH mode) does: name, type,
 -- color, cost, power, counter, attribute, card set id, subtypes, and effect text.
 --
+-- Components are weighted (setweight A/B/C/D) so ts_rank/ts_rank_cd (see semanticRank() in
+-- JooqSetCardQueryAdapter) prioritizes a match in card_name/card_set_id (A) over sub_types (B),
+-- over card_text/effect (C), over the remaining structured metadata fields (D) - e.g. a query
+-- like "arlong" ranks a card actually named "Arlong" above one that merely mentions "Arlong
+-- Pirates" in its sub_types or effect text.
+--
 -- This repo has no migration tool (Flyway/Liquibase) - schema is created via Hibernate's
 -- ddl-auto: update, which cannot express a GENERATED column or a non-default (GIN) index.
 -- Run this manually, once per environment, against the target Postgres instance BEFORE
@@ -19,18 +25,17 @@ ALTER TABLE set_cards
 ALTER TABLE set_cards
     ADD COLUMN card_semantic_search_vector tsvector
     GENERATED ALWAYS AS (
-        to_tsvector('simple'::regconfig,
-            coalesce(card_name, '') || ' ' ||
+        setweight(to_tsvector('simple'::regconfig, coalesce(card_name, '') || ' ' || coalesce(card_set_id, '')), 'A') ||
+        setweight(to_tsvector('simple'::regconfig, coalesce(sub_types, '')), 'B') ||
+        setweight(to_tsvector('simple'::regconfig, coalesce(card_text, '')), 'C') ||
+        setweight(to_tsvector('simple'::regconfig,
             coalesce(card_type, '') || ' ' ||
             coalesce(card_color, '') || ' ' ||
             coalesce(card_cost, '') || ' ' ||
             coalesce(card_power, '') || ' ' ||
             coalesce(counter_amount::text, '') || ' ' ||
-            coalesce(attribute, '') || ' ' ||
-            coalesce(card_set_id, '') || ' ' ||
-            coalesce(sub_types, '') || ' ' ||
-            coalesce(card_text, '')
-        )
+            coalesce(attribute, '')
+        ), 'D')
     ) STORED;
 
 CREATE INDEX idx_set_cards_card_semantic_search_vector

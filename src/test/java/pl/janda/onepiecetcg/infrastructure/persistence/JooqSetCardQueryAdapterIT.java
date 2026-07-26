@@ -76,18 +76,17 @@ class JooqSetCardQueryAdapterIT {
                     ALTER TABLE set_cards
                         ADD COLUMN IF NOT EXISTS card_semantic_search_vector tsvector
                         GENERATED ALWAYS AS (
-                            to_tsvector('simple'::regconfig,
-                                coalesce(card_name, '') || ' ' ||
+                            setweight(to_tsvector('simple'::regconfig, coalesce(card_name, '') || ' ' || coalesce(card_set_id, '')), 'A') ||
+                            setweight(to_tsvector('simple'::regconfig, coalesce(sub_types, '')), 'B') ||
+                            setweight(to_tsvector('simple'::regconfig, coalesce(card_text, '')), 'C') ||
+                            setweight(to_tsvector('simple'::regconfig,
                                 coalesce(card_type, '') || ' ' ||
                                 coalesce(card_color, '') || ' ' ||
                                 coalesce(card_cost, '') || ' ' ||
                                 coalesce(card_power, '') || ' ' ||
                                 coalesce(counter_amount::text, '') || ' ' ||
-                                coalesce(attribute, '') || ' ' ||
-                                coalesce(card_set_id, '') || ' ' ||
-                                coalesce(sub_types, '') || ' ' ||
-                                coalesce(card_text, '')
-                            )
+                                coalesce(attribute, '')
+                            ), 'D')
                         ) STORED
                     """);
             dsl.execute("""
@@ -414,6 +413,34 @@ class JooqSetCardQueryAdapterIT {
                 null, null, 0, 50, false, false);
 
         assertThat(results.get(0).getCardName()).isEqualTo("Extra Card");
+    }
+
+    @Test
+    void semanticSearch_relevanceRanking_nameMatchOutranksDescriptionOnlyMatch() {
+        // "Arlong" is the card_name (weight A) of one card, and only appears inside another card's
+        // card_text/effect (weight C) - the weighted tsvector must rank the name match first.
+        jpaRepository.saveAllAndFlush(List.of(
+                SetCard.builder()
+                        .cardName("Arlong")
+                        .cardSetId("OP01-006")
+                        .cardText("A fierce fish-man captain.")
+                        .representative(true)
+                        .build(),
+                SetCard.builder()
+                        .cardName("Nami's Ally")
+                        .cardSetId("OP01-007")
+                        .cardText("If you have an [Arlong Pirates] type Character, this card gains +1000 power.")
+                        .representative(true)
+                        .build()
+        ));
+
+        var results = adapter.search(
+                "Arlong", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+
+        assertThat(results).extracting(CardSummary::getCardName)
+                .containsExactly("Arlong", "Nami's Ally");
     }
 
     @Test
