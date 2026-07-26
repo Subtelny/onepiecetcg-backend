@@ -21,7 +21,8 @@ public class OptcgApiSetCardClient extends AbstractSetCardApiClient implements S
     @Override
     public List<SetCard> fetchAllSetCards() {
         var setCards = fetchAndMap("/allSetCards/", OptcgSetCardResponse[].class, r -> toSetCard(r, false));
+        var stCards = fetchAndMap("/allSTCards/", OptcgSetCardResponse[].class, r -> toSetCard(r, false));
         var promoCards = fetchAndMap("/allPromos/", OptcgSetCardResponse[].class, r -> toSetCard(r, true));
-        return Stream.concat(setCards.stream(), promoCards.stream()).toList();
+        return Stream.concat(Stream.concat(setCards.stream(), stCards.stream()), promoCards.stream()).toList();
     }
 }

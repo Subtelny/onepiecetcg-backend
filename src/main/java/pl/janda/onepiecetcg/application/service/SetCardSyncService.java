@@ -28,7 +28,13 @@ public class SetCardSyncService {
 
     @Transactional
     public void syncSetCards() {
-        if (!cardSetSyncService.syncCardSets()) {
+        syncSetCards(false);
+    }
+
+    @Transactional
+    public void syncSetCards(boolean force) {
+        var hasNewSets = cardSetSyncService.syncCardSets();
+        if (!hasNewSets && !force) {
             log.info("No new card sets detected, skipping set cards sync");
             return;
         }
@@ -39,7 +45,7 @@ public class SetCardSyncService {
         flatRarityCalculatorService.assignFlatRarities(fetched);
         setCardRepository.deleteAll();
         var saved = setCardRepository.saveAll(fetched);
-        log.info("Synced {} set cards from optcgapi.com", saved.size());
+        log.info("Synced {} set cards from optcgapi.com{}", saved.size(), force ? " (forced)" : "");
         cardRepresentativeService.recompute();
         cardFilterOptionService.refresh();
     }

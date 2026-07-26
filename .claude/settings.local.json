@@ -29,7 +29,12 @@
       "Bash(fi)",
       "Bash(done)",
       "Bash(unzip:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch(domain:www.cardmarket.com)",
+      "WebFetch(domain:onepiece.limitlesstcg.com)",
+      "WebFetch(domain:www.optcgapi.com)",
+      "Bash(find:*)"
     ]
   }
 }
