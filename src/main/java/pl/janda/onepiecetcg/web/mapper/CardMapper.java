@@ -4,12 +4,14 @@ import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardErrata;
 import pl.janda.onepiecetcg.application.model.CardFilterOptions;
+import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.web.dto.CardDto;
 import pl.janda.onepiecetcg.web.dto.CardErrataEntryDto;
 import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
 import pl.janda.onepiecetcg.web.dto.CardSetOptionDto;
+import pl.janda.onepiecetcg.web.dto.CardSummaryDto;
 
 import java.util.Arrays;
 import java.util.List;
@@ -59,6 +61,28 @@ public class CardMapper {
         return cards.stream()
                 .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId())))
                 .collect(Collectors.toList());
+    }
+
+    public CardSummaryDto toSummaryDto(CardSummary card) {
+        if (card == null) {
+            return null;
+        }
+        return CardSummaryDto.builder()
+                .id(card.getId() != null ? String.valueOf(card.getId()) : null)
+                .name(card.getCardName())
+                .cardNumber(card.getCardSetId())
+                .flatRarity(card.getFlatRarity())
+                .imageUrl(card.getCardImage())
+                .build();
+    }
+
+    public List<CardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
+        if (cards == null) {
+            return List.of();
+        }
+        return cards.stream()
+                .map(this::toSummaryDto)
+                .toList();
     }
 
     private List<CardErrataEntryDto> toErrataEntryDtoList(List<CardErrata> errataHistory) {

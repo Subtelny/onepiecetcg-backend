@@ -4,6 +4,7 @@ import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
 import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
+import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.model.SortDirection;
@@ -25,7 +26,7 @@ public interface SetCardRepository {
 
     void recomputeRepresentative();
 
-    List<SetCard> search(
+    List<CardSummary> search(
         String name,
         CardSearchField searchField,
         List<CardType> types,

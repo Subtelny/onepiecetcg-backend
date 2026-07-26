@@ -49,7 +49,9 @@ public class CardController {
 
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
-            description = "Returns filtered cards based on query parameters, paginated by page/limit")
+            description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
+                    "Each result is a lightweight summary (id, name, cardNumber, flatRarity, imageUrl) - " +
+                    "fetch /api/cards/{id} for full card details (effect, stats, prices, errata).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",
                     content = @Content(mediaType = "application/json",
@@ -85,11 +87,8 @@ public class CardController {
                 request.getLimit(),
                 request.getShowAllVariants());
 
-        var errataByCardCode = cardErrataService.historyByCardCodes(
-                pagedCards.cards().stream().map(SetCard::getCardSetId).toList());
-
         var response = CardSearchResponse.builder()
-                .cards(cardMapper.toDtoList(pagedCards.cards(), errataByCardCode))
+                .cards(cardMapper.toSummaryDtoList(pagedCards.cards()))
                 .totalCount(pagedCards.totalCount())
                 .page(pagedCards.page())
                 .limit(pagedCards.limit())

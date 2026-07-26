@@ -13,6 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.janda.onepiecetcg.application.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
+import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.SetCard;
 
 import java.util.List;
@@ -27,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * JooqSetCardQueryAdapter.search()/countSearch() take (name, searchField, types, colors, rarities,
  * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes,
  * sortBy, sortOrder, page, limit, showAllVariants) - 18 params for search(). Only a handful vary per
- * test below.
+ * test below. search() returns CardSummary (the projected list-view shape), not the full SetCard.
  *
  * OnePieceTcgApplication lives under application/, not the root package, so @SpringBootTest's
  * upward package scan can't find it - declared explicitly here.
@@ -143,7 +144,7 @@ class JooqSetCardQueryAdapterIT {
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
 
-        assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
 
         // "Blocker" only appears in Nami's card text, never in a card name - NAME mode must not match it.
         var noMatch = adapter.search(
@@ -160,7 +161,7 @@ class JooqSetCardQueryAdapterIT {
                 null, null, null, null, null, null, null, null, null, null, null,
                 CardSortField.CARD_NUMBER, null, 0, 50, false);
 
-        assertThat(results).extracting(SetCard::getCardSetId)
+        assertThat(results).extracting(CardSummary::getCardSetId)
                 .containsExactly("OP01-001", "OP01-002", "OP01-003", "OP01-004", "OP01-005");
     }
 
@@ -171,7 +172,7 @@ class JooqSetCardQueryAdapterIT {
                 null, null, null, null, List.of(1, 5), null, null, null, null, null, null,
                 null, null, 0, 50, false);
 
-        assertThat(results).extracting(SetCard::getCardName)
+        assertThat(results).extracting(CardSummary::getCardName)
                 .containsExactlyInAnyOrder("Monkey D. Luffy", "Nami");
     }
 
@@ -198,7 +199,7 @@ class JooqSetCardQueryAdapterIT {
                 "Slash", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(semanticResults).extracting(SetCard::getCardName).containsExactly("Roronoa Zoro");
+        assertThat(semanticResults).extracting(CardSummary::getCardName).containsExactly("Roronoa Zoro");
     }
 
     @Test
@@ -209,7 +210,7 @@ class JooqSetCardQueryAdapterIT {
                 "Straw Hat", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(unquoted).extracting(SetCard::getCardName)
+        assertThat(unquoted).extracting(CardSummary::getCardName)
                 .containsExactlyInAnyOrder("Monkey D. Luffy", "Usopp");
 
         // Double-quoted: exact phrase, word order preserved - only Luffy's card text has "Straw Hat"
@@ -218,14 +219,14 @@ class JooqSetCardQueryAdapterIT {
                 "\"Straw Hat\"", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(doubleQuoted).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(doubleQuoted).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
 
         // Single-quoted: same exact-phrase behavior as double-quoted.
         var singleQuoted = adapter.search(
                 "'Straw Hat'", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(singleQuoted).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(singleQuoted).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
     @Test
@@ -245,7 +246,7 @@ class JooqSetCardQueryAdapterIT {
                 "\"Straw Hat\" Luffy", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(matched).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(matched).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
     @Test
@@ -256,7 +257,7 @@ class JooqSetCardQueryAdapterIT {
                 "Luf", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
     @Test
@@ -266,7 +267,7 @@ class JooqSetCardQueryAdapterIT {
                 "Char", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(results).extracting(SetCard::getCardName)
+        assertThat(results).extracting(CardSummary::getCardName)
                 .containsExactlyInAnyOrder("Monkey D. Luffy", "Roronoa Zoro", "Nami");
     }
 
@@ -278,7 +279,7 @@ class JooqSetCardQueryAdapterIT {
                 "Char Zoro", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(results).extracting(SetCard::getCardName).containsExactly("Roronoa Zoro");
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Roronoa Zoro");
     }
 
     @Test
@@ -301,7 +302,7 @@ class JooqSetCardQueryAdapterIT {
                 "\"Straw Hat\" Luf", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
     }
 
     @Test
@@ -313,6 +314,6 @@ class JooqSetCardQueryAdapterIT {
                 "?", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(results).extracting(SetCard::getCardName).containsExactly("Nico Robin");
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Nico Robin");
     }
 }

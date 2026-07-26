@@ -7,10 +7,12 @@ import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.SortField;
 import org.springframework.stereotype.Component;
+import org.jooq.Record;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardRarity;
 import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
+import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.model.SortDirection;
@@ -124,7 +126,7 @@ class JooqSetCardQueryAdapter {
         return field("CASE WHEN {0} ~ '^-?[0-9]+$' THEN {0}::int ELSE NULL END", Integer.class, column);
     }
 
-    List<SetCard> search(
+    List<CardSummary> search(
             String name,
             CardSearchField searchField,
             List<CardType> types,
@@ -153,7 +155,10 @@ class JooqSetCardQueryAdapter {
                 ? List.<SortField<?>>of(semanticRank(name).desc(), SET_CARDS.ID.asc())
                 : buildOrderBy(sortBy, sortOrder);
 
-        var records = dsl.selectFrom(SET_CARDS)
+        // Only the fields the search-result list actually renders are selected here - ORDER BY/WHERE
+        // above can still reference columns outside this projection (e.g. card_semantic_search_vector).
+        var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME, SET_CARDS.FLAT_RARITY, SET_CARDS.CARD_IMAGE)
+                .from(SET_CARDS)
                 .where(conditions)
                 .orderBy(orderBy)
                 .limit(limit)
@@ -161,7 +166,7 @@ class JooqSetCardQueryAdapter {
                 .fetch();
 
         return records.stream()
-                .map(JooqSetCardQueryAdapter::toSetCard)
+                .map(JooqSetCardQueryAdapter::toCardSummary)
                 .toList();
     }
 
@@ -418,6 +423,16 @@ class JooqSetCardQueryAdapter {
                 .lastSyncedAt(r.getLastSyncedAt())
                 .promo(Boolean.TRUE.equals(r.getIsPromo()))
                 .representative(Boolean.TRUE.equals(r.getIsRepresentative()))
+                .build();
+    }
+
+    private static CardSummary toCardSummary(Record r) {
+        return CardSummary.builder()
+                .id(r.get(SET_CARDS.ID))
+                .cardSetId(r.get(SET_CARDS.CARD_SET_ID))
+                .cardName(r.get(SET_CARDS.CARD_NAME))
+                .flatRarity(r.get(SET_CARDS.FLAT_RARITY))
+                .cardImage(r.get(SET_CARDS.CARD_IMAGE))
                 .build();
     }
 }
