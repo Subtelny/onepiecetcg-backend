@@ -20,6 +20,7 @@ import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardRarity;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.service.CardErrataService;
+import pl.janda.onepiecetcg.application.service.CardFaqService;
 import pl.janda.onepiecetcg.application.service.CardService;
 import pl.janda.onepiecetcg.application.service.PagedCards;
 import pl.janda.onepiecetcg.web.dto.CardDto;
@@ -42,6 +43,8 @@ public class CardController {
     private final CardService cardService;
 
     private final CardErrataService cardErrataService;
+
+    private final CardFaqService cardFaqService;
 
     private final CardMapper cardMapper;
 
@@ -126,7 +129,8 @@ public class CardController {
     ) {
         SetCard card = cardService.getVariantByCardCode(cardCode, variant);
         var errata = cardErrataService.historyByCardCodes(List.of(card.getCardSetId())).get(card.getCardSetId());
-        return ResponseEntity.ok(cardMapper.toDto(card, errata));
+        var faq = cardFaqService.historyByCardCodes(List.of(card.getCardSetId())).get(card.getCardSetId());
+        return ResponseEntity.ok(cardMapper.toDto(card, errata, faq));
     }
 
     @GetMapping("/{id}")
@@ -143,7 +147,8 @@ public class CardController {
     ) {
         SetCard card = cardService.getCardById(id);
         var errata = cardErrataService.historyByCardCodes(List.of(card.getCardSetId())).get(card.getCardSetId());
-        return ResponseEntity.ok(cardMapper.toDto(card, errata));
+        var faq = cardFaqService.historyByCardCodes(List.of(card.getCardSetId())).get(card.getCardSetId());
+        return ResponseEntity.ok(cardMapper.toDto(card, errata, faq));
     }
 
     @GetMapping("/errata")
@@ -171,8 +176,9 @@ public class CardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         List<SetCard> variants = cardService.getVariantsByCardId(id);
-        var errataByCardCode = cardErrataService.historyByCardCodes(
-                variants.stream().map(SetCard::getCardSetId).toList());
-        return ResponseEntity.ok(cardMapper.toDtoList(variants, errataByCardCode));
+        var cardCodes = variants.stream().map(SetCard::getCardSetId).toList();
+        var errataByCardCode = cardErrataService.historyByCardCodes(cardCodes);
+        var faqByCardCode = cardFaqService.historyByCardCodes(cardCodes);
+        return ResponseEntity.ok(cardMapper.toDtoList(variants, errataByCardCode, faqByCardCode));
     }
 }

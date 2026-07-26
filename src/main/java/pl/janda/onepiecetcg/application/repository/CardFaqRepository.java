@@ -10,6 +10,8 @@ public interface CardFaqRepository {
 
     List<CardFaq> findBySetId(String setId);
 
+    List<CardFaq> findByCardCodeIn(List<String> cardCodes);
+
     void deleteBySetId(String setId);
 
     <S extends CardFaq> List<S> saveAll(Iterable<S> faqEntries);

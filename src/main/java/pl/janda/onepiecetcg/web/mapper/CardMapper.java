@@ -3,12 +3,14 @@ package pl.janda.onepiecetcg.web.mapper;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardErrata;
+import pl.janda.onepiecetcg.application.model.CardFaq;
 import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.web.dto.CardDto;
 import pl.janda.onepiecetcg.web.dto.CardErrataEntryDto;
+import pl.janda.onepiecetcg.web.dto.CardFaqEntryDto;
 import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
 import pl.janda.onepiecetcg.web.dto.CardSetOptionDto;
 import pl.janda.onepiecetcg.web.dto.CardSummaryDto;
@@ -22,10 +24,10 @@ import java.util.stream.Collectors;
 public class CardMapper {
 
     public CardDto toDto(SetCard card) {
-        return toDto(card, List.of());
+        return toDto(card, List.of(), List.of());
     }
 
-    public CardDto toDto(SetCard card, List<CardErrata> errataHistory) {
+    public CardDto toDto(SetCard card, List<CardErrata> errataHistory, List<CardFaq> faqHistory) {
         if (card == null) {
             return null;
         }
@@ -47,19 +49,21 @@ public class CardMapper {
                 .marketPrice(card.getMarketPrice())
                 .inventoryPrice(card.getInventoryPrice())
                 .errata(toErrataEntryDtoList(errataHistory))
+                .faq(toFaqEntryDtoList(faqHistory))
                 .build();
     }
 
     public List<CardDto> toDtoList(List<SetCard> cards) {
-        return toDtoList(cards, Map.of());
+        return toDtoList(cards, Map.of(), Map.of());
     }
 
-    public List<CardDto> toDtoList(List<SetCard> cards, Map<String, List<CardErrata>> errataByCardCode) {
+    public List<CardDto> toDtoList(List<SetCard> cards, Map<String, List<CardErrata>> errataByCardCode,
+                                    Map<String, List<CardFaq>> faqByCardCode) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId())))
+                .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId()), faqByCardCode.get(card.getCardSetId())))
                 .collect(Collectors.toList());
     }
 
@@ -95,6 +99,18 @@ public class CardMapper {
                         .before(e.getBeforeText())
                         .after(e.getAfterText())
                         .note(e.getScopeNote())
+                        .build())
+                .toList();
+    }
+
+    private List<CardFaqEntryDto> toFaqEntryDtoList(List<CardFaq> faqHistory) {
+        if (faqHistory == null) {
+            return List.of();
+        }
+        return faqHistory.stream()
+                .map(f -> CardFaqEntryDto.builder()
+                        .question(f.getQuestion())
+                        .answer(f.getAnswer())
                         .build())
                 .toList();
     }

@@ -8,9 +8,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.application.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.application.model.CardErrata;
+import pl.janda.onepiecetcg.application.model.CardFaq;
 import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.application.service.CardErrataService;
+import pl.janda.onepiecetcg.application.service.CardFaqService;
 import pl.janda.onepiecetcg.application.service.CardService;
 import pl.janda.onepiecetcg.application.service.PagedCards;
 
@@ -40,6 +42,9 @@ class CardControllerTest {
 
     @MockitoBean
     private CardErrataService cardErrataService;
+
+    @MockitoBean
+    private CardFaqService cardFaqService;
 
     // CardService.searchCards has 17 params, in this order:
     // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
@@ -140,6 +145,7 @@ class CardControllerTest {
                 .build();
         when(cardErrataService.historyByCardCodes(List.of("OP13-119")))
                 .thenReturn(Map.of("OP13-119", List.of(older, newer)));
+        when(cardFaqService.historyByCardCodes(List.of("OP13-119"))).thenReturn(Map.of());
 
         mockMvc.perform(get("/api/cards/1"))
                 .andExpect(status().isOk())
@@ -149,5 +155,39 @@ class CardControllerTest {
                 .andExpect(jsonPath("$.errata[0].note").value("Also applies to parallel card version."))
                 .andExpect(jsonPath("$.errata[1].date").value("2024-03-03"))
                 .andExpect(jsonPath("$.errata[1].after").value("New text"));
+    }
+
+    @Test
+    void getCardById_embedsFullFaqHistoryOrderedOldestToNewest() throws Exception {
+        var card = SetCard.builder()
+                .id(1L)
+                .cardSetId("OP13-119")
+                .cardName("Charlotte Katakuri")
+                .build();
+        when(cardService.getCardById("1")).thenReturn(card);
+        when(cardErrataService.historyByCardCodes(List.of("OP13-119"))).thenReturn(Map.of());
+
+        var older = CardFaq.builder()
+                .cardCode("OP13-119")
+                .question("Does this trigger on Life cards?")
+                .answer("No.")
+                .publishedDate(LocalDate.of(2023, 6, 1))
+                .build();
+        var newer = CardFaq.builder()
+                .cardCode("OP13-119")
+                .question("Does this stack with other effects?")
+                .answer("Yes.")
+                .publishedDate(LocalDate.of(2024, 3, 3))
+                .build();
+        when(cardFaqService.historyByCardCodes(List.of("OP13-119")))
+                .thenReturn(Map.of("OP13-119", List.of(older, newer)));
+
+        mockMvc.perform(get("/api/cards/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.faq.length()").value(2))
+                .andExpect(jsonPath("$.faq[0].question").value("Does this trigger on Life cards?"))
+                .andExpect(jsonPath("$.faq[0].answer").value("No."))
+                .andExpect(jsonPath("$.faq[1].question").value("Does this stack with other effects?"))
+                .andExpect(jsonPath("$.faq[1].answer").value("Yes."));
     }
 }
