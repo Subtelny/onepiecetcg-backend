@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import pl.janda.onepiecetcg.application.service.CardErrataSyncService;
 import pl.janda.onepiecetcg.application.service.CardSetSyncService;
 import pl.janda.onepiecetcg.application.service.SetCardSyncService;
 import pl.janda.onepiecetcg.web.dto.SyncResultDto;
@@ -24,6 +25,8 @@ public class InternalSyncController {
     private final CardSetSyncService cardSetSyncService;
 
     private final SetCardSyncService setCardSyncService;
+
+    private final CardErrataSyncService cardErrataSyncService;
 
     @PostMapping("/card-sets")
     @Operation(summary = "Manually sync card sets",
@@ -49,5 +52,17 @@ public class InternalSyncController {
     public ResponseEntity<SyncResultDto> syncSetCards() {
         setCardSyncService.syncSetCards(true);
         return ResponseEntity.ok(new SyncResultDto(true, "Set cards sync completed (forced)"));
+    }
+
+    @PostMapping("/card-errata")
+    @Operation(summary = "Manually sync card errata",
+            description = "Re-scrapes the official errata list from en.onepiece-cardgame.com and replaces the stored errata history.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Sync completed"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
+    })
+    public ResponseEntity<SyncResultDto> syncCardErrata() {
+        cardErrataSyncService.syncErrata();
+        return ResponseEntity.ok(new SyncResultDto(true, "Card errata sync completed"));
     }
 }

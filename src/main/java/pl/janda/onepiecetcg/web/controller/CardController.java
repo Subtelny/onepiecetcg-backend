@@ -19,12 +19,15 @@ import pl.janda.onepiecetcg.application.model.CardColor;
 import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardRarity;
 import pl.janda.onepiecetcg.application.model.SetCard;
+import pl.janda.onepiecetcg.application.service.CardErrataService;
 import pl.janda.onepiecetcg.application.service.CardService;
 import pl.janda.onepiecetcg.application.service.PagedCards;
 import pl.janda.onepiecetcg.web.dto.CardDto;
+import pl.janda.onepiecetcg.web.dto.CardErrataDto;
 import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
 import pl.janda.onepiecetcg.web.dto.CardSearchRequest;
 import pl.janda.onepiecetcg.web.dto.CardSearchResponse;
+import pl.janda.onepiecetcg.web.mapper.CardErrataMapper;
 import pl.janda.onepiecetcg.web.mapper.CardMapper;
 
 import java.util.List;
@@ -38,7 +41,11 @@ public class CardController {
 
     private final CardService cardService;
 
+    private final CardErrataService cardErrataService;
+
     private final CardMapper cardMapper;
+
+    private final CardErrataMapper cardErrataMapper;
 
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
@@ -78,8 +85,11 @@ public class CardController {
                 request.getLimit(),
                 request.getShowAllVariants());
 
+        var errataByCardCode = cardErrataService.historyByCardCodes(
+                pagedCards.cards().stream().map(SetCard::getCardSetId).toList());
+
         var response = CardSearchResponse.builder()
-                .cards(cardMapper.toDtoList(pagedCards.cards()))
+                .cards(cardMapper.toDtoList(pagedCards.cards(), errataByCardCode))
                 .totalCount(pagedCards.totalCount())
                 .page(pagedCards.page())
                 .limit(pagedCards.limit())
@@ -116,7 +126,8 @@ public class CardController {
             @Parameter(description = "0-based variant index; defaults to 0 (representative variant)") @RequestParam(required = false) Integer variant
     ) {
         SetCard card = cardService.getVariantByCardCode(cardCode, variant);
-        return ResponseEntity.ok(cardMapper.toDto(card));
+        var errata = cardErrataService.historyByCardCodes(List.of(card.getCardSetId())).get(card.getCardSetId());
+        return ResponseEntity.ok(cardMapper.toDto(card, errata));
     }
 
     @GetMapping("/{id}")
@@ -132,7 +143,20 @@ public class CardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         SetCard card = cardService.getCardById(id);
-        return ResponseEntity.ok(cardMapper.toDto(card));
+        var errata = cardErrataService.historyByCardCodes(List.of(card.getCardSetId())).get(card.getCardSetId());
+        return ResponseEntity.ok(cardMapper.toDto(card, errata));
+    }
+
+    @GetMapping("/errata")
+    @Operation(summary = "Get all card errata history",
+            description = "Returns the full errata history (every correction ever issued) across all cards, including superseded entries for cards erratad more than once")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Errata list retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CardErrataDto.class)))
+    })
+    public ResponseEntity<List<CardErrataDto>> getAllErrata() {
+        return ResponseEntity.ok(cardErrataMapper.toDtoList(cardErrataService.listAll()));
     }
 
     @GetMapping("/{id}/variants")
@@ -148,6 +172,8 @@ public class CardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         List<SetCard> variants = cardService.getVariantsByCardId(id);
-        return ResponseEntity.ok(cardMapper.toDtoList(variants));
+        var errataByCardCode = cardErrataService.historyByCardCodes(
+                variants.stream().map(SetCard::getCardSetId).toList());
+        return ResponseEntity.ok(cardMapper.toDtoList(variants, errataByCardCode));
     }
 }

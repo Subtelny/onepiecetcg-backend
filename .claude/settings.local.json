@@ -34,7 +34,8 @@
       "WebFetch(domain:www.cardmarket.com)",
       "WebFetch(domain:onepiece.limitlesstcg.com)",
       "WebFetch(domain:www.optcgapi.com)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:en.onepiece-cardgame.com)"
     ]
   }
 }

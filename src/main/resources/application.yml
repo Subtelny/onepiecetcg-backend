@@ -17,6 +17,10 @@ spring:
 optcgapi:
   base-url: https://www.optcgapi.com/api
 
+onepiece-cardgame:
+  errata-url: https://en.onepiece-cardgame.com/rules/errata_card/
+  topics-url: https://en.onepiece-cardgame.com/topics/
+
 card-sets:
   sync:
     cron: "0 0 3 * * *"
@@ -24,6 +28,10 @@ card-sets:
 set-cards:
   sync:
     cron: "0 15 3 * * *"
+
+card-errata:
+  sync:
+    cron: "0 30 3 * * *"
 
 internal:
   api-key: ${INTERNAL_API_KEY:dev-only-change-me}

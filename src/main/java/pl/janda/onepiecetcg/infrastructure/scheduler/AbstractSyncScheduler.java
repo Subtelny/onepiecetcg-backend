@@ -11,7 +11,7 @@ public abstract class AbstractSyncScheduler {
         try {
             syncTask.run();
         } catch (Exception e) {
-            log.error("Failed to sync {} from optcgapi.com", syncDescription, e);
+            log.error("Failed to sync {}", syncDescription, e);
         }
     }
 }

@@ -2,21 +2,28 @@ package pl.janda.onepiecetcg.web.mapper;
 
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.application.model.CardColor;
+import pl.janda.onepiecetcg.application.model.CardErrata;
 import pl.janda.onepiecetcg.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.application.model.CardType;
 import pl.janda.onepiecetcg.application.model.SetCard;
 import pl.janda.onepiecetcg.web.dto.CardDto;
+import pl.janda.onepiecetcg.web.dto.CardErrataEntryDto;
 import pl.janda.onepiecetcg.web.dto.CardFilterOptionsDto;
 import pl.janda.onepiecetcg.web.dto.CardSetOptionDto;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
 public class CardMapper {
 
     public CardDto toDto(SetCard card) {
+        return toDto(card, List.of());
+    }
+
+    public CardDto toDto(SetCard card, List<CardErrata> errataHistory) {
         if (card == null) {
             return null;
         }
@@ -37,12 +44,35 @@ public class CardMapper {
                 .imageUrl(card.getCardImage())
                 .marketPrice(card.getMarketPrice())
                 .inventoryPrice(card.getInventoryPrice())
+                .errata(toErrataEntryDtoList(errataHistory))
                 .build();
     }
 
     public List<CardDto> toDtoList(List<SetCard> cards) {
-        return cards != null ?
-                cards.stream().map(this::toDto).collect(Collectors.toList()) : List.of();
+        return toDtoList(cards, Map.of());
+    }
+
+    public List<CardDto> toDtoList(List<SetCard> cards, Map<String, List<CardErrata>> errataByCardCode) {
+        if (cards == null) {
+            return List.of();
+        }
+        return cards.stream()
+                .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId())))
+                .collect(Collectors.toList());
+    }
+
+    private List<CardErrataEntryDto> toErrataEntryDtoList(List<CardErrata> errataHistory) {
+        if (errataHistory == null) {
+            return List.of();
+        }
+        return errataHistory.stream()
+                .map(e -> CardErrataEntryDto.builder()
+                        .date(e.getNoticeDate() != null ? e.getNoticeDate().toString() : null)
+                        .before(e.getBeforeText())
+                        .after(e.getAfterText())
+                        .note(e.getScopeNote())
+                        .build())
+                .toList();
     }
 
     public CardFilterOptionsDto toFilterOptionsDto(CardFilterOptions options) {
