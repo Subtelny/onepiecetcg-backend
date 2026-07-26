@@ -57,7 +57,7 @@ public class CardSearchRequest {
     @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
     private List<String> prefixes;
 
-    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to insertion order if omitted. Ignored when searchIn=SEMANTIC and the query text is non-blank, which orders by full-text relevance (ts_rank) instead.")
+    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to CARD_NUMBER ascending if omitted - except when searchIn=SEMANTIC and the query text is non-blank, in which case omitting sortBy orders by full-text relevance (ts_rank) instead. An explicitly provided sortBy always overrides relevance ranking, even in SEMANTIC mode with non-blank text.")
     private CardSortField sortBy;
 
     @Parameter(description = "Sort direction (ASC, DESC). Defaults to ASC.")

@@ -15,6 +15,7 @@ import pl.janda.onepiecetcg.application.model.CardSearchField;
 import pl.janda.onepiecetcg.application.model.CardSortField;
 import pl.janda.onepiecetcg.application.model.CardSummary;
 import pl.janda.onepiecetcg.application.model.SetCard;
+import pl.janda.onepiecetcg.application.model.SortDirection;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -359,5 +360,72 @@ class JooqSetCardQueryAdapterIT {
                 null, null, 0, 50, false, false);
 
         assertThat(results).hasSize(5);
+    }
+
+    @Test
+    void sortByCost_ascending_ordersByNumericCostNotStringCost() {
+        // costs: Luffy=1, Zoro=3, Nami=5, Usopp=2, Robin=4
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null,
+                CardSortField.COST, SortDirection.ASC, 0, 50, false, false);
+
+        assertThat(results).extracting(CardSummary::getCardName)
+                .containsExactly("Monkey D. Luffy", "Usopp", "Roronoa Zoro", "Nico Robin", "Nami");
+    }
+
+    @Test
+    void sortByCost_descending_reversesOrder() {
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null,
+                CardSortField.COST, SortDirection.DESC, 0, 50, false, false);
+
+        assertThat(results).extracting(CardSummary::getCardName)
+                .containsExactly("Nami", "Nico Robin", "Roronoa Zoro", "Usopp", "Monkey D. Luffy");
+    }
+
+    @Test
+    void sortByPower_allNull_doesNotError_fallsBackToIdTiebreaker() {
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null,
+                CardSortField.POWER, SortDirection.DESC, 0, 50, false, false);
+
+        assertThat(results).extracting(CardSummary::getCardName)
+                .containsExactly("Monkey D. Luffy", "Roronoa Zoro", "Nami", "Usopp", "Nico Robin");
+    }
+
+    @Test
+    void defaultSort_noExplicitSortBy_ordersByCardNumberNotInsertionId() {
+        // Inserted last (highest DB id) but has the lexicographically smallest card_set_id - proves
+        // the no-sortBy default is CARD_NUMBER order, not raw insertion/id order.
+        jpaRepository.saveAndFlush(
+                SetCard.builder()
+                        .cardName("Extra Card")
+                        .cardSetId("OP01-000")
+                        .cardText("Filler")
+                        .representative(true)
+                        .build());
+
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+
+        assertThat(results.get(0).getCardName()).isEqualTo("Extra Card");
+    }
+
+    @Test
+    void semanticSearch_withExplicitSortBy_overridesRelevanceRanking() {
+        // SEMANTIC "Straw Hat" matches Luffy (cost=1) and Usopp (cost=2) - relevance ranking would
+        // put Luffy first (exact phrase match), but an explicit sortBy=COST DESC must override that.
+        var results = adapter.search(
+                "Straw Hat", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                CardSortField.COST, SortDirection.DESC, 0, 50, false, false);
+
+        assertThat(results).extracting(CardSummary::getCardName)
+                .containsExactly("Usopp", "Monkey D. Luffy");
     }
 }

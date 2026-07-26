@@ -93,14 +93,13 @@ class JooqSetCardQueryAdapter {
     }
 
     /**
-     * Builds the ORDER BY clause for search(). SET_CARDS.ID.asc() is always appended as a stable
-     * tie-breaker so pagination doesn't skip/duplicate rows when the sorted field has equal values.
+     * Builds the ORDER BY clause for search(). Defaults to CARD_NUMBER ascending when sortBy is
+     * omitted. SET_CARDS.ID.asc() is always appended as a stable tie-breaker so pagination doesn't
+     * skip/duplicate rows when the sorted field has equal values.
      */
     private static List<SortField<?>> buildOrderBy(CardSortField sortBy, SortDirection sortOrder) {
-        if (sortBy == null) {
-            return List.of(SET_CARDS.ID.asc());
-        }
-        Field<?> sortColumn = switch (sortBy) {
+        var resolvedSortBy = sortBy != null ? sortBy : CardSortField.CARD_NUMBER;
+        Field<?> sortColumn = switch (resolvedSortBy) {
             case CARD_NUMBER -> SET_CARDS.CARD_SET_ID;
             case COST -> safeIntCast(SET_CARDS.CARD_COST);
             case POWER -> safeIntCast(SET_CARDS.CARD_POWER);
@@ -150,9 +149,10 @@ class JooqSetCardQueryAdapter {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, showAllVariants, errataOnly);
 
-        // SEMANTIC mode ranks by full-text relevance instead of the requested sortBy/sortOrder -
-        // see the @Parameter javadoc on CardSearchRequest.sortBy.
-        var orderBy = searchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()
+        // SEMANTIC mode ranks by full-text relevance instead of CARD_NUMBER default ordering, but
+        // only when the caller didn't explicitly request a sortBy - an explicit sortBy always wins.
+        // See the @Parameter javadoc on CardSearchRequest.sortBy.
+        var orderBy = sortBy == null && searchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()
                 ? List.<SortField<?>>of(semanticRank(name).desc(), SET_CARDS.ID.asc())
                 : buildOrderBy(sortBy, sortOrder);
 
