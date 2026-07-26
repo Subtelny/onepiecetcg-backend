@@ -35,7 +35,14 @@
       "WebFetch(domain:onepiece.limitlesstcg.com)",
       "WebFetch(domain:www.optcgapi.com)",
       "Bash(find:*)",
-      "WebFetch(domain:en.onepiece-cardgame.com)"
+      "WebFetch(domain:en.onepiece-cardgame.com)",
+      "Bash(CP=\"$HOME/.m2/repository/org/apache/pdfbox/pdfbox/3.0.3/pdfbox-3.0.3.jar:$HOME/.m2/repository/org/apache/pdfbox/fontbox/3.0.3/fontbox-3.0.3.jar:$HOME/.m2/repository/org/apache/pdfbox/pdfbox-io/3.0.3/pdfbox-io-3.0.3.jar\":*)",
+      "Bash(javac:*)",
+      "Bash(java:*)",
+      "Bash(CP=\"/Users/sebastian.janda/.m2/repository/org/apache/pdfbox/pdfbox/3.0.3/pdfbox-3.0.3.jar:/Users/sebastian.janda/.m2/repository/org/apache/pdfbox/fontbox/3.0.3/fontbox-3.0.3.jar:/Users/sebastian.janda/.m2/repository/org/apache/pdfbox/pdfbox-io/3.0.3/pdfbox-io-3.0.3.jar\")",
+      "Bash(export CP:*)",
+      "Bash(CP=\"/Users/sebastian.janda/.m2/repository/org/apache/pdfbox/pdfbox/3.0.3/pdfbox-3.0.3.jar:/Users/sebastian.janda/.m2/repository/org/apache/pdfbox/fontbox/3.0.3/fontbox-3.0.3.jar:/Users/sebastian.janda/.m2/repository/org/apache/pdfbox/pdfbox-io/3.0.3/pdfbox-io-3.0.3.jar:/Users/sebastian.janda/.m2/repository/commons-logging/commons-logging/1.3.4/commons-logging-1.3.4.jar\")",
+      "Bash(printf:*)"
     ]
   }
 }

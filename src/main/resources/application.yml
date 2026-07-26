@@ -20,6 +20,7 @@ optcgapi:
 onepiece-cardgame:
   errata-url: https://en.onepiece-cardgame.com/rules/errata_card/
   topics-url: https://en.onepiece-cardgame.com/topics/
+  faq-url: https://en.onepiece-cardgame.com/rules/faq/
 
 card-sets:
   sync:
@@ -32,6 +33,10 @@ set-cards:
 card-errata:
   sync:
     cron: "0 30 3 * * *"
+
+card-faq:
+  sync:
+    cron: "0 45 3 * * *"
 
 internal:
   api-key: ${INTERNAL_API_KEY:dev-only-change-me}

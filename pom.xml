@@ -81,6 +81,13 @@
             <version>1.18.1</version>
         </dependency>
 
+        <!-- Apache PDFBox - PDF text/position extraction for the card FAQ scraper (en.onepiece-cardgame.com publishes FAQ rulings as PDFs, no JSON API) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.3</version>
+        </dependency>
+
         <!-- Lombok - Reduce boilerplate code -->
         <dependency>
             <groupId>org.projectlombok</groupId>

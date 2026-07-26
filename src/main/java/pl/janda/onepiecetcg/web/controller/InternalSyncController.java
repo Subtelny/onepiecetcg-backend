@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.janda.onepiecetcg.application.service.CardErrataSyncService;
+import pl.janda.onepiecetcg.application.service.CardFaqSyncService;
 import pl.janda.onepiecetcg.application.service.CardSetSyncService;
 import pl.janda.onepiecetcg.application.service.SetCardSyncService;
 import pl.janda.onepiecetcg.web.dto.SyncResultDto;
@@ -27,6 +28,8 @@ public class InternalSyncController {
     private final SetCardSyncService setCardSyncService;
 
     private final CardErrataSyncService cardErrataSyncService;
+
+    private final CardFaqSyncService cardFaqSyncService;
 
     @PostMapping("/card-sets")
     @Operation(summary = "Manually sync card sets",
@@ -64,5 +67,18 @@ public class InternalSyncController {
     public ResponseEntity<SyncResultDto> syncCardErrata() {
         cardErrataSyncService.syncErrata();
         return ResponseEntity.ok(new SyncResultDto(true, "Card errata sync completed"));
+    }
+
+    @PostMapping("/card-faq")
+    @Operation(summary = "Manually sync card FAQ",
+            description = "Re-checks the FAQ listing on en.onepiece-cardgame.com and re-downloads/parses the PDF " +
+                    "for any card set whose published date has changed, replacing that set's stored FAQ entries.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Sync completed"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
+    })
+    public ResponseEntity<SyncResultDto> syncCardFaq() {
+        cardFaqSyncService.syncFaq();
+        return ResponseEntity.ok(new SyncResultDto(true, "Card FAQ sync completed"));
     }
 }

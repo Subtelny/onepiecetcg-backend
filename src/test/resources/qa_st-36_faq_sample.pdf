@@ -1,0 +1,40 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 497 >>
+stream
+BT /F1 10 Tf 1 0 0 1 20 700 Tm (ST36-001) Tj ET
+BT /F1 10 Tf 1 0 0 1 70 680 Tm (Cavendish) Tj ET
+BT /F1 10 Tf 1 0 0 1 170 660 Tm (Does this effect trigger) Tj ET
+BT /F1 10 Tf 1 0 0 1 170 640 Tm (during the opponent's turn?) Tj ET
+BT /F1 10 Tf 1 0 0 1 320 620 Tm (Yes, it does.) Tj ET
+BT /F1 10 Tf 1 0 0 1 20 580 Tm (ST36-002) Tj ET
+BT /F1 10 Tf 1 0 0 1 70 560 Tm (Killer) Tj ET
+BT /F1 10 Tf 1 0 0 1 170 540 Tm (Can this be used twice?) Tj ET
+BT /F1 10 Tf 1 0 0 1 320 520 Tm (No, only once.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000241 00000 n
+0000000788 00000 n
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+858
+%%EOF
