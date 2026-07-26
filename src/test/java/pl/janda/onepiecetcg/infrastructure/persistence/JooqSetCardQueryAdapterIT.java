@@ -124,6 +124,14 @@ class JooqSetCardQueryAdapterIT {
                         .cardCost("2")
                         .subTypes("Hat / Straw")
                         .representative(true)
+                        .build(),
+                SetCard.builder()
+                        .cardName("Nico Robin")
+                        .cardSetId("OP01-005")
+                        .cardText("[On Play] Reveal the top card of your deck.")
+                        .cardCost("4")
+                        .attribute("?")
+                        .representative(true)
                         .build()
         ));
     }
@@ -153,7 +161,7 @@ class JooqSetCardQueryAdapterIT {
                 CardSortField.CARD_NUMBER, null, 0, 50, false);
 
         assertThat(results).extracting(SetCard::getCardSetId)
-                .containsExactly("OP01-001", "OP01-002", "OP01-003", "OP01-004");
+                .containsExactly("OP01-001", "OP01-002", "OP01-003", "OP01-004", "OP01-005");
     }
 
     @Test
@@ -173,13 +181,13 @@ class JooqSetCardQueryAdapterIT {
                 null, CardSearchField.NAME,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(withNull).hasSize(4);
+        assertThat(withNull).hasSize(5);
 
         var withEmpty = adapter.search(
                 null, CardSearchField.NAME,
                 null, null, null, null, List.of(), null, null, null, null, null, null,
                 null, null, 0, 50, false);
-        assertThat(withEmpty).hasSize(4);
+        assertThat(withEmpty).hasSize(5);
     }
 
     @Test
@@ -238,5 +246,73 @@ class JooqSetCardQueryAdapterIT {
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false);
         assertThat(matched).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+    }
+
+    @Test
+    void semanticSearch_plainWord_matchesAsPrefixNotExactLexeme() {
+        // "Luf" is not itself a lexeme in any card's text, only a prefix of "luffy" - SEMANTIC mode
+        // must match it via prefix (:*) tsquery matching, not require the exact word.
+        var results = adapter.search(
+                "Luf", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+    }
+
+    @Test
+    void semanticSearch_prefixSharedAcrossRows_matchesAll() {
+        // "Char" is a prefix of "character", which appears in Luffy's, Zoro's, and Nami's card text.
+        var results = adapter.search(
+                "Char", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(results).extracting(SetCard::getCardName)
+                .containsExactlyInAnyOrder("Monkey D. Luffy", "Roronoa Zoro", "Nami");
+    }
+
+    @Test
+    void semanticSearch_prefixAndFullWord_areAndedNotOred() {
+        // "Char" (prefix of "character") appears on Luffy, Zoro, and Nami, but only Zoro's row also
+        // contains "Zoro" - the two terms must be AND-ed, narrowing to just Zoro.
+        var results = adapter.search(
+                "Char Zoro", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(results).extracting(SetCard::getCardName).containsExactly("Roronoa Zoro");
+    }
+
+    @Test
+    void semanticSearch_quotedPartialWord_doesNotMatch_phraseStaysExact() {
+        // "Straw Ha" (missing the final "t") is quoted - phraseto_tsquery still requires the exact
+        // stored phrase "Straw Hat", so quoting must not gain prefix behavior.
+        var results = adapter.search(
+                "\"Straw Ha\"", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    void semanticSearch_prefixRemainderCombinedWithQuotedPhrase_matches() {
+        // The exact phrase "Straw Hat" (Luffy's text) AND-ed with "Luf" as a plain-word remainder -
+        // this only passes if prefix matching is wired through the phrase+remainder AND-combination
+        // path too, not just the simple single-word path.
+        var results = adapter.search(
+                "\"Straw Hat\" Luf", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(results).extracting(SetCard::getCardName).containsExactly("Monkey D. Luffy");
+    }
+
+    @Test
+    void semanticSearch_punctuationOnlyQuery_stillMatchesViaIlikeFallback() {
+        // "?" is a real placeholder attribute value in this domain. Postgres's 'simple' parser
+        // discards pure punctuation, producing an empty tsquery that can never match via "@@" -
+        // emptyTsqueryFallback's ILIKE-based fallback must still surface it.
+        var results = adapter.search(
+                "?", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false);
+        assertThat(results).extracting(SetCard::getCardName).containsExactly("Nico Robin");
     }
 }

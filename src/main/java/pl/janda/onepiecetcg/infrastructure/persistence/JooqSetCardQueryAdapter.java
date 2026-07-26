@@ -298,21 +298,44 @@ class JooqSetCardQueryAdapter {
     }
 
     /**
+     * Builds a prefix-matching tsquery from arbitrary user text, so a plain (unquoted) word matches
+     * any stored lexeme it's a prefix of (e.g. "Catar" matches "catarina") instead of requiring an
+     * exact lexeme, as plainto_tsquery would. Re-tokenizes the text through the same 'simple' config
+     * used to build card_semantic_search_vector via to_tsvector/unnest, then rebuilds a to_tsquery
+     * expression from those already-tokenized lexemes, each wrapped in tsquery's own literal-quoting
+     * syntax ('lexeme':*, doubling embedded quotes) before appending the ":*" prefix operator - this
+     * neutralizes any of to_tsquery's reserved characters (:, &, |, !, (), ') that a lexeme could rarely
+     * contain (e.g. from a url/host-like token) without silently dropping them, and avoids hand-rolling
+     * Java-side escaping against to_tsquery's boolean-operator grammar. coalesce(..., '') ensures
+     * to_tsquery always receives a string, never SQL NULL, so zero-lexeme input (e.g. pure punctuation)
+     * yields an EMPTY tsquery rather than a NULL one - see emptyTsqueryFallback()/semanticRank() for why
+     * that distinction matters for the fallback-detection and ranking-sort-order behavior. GIN indexes
+     * on tsvector already support ":*" prefix lookups natively - no schema change needed.
+     */
+    private static Field<Object> prefixTsQuery(String text) {
+        return field(
+                "to_tsquery('simple', coalesce(" +
+                        "(SELECT string_agg('''' || replace(lexeme, '''', '''''') || ''':*', ' & ') " +
+                        " FROM unnest(to_tsvector('simple', {0})) AS lexeme), ''))",
+                Object.class, text);
+    }
+
+    /**
      * Full-text match against the generated tsvector column used by SEMANTIC mode (see
      * scripts/db/add-card-semantic-search-vector.sql) - covers name/type/color/cost/power/counter/
      * attribute/cardSetId/subTypes/effect. The 'simple' config here must match the one baked into
      * that generated column. A single/double-quoted segment anywhere in the query is matched as an
-     * exact, word-order-preserving phrase, AND-ed with any remaining plain words (any-word-order
-     * match) - see extractQuotedPhrase().
+     * exact, word-order-preserving phrase, AND-ed with any remaining plain words - each plain word
+     * matched as a PREFIX (see prefixTsQuery()), not requiring an exact lexeme - see extractQuotedPhrase().
      */
     private static Condition semanticMatch(String query) {
         var parsed = extractQuotedPhrase(query);
         var ftsCondition = parsed.phrase() == null
-                ? condition("{0} @@ plainto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query)
+                ? condition("{0} @@ {1}", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, prefixTsQuery(query))
                 : parsed.remainder().isBlank()
                         ? condition("{0} @@ phraseto_tsquery('simple', {1})", SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase())
-                        : condition("{0} @@ (phraseto_tsquery('simple', {1}) && plainto_tsquery('simple', {2}))",
-                                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase(), parsed.remainder());
+                        : condition("{0} @@ ({1} && phraseto_tsquery('simple', {2}))",
+                                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, prefixTsQuery(parsed.remainder()), parsed.phrase());
         return ftsCondition.or(emptyTsqueryFallback(query));
     }
 
@@ -321,10 +344,12 @@ class JooqSetCardQueryAdapter {
      * empty tsquery that can never match via "@@" regardless of column content. When that
      * happens, fall back to a literal case-insensitive substring match across the same columns
      * that feed card_semantic_search_vector, so symbol-only queries (matching e.g. the "?"
-     * placeholder attribute value) are still findable in SEMANTIC mode.
+     * placeholder attribute value) are still findable in SEMANTIC mode. Checks emptiness via the
+     * same prefixTsQuery() used for matching, so "is this empty" and "what actually gets matched"
+     * are driven by the same function rather than a parallel one that merely happens to agree.
      */
     private static Condition emptyTsqueryFallback(String query) {
-        return condition("plainto_tsquery('simple', {0})::text = ''", query)
+        return condition("{0}::text = ''", prefixTsQuery(query))
                 .and(combinedSemanticText().containsIgnoreCase(query));
     }
 
@@ -346,13 +371,13 @@ class JooqSetCardQueryAdapter {
     private static Field<Double> semanticRank(String query) {
         var parsed = extractQuotedPhrase(query);
         if (parsed.phrase() == null) {
-            return field("ts_rank_cd({0}, plainto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, query);
+            return field("ts_rank_cd({0}, {1})", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, prefixTsQuery(query));
         }
         if (parsed.remainder().isBlank()) {
             return field("ts_rank_cd({0}, phraseto_tsquery('simple', {1}))", Double.class, SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase());
         }
-        return field("ts_rank_cd({0}, phraseto_tsquery('simple', {1}) && plainto_tsquery('simple', {2}))", Double.class,
-                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, parsed.phrase(), parsed.remainder());
+        return field("ts_rank_cd({0}, {1} && phraseto_tsquery('simple', {2}))", Double.class,
+                SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, prefixTsQuery(parsed.remainder()), parsed.phrase());
     }
 
     /**
