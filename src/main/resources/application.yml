@@ -14,6 +14,13 @@ spring:
     open-in-view: false
     show-sql: false
 
+# Comma-separated. Only browser calls need this - the frontend's SSR server renders
+# from Node, which sends no Origin header and so never triggers CORS. The browser then
+# hydrates and takes over fetching, which does. 5173 is the frontend dev server, 4173
+# the built SSR server.
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173}
+
 optcgapi:
   base-url: https://www.optcgapi.com/api
 
