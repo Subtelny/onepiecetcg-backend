@@ -38,11 +38,6 @@ public class JpaSetCardRepository implements SetCardRepository {
 
     @Override
     public <S extends SetCard> List<S> saveAll(Iterable<S> setCards) {
-        // Flush is required here: recomputeRepresentative()/search() run raw JOOQ SQL against the same
-        // transaction's connection, bypassing the Hibernate session, so pending writes (including the
-        // deleteAll() that normally precedes this call) must be physically written first or those
-        // JOOQ queries would see stale/incomplete data.
-
         var list = new ArrayList<S>();
         setCards.forEach(list::add);
         var totalCount = list.size();
@@ -52,7 +47,7 @@ public class JpaSetCardRepository implements SetCardRepository {
 
         try {
             // Process in batches to provide progress updates
-            var batchSize = 500;
+            var batchSize = 50;
             var savedCards = new ArrayList<S>();
 
             for (var i = 0; i < list.size(); i += batchSize) {
@@ -67,7 +62,7 @@ public class JpaSetCardRepository implements SetCardRepository {
                         totalCount);
 
                 var batchStartTime = System.currentTimeMillis();
-                var savedBatch = jpaRepository.saveAllAndFlush(batch);
+                var savedBatch = jpaRepository.saveAll(batch);
                 var batchDuration = System.currentTimeMillis() - batchStartTime;
 
                 savedCards.addAll(savedBatch);
