@@ -50,6 +50,7 @@ public class SetCardSyncService {
     }
 
     private void performSyncSetCards(boolean force) {
+        var startTime = System.currentTimeMillis();
         log.info("Set cards sync started (force={})", force);
 
         if (!force) {
@@ -70,31 +71,57 @@ public class SetCardSyncService {
         }
 
         log.info("Fetching all set cards from optcgapi.com");
+        var fetchStartTime = System.currentTimeMillis();
         var fetched = setCardApiClient.fetchAllSetCards();
-        log.info("Fetched {} set cards from optcgapi.com", fetched.size());
+        var fetchDuration = System.currentTimeMillis() - fetchStartTime;
+        log.info("Fetched {} set cards from optcgapi.com in {}ms", fetched.size(), fetchDuration);
 
         log.info("Setting sync timestamp on fetched cards");
         var now = LocalDateTime.now();
         fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
 
         log.info("Assigning flat rarities to {} cards", fetched.size());
+        var rarityStartTime = System.currentTimeMillis();
         flatRarityCalculatorService.assignFlatRarities(fetched);
+        var rarityDuration = System.currentTimeMillis() - rarityStartTime;
+        log.info("Assigned flat rarities in {}ms", rarityDuration);
 
         log.info("Deleting existing set cards from database");
+        var deleteStartTime = System.currentTimeMillis();
         setCardRepository.deleteAll();
+        var deleteDuration = System.currentTimeMillis() - deleteStartTime;
+        log.info("Deleted existing set cards in {}ms", deleteDuration);
 
-        log.info("Saving {} set cards to database", fetched.size());
-        var saved = setCardRepository.saveAll(fetched);
-        log.info("Successfully saved {} set cards to database{}", saved.size(), force ? " (forced)" : "");
+        log.info("Saving {} set cards to database (this may take several minutes for large datasets)", fetched.size());
+        var saveStartTime = System.currentTimeMillis();
+
+        try {
+            log.info("Starting batch save operation...");
+            var saved = setCardRepository.saveAll(fetched);
+            var saveDuration = System.currentTimeMillis() - saveStartTime;
+            log.info("Successfully saved {} set cards to database in {}ms ({} seconds){}",
+                    saved.size(), saveDuration, saveDuration / 1000, force ? " (forced)" : "");
+        } catch (Exception e) {
+            var saveDuration = System.currentTimeMillis() - saveStartTime;
+            log.error("Failed to save set cards after {}ms. Error: {}", saveDuration, e.getMessage(), e);
+            throw e;
+        }
 
         log.info("Recomputing representative flags for card variants");
+        var recomputeStartTime = System.currentTimeMillis();
         cardRepresentativeService.recompute();
-        log.info("Representative flags recomputed successfully");
+        var recomputeDuration = System.currentTimeMillis() - recomputeStartTime;
+        log.info("Representative flags recomputed successfully in {}ms", recomputeDuration);
 
         log.info("Refreshing card filter options cache");
+        var refreshStartTime = System.currentTimeMillis();
         cardFilterOptionService.refresh();
-        log.info("Card filter options cache refreshed successfully");
+        var refreshDuration = System.currentTimeMillis() - refreshStartTime;
+        log.info("Card filter options cache refreshed successfully in {}ms", refreshDuration);
 
-        log.info("Set cards sync completed successfully (synced {} cards)", saved.size());
+        var totalDuration = System.currentTimeMillis() - startTime;
+        log.info("Set cards sync completed successfully - Total time: {}ms ({} seconds) - Breakdown: fetch={}ms, rarity={}ms, delete={}ms, save={}ms, recompute={}ms, refresh={}ms",
+                totalDuration, totalDuration / 1000, fetchDuration, rarityDuration, deleteDuration,
+                (System.currentTimeMillis() - saveStartTime), recomputeDuration, refreshDuration);
     }
 }

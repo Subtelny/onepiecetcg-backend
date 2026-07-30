@@ -1,6 +1,7 @@
 package pl.janda.onepiecetcg.cards.infrastructure.persistence;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.cards.application.model.CardColor;
 import pl.janda.onepiecetcg.cards.application.model.CardRarity;
@@ -12,11 +13,13 @@ import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.model.SortDirection;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class JpaSetCardRepository implements SetCardRepository {
 
     private final SetCardJpaRepository jpaRepository;
@@ -39,7 +42,51 @@ public class JpaSetCardRepository implements SetCardRepository {
         // transaction's connection, bypassing the Hibernate session, so pending writes (including the
         // deleteAll() that normally precedes this call) must be physically written first or those
         // JOOQ queries would see stale/incomplete data.
-        return jpaRepository.saveAllAndFlush(setCards);
+
+        var list = new ArrayList<S>();
+        setCards.forEach(list::add);
+        var totalCount = list.size();
+
+        log.info("Starting saveAllAndFlush for {} set cards", totalCount);
+        var startTime = System.currentTimeMillis();
+
+        try {
+            // Process in batches to provide progress updates
+            var batchSize = 500;
+            var savedCards = new ArrayList<S>();
+
+            for (var i = 0; i < list.size(); i += batchSize) {
+                var endIndex = Math.min(i + batchSize, list.size());
+                var batch = list.subList(i, endIndex);
+
+                log.info("Saving batch {}/{} ({}-{} of {})",
+                        (i / batchSize) + 1,
+                        (totalCount + batchSize - 1) / batchSize,
+                        i + 1,
+                        endIndex,
+                        totalCount);
+
+                var batchStartTime = System.currentTimeMillis();
+                var savedBatch = jpaRepository.saveAllAndFlush(batch);
+                var batchDuration = System.currentTimeMillis() - batchStartTime;
+
+                savedCards.addAll(savedBatch);
+                log.info("Batch saved in {}ms ({} cards/sec)",
+                        batchDuration,
+                        batchDuration > 0 ? (batch.size() * 1000L / batchDuration) : 0);
+            }
+
+            var totalDuration = System.currentTimeMillis() - startTime;
+            log.info("Completed saveAllAndFlush for {} set cards in {}ms ({} seconds, avg {} cards/sec)",
+                    totalCount, totalDuration, totalDuration / 1000,
+                    totalDuration > 0 ? (totalCount * 1000L / totalDuration) : 0);
+
+            return savedCards;
+        } catch (Exception e) {
+            var duration = System.currentTimeMillis() - startTime;
+            log.error("Error during saveAllAndFlush after {}ms: {}", duration, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
