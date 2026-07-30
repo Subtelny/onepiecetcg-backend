@@ -14,6 +14,13 @@ spring:
       ddl-auto: update
     open-in-view: false
     show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
 
 # Comma-separated. Only browser calls need this - the frontend's SSR server renders
 # from Node, which sends no Origin header and so never triggers CORS. The browser then

@@ -4,12 +4,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import pl.janda.onepiecetcg.cards.application.client.SetCardApiClient;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
 
 import java.time.LocalDateTime;
 
+/**
+ * Orchestrates the set-cards sync: decide whether to run, fetch, enrich, then hand the result to
+ * SetCardReplacementService for the transactional write.
+ * <p>
+ * Deliberately not @Transactional. The expensive part is the outbound fetch of the whole catalog, and
+ * wrapping it in a transaction previously held a connection and the delete's locks for the entire run.
+ * The atomic part is exactly the replace, which owns its own transaction - see SetCardReplacementService.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -21,53 +28,37 @@ public class SetCardSyncService {
 
     private final FlatRarityCalculatorService flatRarityCalculatorService;
 
-    private final CardRepresentativeService cardRepresentativeService;
-
-    private final CardFilterOptionService cardFilterOptionService;
+    private final SetCardReplacementService setCardReplacementService;
 
     private final CardSetSyncService cardSetSyncService;
 
-    @Transactional
     public void syncSetCards() {
         syncSetCards(false);
     }
 
+    /**
+     * Logs and swallows failures because it runs detached on an @Async thread with no caller to report
+     * to. Safe to swallow here only because this method is not transactional: the write is atomic
+     * inside SetCardReplacementService, so a failure rolls that transaction back rather than committing
+     * a half-applied sync.
+     */
     @Async
-    @Transactional
     public void syncSetCardsAsync(boolean force) {
         log.info("Starting async set cards sync in separate thread (force={})", force);
         try {
-            performSyncSetCards(force);
+            syncSetCards(force);
             log.info("Async set cards sync completed successfully");
         } catch (Exception e) {
             log.error("Error during async set cards sync", e);
         }
     }
 
-    @Transactional
     public void syncSetCards(boolean force) {
-        performSyncSetCards(force);
-    }
-
-    private void performSyncSetCards(boolean force) {
         var startTime = System.currentTimeMillis();
         log.info("Set cards sync started (force={})", force);
 
-        if (!force) {
-            log.info("Checking if new card sets exist before syncing set cards");
-            if (setCardRepository.anyExist()) {
-                log.info("Set cards already exist, checking for new card sets");
-                var hasNewSets = cardSetSyncService.syncCardSets();
-                if (!hasNewSets) {
-                    log.info("No new card sets detected, skipping set cards sync");
-                    return;
-                }
-                log.info("New card sets detected, proceeding with set cards sync");
-            } else {
-                log.info("No set cards exist yet, proceeding with initial sync");
-            }
-        } else {
-            log.info("Force sync enabled, skipping new card sets check");
+        if (!shouldSync(force)) {
+            return;
         }
 
         log.info("Fetching all set cards from optcgapi.com");
@@ -86,42 +77,33 @@ public class SetCardSyncService {
         var rarityDuration = System.currentTimeMillis() - rarityStartTime;
         log.info("Assigned flat rarities in {}ms", rarityDuration);
 
-        log.info("Deleting existing set cards from database");
-        var deleteStartTime = System.currentTimeMillis();
-        setCardRepository.deleteAll();
-        var deleteDuration = System.currentTimeMillis() - deleteStartTime;
-        log.info("Deleted existing set cards in {}ms", deleteDuration);
-
-        log.info("Saving {} set cards to database (this may take several minutes for large datasets)", fetched.size());
-        var saveStartTime = System.currentTimeMillis();
-
-        try {
-            log.info("Starting batch save operation...");
-            var saved = setCardRepository.saveAll(fetched);
-            var saveDuration = System.currentTimeMillis() - saveStartTime;
-            log.info("Successfully saved {} set cards to database in {}ms ({} seconds){}",
-                    saved.size(), saveDuration, saveDuration / 1000, force ? " (forced)" : "");
-        } catch (Exception e) {
-            var saveDuration = System.currentTimeMillis() - saveStartTime;
-            log.error("Failed to save set cards after {}ms. Error: {}", saveDuration, e.getMessage(), e);
-            throw e;
-        }
-
-        log.info("Recomputing representative flags for card variants");
-        var recomputeStartTime = System.currentTimeMillis();
-        cardRepresentativeService.recompute();
-        var recomputeDuration = System.currentTimeMillis() - recomputeStartTime;
-        log.info("Representative flags recomputed successfully in {}ms", recomputeDuration);
-
-        log.info("Refreshing card filter options cache");
-        var refreshStartTime = System.currentTimeMillis();
-        cardFilterOptionService.refresh();
-        var refreshDuration = System.currentTimeMillis() - refreshStartTime;
-        log.info("Card filter options cache refreshed successfully in {}ms", refreshDuration);
+        setCardReplacementService.replaceAll(fetched);
 
         var totalDuration = System.currentTimeMillis() - startTime;
-        log.info("Set cards sync completed successfully - Total time: {}ms ({} seconds) - Breakdown: fetch={}ms, rarity={}ms, delete={}ms, save={}ms, recompute={}ms, refresh={}ms",
-                totalDuration, totalDuration / 1000, fetchDuration, rarityDuration, deleteDuration,
-                (System.currentTimeMillis() - saveStartTime), recomputeDuration, refreshDuration);
+        log.info("Set cards sync completed successfully{} - Total time: {}ms ({} seconds), of which fetch={}ms, rarity={}ms",
+                force ? " (forced)" : "", totalDuration, totalDuration / 1000, fetchDuration, rarityDuration);
+    }
+
+    /**
+     * Gates the expensive fetch behind card-sets diff detection: unless forced, a run is only worth
+     * doing when the external /allSets/ response contains a set that is missing locally.
+     */
+    private boolean shouldSync(boolean force) {
+        if (force) {
+            log.info("Force sync enabled, skipping new card sets check");
+            return true;
+        }
+        log.info("Checking if new card sets exist before syncing set cards");
+        if (!setCardRepository.anyExist()) {
+            log.info("No set cards exist yet, proceeding with initial sync");
+            return true;
+        }
+        log.info("Set cards already exist, checking for new card sets");
+        if (!cardSetSyncService.syncCardSets()) {
+            log.info("No new card sets detected, skipping set cards sync");
+            return false;
+        }
+        log.info("New card sets detected, proceeding with set cards sync");
+        return true;
     }
 }

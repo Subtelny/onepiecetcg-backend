@@ -7,10 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.janda.onepiecetcg.application.OnePieceTcgApplication;
+import pl.janda.onepiecetcg.cards.application.service.CardErrataSyncService;
+import pl.janda.onepiecetcg.cards.application.service.CardFaqSyncService;
+import pl.janda.onepiecetcg.cards.application.service.CardSetSyncService;
+import pl.janda.onepiecetcg.cards.application.service.SetCardSyncService;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
 import pl.janda.onepiecetcg.cards.application.model.CardSortField;
 import pl.janda.onepiecetcg.cards.application.model.CardSummary;
@@ -24,8 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * First Testcontainers-based test in this repo. Needed because the SEMANTIC search mode relies on a
- * Postgres-only generated tsvector column + GIN index (see scripts/db/add-card-semantic-search-vector.sql)
- * - which a mocked DSLContext can't exercise.
+ * Postgres-only generated tsvector column + GIN index (see src/main/resources/db/set-cards-search-vector.sql)
+ * - which a mocked DSLContext can't exercise. That DDL is applied by the application's own
+ * SetCardSearchVectorSchemaInitializer during startup, so this test does not set it up itself: the
+ * search behavior asserted below is exercised against exactly the schema production boots with.
  *
  * JooqSetCardQueryAdapter.search()/countSearch() take (name, searchField, types, colors, rarities,
  * flatRarities, costs, power, counterAmount, attributes, attributeCombos, subTypes, prefixes,
@@ -45,13 +52,28 @@ class JooqSetCardQueryAdapterIT {
 
     @DynamicPropertySource
     static void configureDatasource(DynamicPropertyRegistry registry) {
-        // prepareThreshold=0 disables server-side prepared statements: without it, pgjdbc reuses a
-        // cached plan for the repeated INSERT across tests and fails with "cached plan must not
-        // change result type" after the schema migration (added column) runs in the same session.
+        // prepareThreshold=0 disables server-side prepared statements. The startup DDL adds a column to
+        // set_cards, and pgjdbc otherwise risks reusing a cached plan whose result type no longer
+        // matches, failing with "cached plan must not change result type".
         registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&prepareThreshold=0");
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
     }
+
+    // The sync schedulers trigger on ApplicationReadyEvent, which @SpringBootTest publishes too. Left
+    // real, they would hit optcgapi.com over the network on every run of this test and then delete and
+    // repopulate set_cards underneath the fixtures below. Mocked out so this test owns the table.
+    @MockitoBean
+    private SetCardSyncService setCardSyncService;
+
+    @MockitoBean
+    private CardSetSyncService cardSetSyncService;
+
+    @MockitoBean
+    private CardErrataSyncService cardErrataSyncService;
+
+    @MockitoBean
+    private CardFaqSyncService cardFaqSyncService;
 
     @Autowired
     private JooqSetCardQueryAdapter adapter;
@@ -62,40 +84,8 @@ class JooqSetCardQueryAdapterIT {
     @Autowired
     private DSLContext dsl;
 
-    private static boolean schemaMigrated = false;
-
     @BeforeEach
     void setUp() {
-        // Hibernate (ddl-auto: update) has already created set_cards by the time this runs; apply the
-        // same generated-column migration described in scripts/db/add-card-semantic-search-vector.sql.
-        // Run once for the whole class (not per-test): re-running this DDL before every test on the
-        // same pooled connection makes Postgres invalidate an already-prepared INSERT plan, causing
-        // "cached plan must not change result type" on a later saveAllAndFlush().
-        if (!schemaMigrated) {
-            dsl.execute("""
-                    ALTER TABLE set_cards
-                        ADD COLUMN IF NOT EXISTS card_semantic_search_vector tsvector
-                        GENERATED ALWAYS AS (
-                            setweight(to_tsvector('simple'::regconfig, coalesce(card_name, '') || ' ' || coalesce(card_set_id, '')), 'A') ||
-                            setweight(to_tsvector('simple'::regconfig, coalesce(sub_types, '')), 'B') ||
-                            setweight(to_tsvector('simple'::regconfig, coalesce(card_text, '')), 'C') ||
-                            setweight(to_tsvector('simple'::regconfig,
-                                coalesce(card_type, '') || ' ' ||
-                                coalesce(card_color, '') || ' ' ||
-                                coalesce(card_cost, '') || ' ' ||
-                                coalesce(card_power, '') || ' ' ||
-                                coalesce(counter_amount::text, '') || ' ' ||
-                                coalesce(attribute, '')
-                            ), 'D')
-                        ) STORED
-                    """);
-            dsl.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_set_cards_card_semantic_search_vector
-                        ON set_cards USING GIN (card_semantic_search_vector)
-                    """);
-            schemaMigrated = true;
-        }
-
         jpaRepository.deleteAll();
         // card_errata isn't touched by jpaRepository.deleteAll() (separate table/entity) - reset it
         // here too so errataOnly tests don't leak rows into other tests sharing this static container.
@@ -319,6 +309,19 @@ class JooqSetCardQueryAdapterIT {
                 "?", CardSearchField.SEMANTIC,
                 null, null, null, null, null, null, null, null, null, null, null,
                 null, null, 0, 50, false, false);
+        assertThat(results).extracting(CardSummary::getCardName).containsExactly("Nico Robin");
+    }
+
+    @Test
+    void attributesFilter_valueMadeOfRegexMetacharacters_isMatchedLiterally() {
+        // wordMatch() interpolates the value into a Postgres regex, so "?" reaches the database as a
+        // quantifier with nothing to quantify unless it is escaped first - which used to abort the
+        // query with "invalid regular expression: quantifier operand invalid" rather than filtering.
+        var results = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, List.of("?"), null, null, null,
+                null, null, 0, 50, false, false);
+
         assertThat(results).extracting(CardSummary::getCardName).containsExactly("Nico Robin");
     }
 

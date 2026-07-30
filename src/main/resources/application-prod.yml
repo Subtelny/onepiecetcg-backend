@@ -5,7 +5,12 @@ spring:
     password: ${PGPASSWORD}
   jpa:
     hibernate:
-      ddl-auto: update  # Temporary for initial deployment - change to validate after schema setup
+      # Stays on 'update': with no migration tool in the project, this is what creates and evolves the
+      # JPA-mapped schema on deploy. 'validate' would turn every entity change into a boot failure
+      # until someone had applied the DDL by hand. The one thing ddl-auto cannot express - the
+      # generated card_semantic_search_vector column - is applied at startup by
+      # SetCardSearchVectorSchemaInitializer instead. See DEPLOYMENT.md.
+      ddl-auto: update
     show-sql: false
 
 logging:

@@ -31,11 +31,24 @@ public class JpaSetCardRepository implements SetCardRepository {
         return jpaRepository.findAll();
     }
 
+    /**
+     * Uses deleteAllInBatch (a single DELETE statement) rather than deleteAll, which loads every row
+     * into the persistence context and deletes it one by one. Beyond the cost, that also mattered for
+     * correctness: deleteAll only marks entities removed, and Hibernate's action queue executes
+     * DELETEs last, so the deletes were still pending when the JOOQ recompute below read the table
+     * over raw JDBC - see the flush note on saveAll and CLAUDE.md §3.
+     */
     @Override
     public void deleteAll() {
-        jpaRepository.deleteAll();
+        jpaRepository.deleteAllInBatch();
     }
 
+    /**
+     * Flushes each batch, because SetCardSyncService follows this with recomputeRepresentative() and
+     * the filter-options refresh, both of which read set_cards through JOOQ (raw JDBC) inside the same
+     * transaction. Hibernate cannot auto-flush ahead of a non-Hibernate-session query, so without the
+     * flush those recomputes could run against an incomplete table - CLAUDE.md §3.
+     */
     @Override
     public <S extends SetCard> List<S> saveAll(Iterable<S> setCards) {
         var list = new ArrayList<S>();
@@ -62,7 +75,7 @@ public class JpaSetCardRepository implements SetCardRepository {
                         totalCount);
 
                 var batchStartTime = System.currentTimeMillis();
-                var savedBatch = jpaRepository.saveAll(batch);
+                var savedBatch = jpaRepository.saveAllAndFlush(batch);
                 var batchDuration = System.currentTimeMillis() - batchStartTime;
 
                 savedCards.addAll(savedBatch);

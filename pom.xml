@@ -215,7 +215,7 @@
                         <database>
                             <name>org.jooq.meta.postgres.PostgresDatabase</name>
                             <inputSchema>public</inputSchema>
-                            <includes>set_cards|set_card_effects|card_filter_options|card_sets</includes>
+                            <includes>set_cards|card_filter_options|card_sets</includes>
                             <excludes/>
                         </database>
                         <target>
