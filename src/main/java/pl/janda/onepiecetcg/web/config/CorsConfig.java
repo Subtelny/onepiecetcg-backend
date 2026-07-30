@@ -15,8 +15,8 @@ public class CorsConfig {
 
     private final List<String> allowedOrigins;
 
-    public CorsConfig(@Value("${cors.allowed-origins}") List<String> allowedOrigins) {
-        this.allowedOrigins = allowedOrigins;
+    public CorsConfig(@Value("${cors.allowed-origins}") String allowedOrigins) {
+        this.allowedOrigins = Arrays.asList(allowedOrigins.split(","));
     }
 
     @Bean
