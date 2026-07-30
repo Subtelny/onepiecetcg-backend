@@ -33,10 +33,12 @@ public class SetCardSyncService {
 
     @Transactional
     public void syncSetCards(boolean force) {
-        var hasNewSets = cardSetSyncService.syncCardSets();
-        if (!hasNewSets && !force) {
-            log.info("No new card sets detected, skipping set cards sync");
-            return;
+        if (force) {
+            var hasNewSets = cardSetSyncService.syncCardSets();
+            if (!hasNewSets) {
+                log.info("No new card sets detected, skipping set cards sync");
+                return;
+            }
         }
 
         var fetched = setCardApiClient.fetchAllSetCards();
