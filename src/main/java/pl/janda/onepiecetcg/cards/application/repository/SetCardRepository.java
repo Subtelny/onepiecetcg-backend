@@ -28,6 +28,8 @@ public interface SetCardRepository {
 
     void recomputeRepresentative();
 
+    boolean anyExist();
+
     List<CardSummary> search(
         String name,
         CardSearchField searchField,

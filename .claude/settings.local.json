@@ -46,7 +46,10 @@
       "Bash(tee:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(docker-compose up:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

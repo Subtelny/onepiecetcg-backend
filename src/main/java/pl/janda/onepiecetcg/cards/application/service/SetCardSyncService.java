@@ -33,11 +33,13 @@ public class SetCardSyncService {
 
     @Transactional
     public void syncSetCards(boolean force) {
-        if (force) {
-            var hasNewSets = cardSetSyncService.syncCardSets();
-            if (!hasNewSets) {
-                log.info("No new card sets detected, skipping set cards sync");
-                return;
+        if (!force) {
+            if (setCardRepository.anyExist()) {
+                var hasNewSets = cardSetSyncService.syncCardSets();
+                if (!hasNewSets) {
+                    log.info("No new card sets detected, skipping set cards sync");
+                    return;
+                }
             }
         }
 
