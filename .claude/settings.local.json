@@ -45,7 +45,8 @@
       "Bash(printf:*)",
       "Bash(tee:*)",
       "Bash(npx tsc --noEmit)",
-      "Bash(docker-compose up:*)"
+      "Bash(docker-compose up:*)",
+      "Bash(ls:*)"
     ]
   }
 }

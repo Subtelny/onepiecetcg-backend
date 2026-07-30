@@ -6,13 +6,13 @@ Railway PostgreSQL automatycznie dostarcza (przez linked service):
 - `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
 
 Musisz ustawić ręcznie w Railway dashboard:
-- `SPRING_PROFILES_ACTIVE=railway`
+- `SPRING_PROFILES_ACTIVE=prod`
 - `CORS_ALLOWED_ORIGINS=https://twoja-domena-frontend.com` (zmień na właściwy URL frontendu)
 - `INTERNAL_API_KEY=<wygeneruj bezpieczny losowy string>`
 
 ## Pierwsze Wdrożenie (Schema Setup)
 
-1. **Tymczasowo** zmień `application-railway.yml`:
+1. **Tymczasowo** zmień `application-prod.yml`:
    ```yaml
    spring:
      jpa:
@@ -25,7 +25,7 @@ Musisz ustawić ręcznie w Railway dashboard:
 3. Po uruchomieniu, zweryfikuj schemat w Railway PostgreSQL console:
    - Sprawdź czy tabele istnieją: `card_sets`, `set_cards`, `set_card_effects`, `card_filter_options`
 
-4. Zmień z powrotem na `ddl-auto: validate` w `application-railway.yml`
+4. Zmień z powrotem na `ddl-auto: validate` w `application-prod.yml`
 
 5. Commit i redeploy
 
@@ -53,4 +53,4 @@ Railway automatycznie:
 2. Uruchamia `mvn clean package`
 3. jOOQ codegen jest pominięty (`jooq.codegen.skip=true`)
 4. Używa commitowanych sources z `src/main/generated-jooq/`
-5. Startuje z `Procfile` (aktywuje railway profile)
+5. Startuje z `Procfile` (aktywuje prod profile)
