@@ -27,6 +27,7 @@
         <jooq.codegen.jdbc.url>jdbc:postgresql://localhost:5432/onepiecetcg</jooq.codegen.jdbc.url>
         <jooq.codegen.jdbc.username>onepiecetcg</jooq.codegen.jdbc.username>
         <jooq.codegen.jdbc.password>onepiecetcg</jooq.codegen.jdbc.password>
+        <jooq.codegen.skip>true</jooq.codegen.skip>
     </properties>
 
     <dependencies>
@@ -164,7 +165,32 @@
                 </configuration>
             </plugin>
 
-            <!-- Generates JOOQ classes from the running local dev DB schema (started via docker-compose.yml). Requires the DB to be up and Hibernate to have created the schema (ddl-auto: update) before running `mvn generate-sources`. -->
+            <!-- Add generated-jooq directory as source folder so Maven compiles it even when codegen is skipped -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>add-jooq-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/main/generated-jooq</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- jOOQ Codegen: Sources committed to git for Railway compatibility.
+                 To regenerate after schema changes:
+                 1. Ensure docker-compose postgres is running
+                 2. Run: mvn clean generate-sources -Djooq.codegen.skip=false
+                 3. Commit updated sources -->
             <plugin>
                 <groupId>org.jooq</groupId>
                 <artifactId>jooq-codegen-maven</artifactId>
@@ -178,6 +204,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skip>${jooq.codegen.skip}</skip>
                     <jdbc>
                         <driver>org.postgresql.Driver</driver>
                         <url>${jooq.codegen.jdbc.url}</url>
@@ -193,7 +220,7 @@
                         </database>
                         <target>
                             <packageName>pl.janda.onepiecetcg.infrastructure.persistence.jooq</packageName>
-                            <directory>target/generated-sources/jooq</directory>
+                            <directory>src/main/generated-jooq</directory>
                         </target>
                     </generator>
                 </configuration>

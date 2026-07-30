@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${PGHOST}:${PGPORT:5432}/${PGDATABASE}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update  # Temporary for initial deployment - change to validate after schema setup
+    show-sql: false
+
+logging:
+  level:
+    pl.janda.onepiecetcg: INFO
+    org.springframework.web: WARN

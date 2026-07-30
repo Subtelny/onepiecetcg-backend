@@ -1,11 +1,12 @@
 server:
   port: 3000
 
+# Local development configuration. For Railway/production, use railway profile.
 spring:
   application:
     name: onepiecetcg-backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/onepiecetcg
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:onepiecetcg}
     username: ${DB_USERNAME:onepiecetcg}
     password: ${DB_PASSWORD:onepiecetcg}
   jpa:
