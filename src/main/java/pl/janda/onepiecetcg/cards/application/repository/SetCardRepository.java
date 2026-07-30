@@ -14,11 +14,9 @@ import java.util.Optional;
 
 public interface SetCardRepository {
 
-    List<SetCard> findAll();
-
     void deleteAll();
 
-    <S extends SetCard> List<S> saveAll(Iterable<S> setCards);
+    void saveAll(List<SetCard> setCards);
 
     Optional<SetCard> findById(Long id);
 

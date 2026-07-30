@@ -1,8 +1,28 @@
+# Prod runs in a 1 GB container, so the framework defaults (200 Tomcat threads, 10 pooled
+# connections, 8 idle @Async threads) are sized for an order of magnitude more traffic than this
+# service sees and are paid for in RSS. The heap/metaspace side of the same budget lives in the
+# Procfile's JVM flags - see DEPLOYMENT.md.
+server:
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+
 spring:
   datasource:
     url: jdbc:postgresql://${PGHOST}:${PGPORT:5432}/${PGDATABASE}
     username: ${PGUSER}
     password: ${PGPASSWORD}
+    # Each pooled connection is a Postgres backend process, so this caps memory on the database
+    # side too, not just here.
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+  # Only consumer is SetCardSyncService.syncSetCardsAsync, which runs one task at a time.
+  task:
+    execution:
+      pool:
+        core-size: 1
   jpa:
     hibernate:
       # Stays on 'update': with no migration tool in the project, this is what creates and evolves the

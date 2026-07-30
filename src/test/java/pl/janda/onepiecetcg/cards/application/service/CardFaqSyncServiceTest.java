@@ -30,6 +30,9 @@ class CardFaqSyncServiceTest {
     @Mock
     private CardFaqApiClient cardFaqApiClient;
 
+    @Mock
+    private CardFaqReplacementService cardFaqReplacementService;
+
     @InjectMocks
     private CardFaqSyncService cardFaqSyncService;
 
@@ -44,8 +47,7 @@ class CardFaqSyncServiceTest {
         cardFaqSyncService.syncFaq();
 
         verify(cardFaqApiClient, never()).fetchFaqEntries(any(), any(), any());
-        verify(cardFaqRepository, never()).deleteBySetId(any());
-        verify(cardFaqRepository, never()).saveAll(any());
+        verify(cardFaqReplacementService, never()).replaceSet(any(), any());
     }
 
     @Test
@@ -70,11 +72,12 @@ class CardFaqSyncServiceTest {
 
         cardFaqSyncService.syncFaq();
 
-        var order = inOrder(cardFaqApiClient, cardFaqRepository);
+        // Order matters: the PDF download and parse must finish before the transactional replace
+        // starts - CLAUDE.md §7.
+        var order = inOrder(cardFaqApiClient, cardFaqReplacementService);
         order.verify(cardFaqApiClient).fetchFaqListing();
         order.verify(cardFaqApiClient).fetchFaqEntries("op01", newDate, pdfUrl);
-        order.verify(cardFaqRepository).deleteBySetId("op01");
-        order.verify(cardFaqRepository).saveAll(parsed);
+        order.verify(cardFaqReplacementService).replaceSet("op01", parsed);
 
         assertThat(parsed.get(0).getLastSyncedAt()).isNotNull();
     }
@@ -90,7 +93,6 @@ class CardFaqSyncServiceTest {
 
         cardFaqSyncService.syncFaq();
 
-        verify(cardFaqRepository).deleteBySetId("st-36");
-        verify(cardFaqRepository).saveAll(List.of());
+        verify(cardFaqReplacementService).replaceSet("st-36", List.of());
     }
 }

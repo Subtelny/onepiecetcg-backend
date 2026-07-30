@@ -52,7 +52,14 @@
       "Bash(git push:*)",
       "Bash(git rm:*)",
       "Bash(./mvnw:*)",
-      "Bash(PGHOST=localhost PGPORT=5432 PGDATABASE=onepiecetcg PGUSER=onepiecetcg PGPASSWORD=onepiecetcg INTERNAL_API_KEY=test-key SPRING_PROFILES_ACTIVE=prod mvn:*)"
+      "Bash(PGHOST=localhost PGPORT=5432 PGDATABASE=onepiecetcg PGUSER=onepiecetcg PGPASSWORD=onepiecetcg INTERNAL_API_KEY=test-key SPRING_PROFILES_ACTIVE=prod mvn:*)",
+      "Bash(if [ -f target/onepiecetcg-backend-1.0-SNAPSHOT.jar ])",
+      "Bash(then unzip -l target/onepiecetcg-backend-1.0-SNAPSHOT.jar)",
+      "Bash(git stash:*)",
+      "Bash(ps:*)",
+      "Bash(PGHOST=localhost PGPORT=5432 PGDATABASE=onepiecetcg PGUSER=onepiecetcg PGPASSWORD=onepiecetcg java -Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=256m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError -Xlog:gc+init:stdout -jar target/onepiecetcg-backend-1.0-SNAPSHOT.jar --spring.profiles.active=prod --server.port=300)",
+      "Bash(jcmd:*)",
+      "Bash(git --no-pager diff --stat -- . ':!.claude')"
     ]
   }
 }

@@ -24,10 +24,6 @@ public class CardService {
 
     private final SemanticQueryParser semanticQueryParser;
 
-    public List<SetCard> getAllCards() {
-        return setCardRepository.findAll();
-    }
-
     public SetCard getCardById(String id) {
         return setCardRepository.findById(Long.valueOf(id))
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id: " + id));

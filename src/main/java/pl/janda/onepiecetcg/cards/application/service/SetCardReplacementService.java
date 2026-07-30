@@ -42,10 +42,10 @@ public class SetCardReplacementService {
 
         log.info("Saving {} set cards to database (this may take several minutes for large datasets)", setCards.size());
         var saveStartTime = System.currentTimeMillis();
-        var saved = setCardRepository.saveAll(setCards);
+        setCardRepository.saveAll(setCards);
         var saveDuration = System.currentTimeMillis() - saveStartTime;
         log.info("Successfully saved {} set cards to database in {}ms ({} seconds)",
-                saved.size(), saveDuration, saveDuration / 1000);
+                setCards.size(), saveDuration, saveDuration / 1000);
 
         log.info("Recomputing representative flags for card variants");
         var recomputeStartTime = System.currentTimeMillis();

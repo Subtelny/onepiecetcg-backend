@@ -9,6 +9,38 @@ Musisz ustawić ręcznie w Railway dashboard:
 - `SPRING_PROFILES_ACTIVE=prod`
 - `CORS_ALLOWED_ORIGINS=https://twoja-domena-frontend.com` (zmień na właściwy URL frontendu)
 - `INTERNAL_API_KEY=<wygeneruj bezpieczny losowy string>`
+- `MALLOC_ARENA_MAX=2` — ogranicza liczbę aren malloc glibc (domyślnie do 8 × liczba rdzeni). Każda
+  arena to osobna pula, której glibc praktycznie nigdy nie zwraca systemowi, więc bez tego RSS rośnie
+  wraz z liczbą wątków. Musi być zmienną środowiskową — to ustawienie glibc, nie flaga JVM, więc nie
+  ma sensu w `Procfile`.
+
+## Budżet Pamięci
+
+Kontener ma **1 GB limitu**, a Railway rozlicza obserwowane zużycie — dlatego limity są ustawione
+jawnie, w dwóch miejscach:
+
+**Flagi JVM — `Procfile`:**
+
+| Flaga | Powód |
+|---|---|
+| `-Xmx320m` | Bezwzględny limit sterty. **Celowo nie `-XX:MaxRAMPercentage`**: jeśli JVM nie odczyta limitu cgroup i wpadnie w fallback na RAM hosta, procent wyliczy się od wielogigabajtowej wartości i pogorszy sprawę. Wartość bezwzględna daje ten sam wynik w obu przypadkach. |
+| `-Xms128m` | Niski start, żeby RSS w bezczynności był mały. |
+| `-XX:+UseSerialGC` | Znikomy narzut natywny w porównaniu z G1 (remembered sets, metadane regionów) i — ważniejsze — **oddaje pamięć systemowi po full GC**, więc RSS wraca po nocnym syncu. Dłuższe pauzy nie mają tu znaczenia. |
+| `-XX:MinHeapFreeRatio=10`<br>`-XX:MaxHeapFreeRatio=30` | Wymusza agresywne oddawanie pamięci opisane wyżej. |
+| `-XX:MaxMetaspaceSize=256m` | Metaspace jest domyślnie nieograniczony, a to największy podejrzany poza stertą (Hibernate + wygenerowane klasy jOOQ + springdoc + PDFBox + Jsoup). |
+| `-XX:+ExitOnOutOfMemoryError` | Szybki restart przez Railway zamiast wielogodzinnego dławienia się na GC. |
+| `-Xlog:gc+init:stdout` | Jednorazowy, bezkosztowy wpis w logu deploya potwierdzający realnie rozwiązaną konfigurację sterty. |
+
+**Limity pul — `application-prod.yml`:** wątki Tomcata (20 zamiast 200), pula Hikari (5 zamiast 10)
+i pula `@Async` (1 zamiast 8). Domyślne wartości są policzone na ruch o rząd wielkości większy niż ten
+serwis obsługuje, a płaci się za nie w RSS — każdy wątek to własny stos, a każde połączenie Hikari to
+dodatkowo osobny proces backendu Postgresa (czyli oszczędność też po stronie bazy).
+
+**Weryfikacja po deployu:** w logu deploya sprawdź blok `gc,init` — `Heap Max Capacity` musi wynosić
+320M. Jeśli wcześniej rozwiązywało się do wielu GB, to właśnie był powód wysokiego RSS. Przy
+`OutOfMemoryError: Metaspace` podnoś najpierw `-XX:MaxMetaspaceSize`, potem `-Xmx`. Po realny rozkład
+pamięci poza stertą dodaj tymczasowo `-XX:NativeMemoryTracking=summary -XX:+PrintNMTStatistics`
+(narzut 5–10%).
 
 ## Zarządzanie Schematem
 

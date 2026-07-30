@@ -1,5 +1,6 @@
 package pl.janda.onepiecetcg.cards.infrastructure.persistence;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,6 @@ import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.model.SortDirection;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,10 +26,7 @@ public class JpaSetCardRepository implements SetCardRepository {
 
     private final JooqSetCardQueryAdapter jooqQueryAdapter;
 
-    @Override
-    public List<SetCard> findAll() {
-        return jpaRepository.findAll();
-    }
+    private final EntityManager entityManager;
 
     /**
      * Uses deleteAllInBatch (a single DELETE statement) rather than deleteAll, which loads every row
@@ -48,24 +45,31 @@ public class JpaSetCardRepository implements SetCardRepository {
      * the filter-options refresh, both of which read set_cards through JOOQ (raw JDBC) inside the same
      * transaction. Hibernate cannot auto-flush ahead of a non-Hibernate-session query, so without the
      * flush those recomputes could run against an incomplete table - CLAUDE.md §3.
+     * <p>
+     * Clears the persistence context after each flush, so peak heap is one batch rather than the whole
+     * catalog: without it every saved entity stays managed for the rest of the enclosing transaction,
+     * each carrying an EntityEntry plus a loaded-state snapshot on top of the entity itself. Detaching
+     * is safe here precisely because it happens after the flush - the rows are already in the database
+     * for the rest of this transaction to see, and the two JOOQ recomputes that follow read raw SQL
+     * rather than managed entities. Never reorder these two calls or drop the flush.
+     * <p>
+     * Returns void because the caller only ever needed the row count, which it already has from the
+     * argument; collecting the saved entities to hand back was a second full copy of the catalog.
      */
     @Override
-    public <S extends SetCard> List<S> saveAll(Iterable<S> setCards) {
-        var list = new ArrayList<S>();
-        setCards.forEach(list::add);
-        var totalCount = list.size();
+    public void saveAll(List<SetCard> setCards) {
+        var totalCount = setCards.size();
 
         log.info("Starting saveAllAndFlush for {} set cards", totalCount);
         var startTime = System.currentTimeMillis();
 
         try {
-            // Process in batches to provide progress updates
-            var batchSize = 50;
-            var savedCards = new ArrayList<S>();
+            // Matches spring.jpa.properties.hibernate.jdbc.batch_size so a batch maps to one JDBC batch.
+            var batchSize = 100;
 
-            for (var i = 0; i < list.size(); i += batchSize) {
-                var endIndex = Math.min(i + batchSize, list.size());
-                var batch = list.subList(i, endIndex);
+            for (var i = 0; i < totalCount; i += batchSize) {
+                var endIndex = Math.min(i + batchSize, totalCount);
+                var batch = setCards.subList(i, endIndex);
 
                 log.info("Saving batch {}/{} ({}-{} of {})",
                         (i / batchSize) + 1,
@@ -75,10 +79,10 @@ public class JpaSetCardRepository implements SetCardRepository {
                         totalCount);
 
                 var batchStartTime = System.currentTimeMillis();
-                var savedBatch = jpaRepository.saveAllAndFlush(batch);
+                jpaRepository.saveAllAndFlush(batch);
+                entityManager.clear();
                 var batchDuration = System.currentTimeMillis() - batchStartTime;
 
-                savedCards.addAll(savedBatch);
                 log.info("Batch saved in {}ms ({} cards/sec)",
                         batchDuration,
                         batchDuration > 0 ? (batch.size() * 1000L / batchDuration) : 0);
@@ -88,8 +92,6 @@ public class JpaSetCardRepository implements SetCardRepository {
             log.info("Completed saveAllAndFlush for {} set cards in {}ms ({} seconds, avg {} cards/sec)",
                     totalCount, totalDuration, totalDuration / 1000,
                     totalDuration > 0 ? (totalCount * 1000L / totalDuration) : 0);
-
-            return savedCards;
         } catch (Exception e) {
             var duration = System.currentTimeMillis() - startTime;
             log.error("Error during saveAllAndFlush after {}ms: {}", duration, e.getMessage(), e);
