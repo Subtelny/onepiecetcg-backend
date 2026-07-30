@@ -1,6 +1,7 @@
 package pl.janda.onepiecetcg.cards.application.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.janda.onepiecetcg.cards.application.model.CardFilterOptionCategory;
@@ -16,13 +17,16 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CardFilterOptionService {
 
     private final CardFilterOptionRepository cardFilterOptionRepository;
 
     @Transactional
     public void refresh() {
+        log.info("Starting refresh of card filter options cache");
         cardFilterOptionRepository.refresh();
+        log.info("Completed refresh of card filter options cache");
     }
 
     public CardFilterOptions getFilterOptions() {

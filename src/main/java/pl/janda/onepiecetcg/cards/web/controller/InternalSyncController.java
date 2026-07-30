@@ -46,15 +46,15 @@ public class InternalSyncController {
 
     @PostMapping("/set-cards")
     @Operation(summary = "Manually sync set cards",
-            description = "Forces a full set-cards sync from optcgapi.com, bypassing the new-card-set diff gate, " +
-                    "then recomputes representative flags and refreshes filter options.")
+            description = "Triggers an async set-cards sync from optcgapi.com in a separate thread, bypassing the new-card-set diff gate, " +
+                    "then recomputes representative flags and refreshes filter options. Returns immediately.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Sync completed"),
+            @ApiResponse(responseCode = "200", description = "Sync triggered successfully"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
     })
     public ResponseEntity<SyncResultDto> syncSetCards() {
-        setCardSyncService.syncSetCards(true);
-        return ResponseEntity.ok(new SyncResultDto(true, "Set cards sync completed (forced)"));
+        setCardSyncService.syncSetCardsAsync(true);
+        return ResponseEntity.ok(new SyncResultDto(true, "Set cards sync triggered in background (forced)"));
     }
 
     @PostMapping("/card-errata")

@@ -1,6 +1,7 @@
 package pl.janda.onepiecetcg.cards.application.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.janda.onepiecetcg.cards.application.model.CardRarity;
@@ -11,6 +12,7 @@ import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CardRepresentativeService {
 
     public static final Comparator<SetCard> CANONICAL_VARIANT_ORDER = Comparator
@@ -23,7 +25,9 @@ public class CardRepresentativeService {
 
     @Transactional
     public void recompute() {
+        log.info("Starting recomputation of representative flags");
         setCardRepository.recomputeRepresentative();
+        log.info("Completed recomputation of representative flags");
     }
 
     private static int rarityRank(String rarity) {
