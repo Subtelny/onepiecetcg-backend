@@ -13,6 +13,17 @@ spring:
       ddl-auto: update
     show-sql: false
 
+# Off in prod: the spec is an unauthenticated, machine-readable map of every route, including
+# /api/internal/* - which is protected only by a shared API key, so advertising it is pure
+# attacker convenience. Both flags are set because swagger-ui serves nothing without api-docs,
+# but leaving api-docs on would keep the raw spec reachable. Use the local profile's Swagger UI
+# when you need to inspect a contract.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 logging:
   level:
     pl.janda.onepiecetcg: INFO
