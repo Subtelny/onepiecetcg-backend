@@ -15,4 +15,5 @@ public class CardSummaryDto {
     private String cardNumber;
     private String flatRarity;
     private String imageUrl;
+    private Integer variantIndex;
 }

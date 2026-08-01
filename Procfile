@@ -1,1 +1,1 @@
-web: java -Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=256m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError -Xlog:gc+init:stdout -jar target/onepiecetcg-backend-1.0-SNAPSHOT.jar --spring.profiles.active=prod
+web: java -Xms128m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=256m -XX:MaxDirectMemorySize=128m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError -Xlog:gc+init:stdout -jar target/onepiecetcg-backend-1.0-SNAPSHOT.jar --spring.profiles.active=prod

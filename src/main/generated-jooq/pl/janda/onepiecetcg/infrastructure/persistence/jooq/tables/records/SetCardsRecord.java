@@ -396,6 +396,20 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
         return get(25);
     }
 
+    /**
+     * Setter for <code>public.set_cards.variant_index</code>.
+     */
+    public void setVariantIndex(Integer value) {
+        set(26, value);
+    }
+
+    /**
+     * Getter for <code>public.set_cards.variant_index</code>.
+     */
+    public Integer getVariantIndex() {
+        return (Integer) get(26);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -419,7 +433,7 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
     /**
      * Create a detached, initialised SetCardsRecord
      */
-    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, String dateScraped, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, Boolean isPromo, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Boolean isRepresentative, Object cardSemanticSearchVector) {
+    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, String dateScraped, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, Boolean isPromo, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Boolean isRepresentative, Object cardSemanticSearchVector, Integer variantIndex) {
         super(SetCards.SET_CARDS);
 
         setId(id);
@@ -448,6 +462,7 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
         setFlatRarity(flatRarity);
         setIsRepresentative(isRepresentative);
         setCardSemanticSearchVector(cardSemanticSearchVector);
+        setVariantIndex(variantIndex);
         resetTouchedOnNotNull();
     }
 }

@@ -77,6 +77,7 @@ public class CardMapper {
                 .cardNumber(card.getCardSetId())
                 .flatRarity(card.getFlatRarity())
                 .imageUrl(card.getCardImage())
+                .variantIndex(card.getVariantIndex())
                 .build();
     }
 

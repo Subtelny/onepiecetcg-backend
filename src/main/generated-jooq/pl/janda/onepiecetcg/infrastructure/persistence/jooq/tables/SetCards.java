@@ -193,6 +193,11 @@ public class SetCards extends TableImpl<SetCardsRecord> {
     @Deprecated
     public final TableField<SetCardsRecord, Object> CARD_SEMANTIC_SEARCH_VECTOR = createField(DSL.name("card_semantic_search_vector"), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "");
 
+    /**
+     * The column <code>public.set_cards.variant_index</code>.
+     */
+    public final TableField<SetCardsRecord, Integer> VARIANT_INDEX = createField(DSL.name("variant_index"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
+
     private SetCards(Name alias, Table<SetCardsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

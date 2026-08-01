@@ -20,4 +20,6 @@ public class CardSummary {
     private String flatRarity;
 
     private String cardImage;
+
+    private Integer variantIndex;
 }

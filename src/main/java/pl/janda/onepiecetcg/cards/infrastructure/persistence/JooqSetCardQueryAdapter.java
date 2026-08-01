@@ -51,6 +51,9 @@ class JooqSetCardQueryAdapter {
      * Replaces CardRepresentativeService's previous findAll() + in-memory grouping/saveAll with a
      * single window-function-based UPDATE. Mirrors CardRepresentativeService.CANONICAL_VARIANT_ORDER:
      * has-image first, then rarity rank (CardRarity ordinal), then shortest name, then highest id.
+     * Also stamps variant_index (rn - 1, so the representative is always 0) so search results can
+     * carry a stable index into this same canonical order without a live/filtered recomputation -
+     * see CardMapper/CardSummary's use of it for /cards/by-code's ?variant= param.
      */
     void recomputeRepresentative() {
         var groupKey = coalesce(SET_CARDS.CARD_SET_ID, concat(inline("id:"), SET_CARDS.ID.cast(String.class)));
@@ -72,11 +75,12 @@ class JooqSetCardQueryAdapter {
 
         var updated = dsl.update(SET_CARDS)
                 .set(SET_CARDS.IS_REPRESENTATIVE, field(rnField.eq(1)))
+                .set(SET_CARDS.VARIANT_INDEX, rnField.minus(1))
                 .from(ranked)
                 .where(SET_CARDS.ID.eq(ranked.field(SET_CARDS.ID)))
                 .execute();
 
-        log.info("Recomputed representative flag for {} set cards", updated);
+        log.info("Recomputed representative flag and variant index for {} set cards", updated);
     }
 
     private static Field<Integer> rarityRank(Field<String> column) {
@@ -158,7 +162,7 @@ class JooqSetCardQueryAdapter {
 
         // Only the fields the search-result list actually renders are selected here - ORDER BY/WHERE
         // above can still reference columns outside this projection (e.g. card_semantic_search_vector).
-        var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME, SET_CARDS.FLAT_RARITY, SET_CARDS.CARD_IMAGE)
+        var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME, SET_CARDS.FLAT_RARITY, SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX)
                 .from(SET_CARDS)
                 .where(conditions)
                 .orderBy(orderBy)
@@ -450,6 +454,7 @@ class JooqSetCardQueryAdapter {
                 .cardName(r.get(SET_CARDS.CARD_NAME))
                 .flatRarity(r.get(SET_CARDS.FLAT_RARITY))
                 .cardImage(r.get(SET_CARDS.CARD_IMAGE))
+                .variantIndex(r.get(SET_CARDS.VARIANT_INDEX))
                 .build();
     }
 }

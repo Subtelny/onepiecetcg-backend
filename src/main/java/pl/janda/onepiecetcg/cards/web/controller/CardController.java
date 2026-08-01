@@ -53,7 +53,9 @@ public class CardController {
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
             description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
-                    "Each result is a lightweight summary (id, name, cardNumber, flatRarity, imageUrl) - " +
+                    "Each result is a lightweight summary (id, name, cardNumber, flatRarity, imageUrl, variantIndex) - " +
+                    "variantIndex is the 0-based index into the canonically sorted variant list (same order as " +
+                    "/{id}/variants and /by-code's variant param; 0 = representative variant) - " +
                     "fetch /api/cards/{id} for full card details (effect, stats, prices, errata).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",

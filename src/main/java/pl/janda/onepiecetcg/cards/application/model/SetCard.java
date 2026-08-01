@@ -96,4 +96,7 @@ public class SetCard {
 
     @Column(name = "is_representative", nullable = false, columnDefinition = "boolean default false")
     private boolean representative;
+
+    @Column(name = "variant_index", nullable = false, columnDefinition = "integer default 0")
+    private int variantIndex;
 }
