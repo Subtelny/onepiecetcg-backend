@@ -6,9 +6,9 @@ spring:
   application:
     name: onepiecetcg-backend
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:onepiecetcg}
-    username: ${DB_USERNAME:onepiecetcg}
-    password: ${DB_PASSWORD:onepiecetcg}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:optcg}
+    username: ${DB_USERNAME:optcg}
+    password: ${DB_PASSWORD:optcg}
   jpa:
     hibernate:
       ddl-auto: update
@@ -52,6 +52,12 @@ card-errata:
 card-faq:
   sync:
     cron: "0 45 3 * * *"
+
+cardmarket:
+  product-catalog-url: https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_18.json
+  price-guide-url: https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_18.json
+  sync:
+    cron: "0 0 4 * * *"
 
 internal:
   api-key: ${INTERNAL_API_KEY:dev-only-change-me}

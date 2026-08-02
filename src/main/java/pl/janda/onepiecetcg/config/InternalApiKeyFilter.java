@@ -1,4 +1,4 @@
-package pl.janda.onepiecetcg.web.config;
+package pl.janda.onepiecetcg.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

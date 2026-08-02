@@ -6,11 +6,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import pl.janda.onepiecetcg.application.OnePieceTcgApplication;
+import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.service.CardService;
+import pl.janda.onepiecetcg.cards.application.service.CardmarketPriceSyncService;
 import pl.janda.onepiecetcg.cards.application.service.PagedCards;
 
 import java.util.List;
@@ -34,6 +35,9 @@ class DeckBuilderCardControllerTest {
 
     @MockitoBean
     private CardService cardService;
+
+    @MockitoBean
+    private CardmarketPriceSyncService cardmarketPriceSyncService;
 
     // CardService.searchCards has 18 params, in this order:
     // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,

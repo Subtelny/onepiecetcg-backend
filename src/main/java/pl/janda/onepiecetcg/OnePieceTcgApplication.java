@@ -1,4 +1,4 @@
-package pl.janda.onepiecetcg.application;
+package pl.janda.onepiecetcg;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

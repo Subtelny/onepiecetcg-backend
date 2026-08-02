@@ -13,13 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 import pl.janda.onepiecetcg.cards.application.service.CardErrataSyncService;
 import pl.janda.onepiecetcg.cards.application.service.CardFaqSyncService;
 import pl.janda.onepiecetcg.cards.application.service.CardSetSyncService;
+import pl.janda.onepiecetcg.cards.application.service.CardmarketPriceSyncService;
 import pl.janda.onepiecetcg.cards.application.service.SetCardSyncService;
 import pl.janda.onepiecetcg.cards.web.dto.SyncResultDto;
 
 @RestController
 @RequestMapping("/api/internal/sync")
 @RequiredArgsConstructor
-@Tag(name = "Internal Sync", description = "Dev-only endpoints to manually trigger OPTCG sync jobs. Requires X-API-Key header.")
+@Tag(name = "Internal Sync", description = "Dev-only endpoints to manually trigger external-data sync jobs. Requires X-API-Key header.")
 @SecurityRequirement(name = "ApiKeyAuth")
 public class InternalSyncController {
 
@@ -30,6 +31,8 @@ public class InternalSyncController {
     private final CardErrataSyncService cardErrataSyncService;
 
     private final CardFaqSyncService cardFaqSyncService;
+
+    private final CardmarketPriceSyncService cardmarketPriceSyncService;
 
     @PostMapping("/card-sets")
     @Operation(summary = "Manually sync card sets",
@@ -80,5 +83,19 @@ public class InternalSyncController {
     public ResponseEntity<SyncResultDto> syncCardFaq() {
         cardFaqSyncService.syncFaq();
         return ResponseEntity.ok(new SyncResultDto(true, "Card FAQ sync completed"));
+    }
+
+    @PostMapping("/cardmarket-prices")
+    @Operation(summary = "Manually sync Cardmarket prices",
+            description = "Downloads Cardmarket's public One Piece product catalog and EUR price guide, " +
+                    "then appends a historical snapshot grouped by Bandai card code. An already stored " +
+                    "daily price-guide publication is skipped.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Sync completed"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
+    })
+    public ResponseEntity<SyncResultDto> syncCardmarketPrices() {
+        cardmarketPriceSyncService.syncPrices();
+        return ResponseEntity.ok(new SyncResultDto(true, "Cardmarket price sync completed"));
     }
 }

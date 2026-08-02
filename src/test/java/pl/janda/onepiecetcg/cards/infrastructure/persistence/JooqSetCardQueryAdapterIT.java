@@ -11,9 +11,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import pl.janda.onepiecetcg.application.OnePieceTcgApplication;
+import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.service.CardErrataSyncService;
 import pl.janda.onepiecetcg.cards.application.service.CardFaqSyncService;
+import pl.janda.onepiecetcg.cards.application.service.CardmarketPriceSyncService;
 import pl.janda.onepiecetcg.cards.application.service.CardSetSyncService;
 import pl.janda.onepiecetcg.cards.application.service.SetCardSyncService;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
@@ -74,6 +75,9 @@ class JooqSetCardQueryAdapterIT {
 
     @MockitoBean
     private CardFaqSyncService cardFaqSyncService;
+
+    @MockitoBean
+    private CardmarketPriceSyncService cardmarketPriceSyncService;
 
     @Autowired
     private JooqSetCardQueryAdapter adapter;

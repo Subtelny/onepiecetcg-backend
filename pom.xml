@@ -24,9 +24,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>3.0.3</springdoc.version>
         <!-- jOOQ codegen connects to the local dev DB (docker-compose) to read the Hibernate-managed schema; no migration tool exists yet, see CLAUDE.md §3. Override with -D if your local DB credentials differ from docker-compose.yml. -->
-        <jooq.codegen.jdbc.url>jdbc:postgresql://localhost:5432/onepiecetcg</jooq.codegen.jdbc.url>
-        <jooq.codegen.jdbc.username>onepiecetcg</jooq.codegen.jdbc.username>
-        <jooq.codegen.jdbc.password>onepiecetcg</jooq.codegen.jdbc.password>
+        <jooq.codegen.jdbc.url>jdbc:postgresql://localhost:5432/optcg</jooq.codegen.jdbc.url>
+        <jooq.codegen.jdbc.username>optcg</jooq.codegen.jdbc.username>
+        <jooq.codegen.jdbc.password>optcg</jooq.codegen.jdbc.password>
         <jooq.codegen.skip>true</jooq.codegen.skip>
     </properties>
 

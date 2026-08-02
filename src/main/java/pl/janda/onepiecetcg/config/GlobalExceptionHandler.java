@@ -1,4 +1,4 @@
-package pl.janda.onepiecetcg.web.controller;
+package pl.janda.onepiecetcg.config;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

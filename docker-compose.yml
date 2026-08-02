@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     container_name: onepiecetcg-postgres
     environment:
-      POSTGRES_DB: onepiecetcg
-      POSTGRES_USER: onepiecetcg
-      POSTGRES_PASSWORD: onepiecetcg
+      POSTGRES_DB: optcg
+      POSTGRES_USER: optcg
+      POSTGRES_PASSWORD: optcg
     ports:
       - "5432:5432"
     volumes:
@@ -13,3 +13,4 @@ services:
 
 volumes:
   postgres_data:
+  
