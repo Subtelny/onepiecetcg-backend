@@ -4,17 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import pl.janda.onepiecetcg.cards.application.client.SetCardApiClient;
-import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
+import pl.janda.onepiecetcg.cards.application.model.OnePieceCard;
+import pl.janda.onepiecetcg.cards.application.model.SetCard;
+import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardRepository;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Map;
 
 /**
- * Orchestrates the set-cards sync: decide whether to run, fetch, enrich, then hand the result to
+ * Orchestrates the set-cards sync: load, map, enrich, then hand the result to
  * SetCardReplacementService for the transactional write.
  * <p>
- * Deliberately not @Transactional. The expensive part is the outbound fetch of the whole catalog, and
- * wrapping it in a transaction previously held a connection and the delete's locks for the entire run.
+ * Deliberately not @Transactional. Loading and mapping the whole source catalog does not need to hold
+ * the target table's delete locks or a persistence context.
  * The atomic part is exactly the replace, which owns its own transaction - see SetCardReplacementService.
  */
 @Service
@@ -22,50 +25,41 @@ import java.time.LocalDateTime;
 @Slf4j
 public class SetCardSyncService {
 
-    private final SetCardRepository setCardRepository;
+    private static final String PROMOTION_CARD_SET_ID = "569901";
 
-    private final SetCardApiClient setCardApiClient;
+    private static final Map<String, String> RARITY_CODES = Map.ofEntries(
+            Map.entry("common", "C"),
+            Map.entry("uncommon", "UC"),
+            Map.entry("rare", "R"),
+            Map.entry("super rare", "SR"),
+            Map.entry("leader", "L"),
+            Map.entry("secret rare", "SEC"),
+            Map.entry("treasure rare", "TR"),
+            Map.entry("special", "SP"),
+            Map.entry("promo", "PR")
+    );
+
+    private final OnePieceCardRepository onePieceCardRepository;
 
     private final FlatRarityCalculatorService flatRarityCalculatorService;
 
     private final SetCardReplacementService setCardReplacementService;
 
-    private final CardSetSyncService cardSetSyncService;
-
     public void syncSetCards() {
-        syncSetCards(false);
-    }
-
-    /**
-     * Logs and swallows failures because it runs detached on an @Async thread with no caller to report
-     * to. Safe to swallow here only because this method is not transactional: the write is atomic
-     * inside SetCardReplacementService, so a failure rolls that transaction back rather than committing
-     * a half-applied sync.
-     */
-    @Async
-    public void syncSetCardsAsync(boolean force) {
-        log.info("Starting async set cards sync in separate thread (force={})", force);
-        try {
-            syncSetCards(force);
-            log.info("Async set cards sync completed successfully");
-        } catch (Exception e) {
-            log.error("Error during async set cards sync", e);
-        }
-    }
-
-    public void syncSetCards(boolean force) {
         var startTime = System.currentTimeMillis();
-        log.info("Set cards sync started (force={})", force);
+        log.info("Set cards sync started");
 
-        if (!shouldSync(force)) {
-            return;
+        log.info("Loading all cards from onepiece_cards");
+        var loadStartTime = System.currentTimeMillis();
+        var fetched = onePieceCardRepository.findAll().stream()
+                .map(this::toSetCard)
+                .toList();
+        var loadDuration = System.currentTimeMillis() - loadStartTime;
+        log.info("Loaded and mapped {} cards from onepiece_cards in {}ms", fetched.size(), loadDuration);
+
+        if (fetched.isEmpty()) {
+            throw new IllegalStateException("onepiece_cards is empty; refusing to replace set_cards");
         }
-
-        log.info("Fetching all set cards from optcgapi.com");
-        var fetchStartTime = System.currentTimeMillis();
-        var fetched = setCardApiClient.fetchAllSetCards();
-        var fetchDuration = System.currentTimeMillis() - fetchStartTime;
-        log.info("Fetched {} set cards from optcgapi.com in {}ms", fetched.size(), fetchDuration);
 
         log.info("Setting sync timestamp on fetched cards");
         var now = LocalDateTime.now();
@@ -80,30 +74,104 @@ public class SetCardSyncService {
         setCardReplacementService.replaceAll(fetched);
 
         var totalDuration = System.currentTimeMillis() - startTime;
-        log.info("Set cards sync completed successfully{} - Total time: {}ms ({} seconds), of which fetch={}ms, rarity={}ms",
-                force ? " (forced)" : "", totalDuration, totalDuration / 1000, fetchDuration, rarityDuration);
+        log.info("Set cards sync completed successfully - Total time: {}ms ({} seconds), of which load={}ms, rarity={}ms",
+                totalDuration, totalDuration / 1000, loadDuration, rarityDuration);
     }
 
     /**
-     * Gates the expensive fetch behind card-sets diff detection: unless forced, a run is only worth
-     * doing when the external /allSets/ response contains a set that is missing locally.
+     * Logs and swallows failures because it runs detached on an @Async thread with no caller to report
+     * to. Safe to swallow here only because this method is not transactional: the write is atomic
+     * inside SetCardReplacementService, so a failure rolls that transaction back rather than committing
+     * a half-applied sync.
      */
-    private boolean shouldSync(boolean force) {
-        if (force) {
-            log.info("Force sync enabled, skipping new card sets check");
-            return true;
+    @Async
+    public void syncSetCardsAsync() {
+        log.info("Starting async set cards sync in separate thread");
+        try {
+            syncSetCards();
+            log.info("Async set cards sync completed successfully");
+        } catch (Exception e) {
+            log.error("Error during async set cards sync", e);
         }
-        log.info("Checking if new card sets exist before syncing set cards");
-        if (!setCardRepository.anyExist()) {
-            log.info("No set cards exist yet, proceeding with initial sync");
-            return true;
+    }
+
+    private SetCard toSetCard(OnePieceCard source) {
+        var cardCode = firstNonBlank(source.getBaseId(), source.getId());
+        var leader = "Leader".equalsIgnoreCase(source.getCategory());
+        var promo = PROMOTION_CARD_SET_ID.equals(source.getSetId())
+                || "Promotion card".equalsIgnoreCase(source.getSetName());
+        var sourceRarity = normalizeRarity(source.getRarity());
+
+        return SetCard.builder()
+                .cardSetId(cardCode)
+                .cardPrefix(extractPrefix(cardCode))
+                .cardName(source.getName())
+                .setId(source.getSetId())
+                .setName(source.getSetName())
+                .cardText(combineCardText(source.getEffect(), source.getTrigger()))
+                .rarity(promo ? "PR" : sourceRarity)
+                .flatRarity(promo && !"PR".equals(sourceRarity) ? sourceRarity : null)
+                .cardColor(normalizeList(source.getColors()))
+                .cardType(source.getCategory())
+                .life(leader ? asString(source.getCost()) : null)
+                .cardCost(leader ? null : asString(source.getCost()))
+                .cardPower(asString(source.getPower()))
+                .subTypes(normalizeList(source.getTypes()))
+                .counterAmount(source.getCounter())
+                .attribute(normalizeList(source.getAttributes()))
+                .dateScraped(source.getScrapedAt() != null ? source.getScrapedAt().toString() : null)
+                .cardImageId(source.getId())
+                .cardImage(source.getImageUrl())
+                .promo(promo)
+                .build();
+    }
+
+    private String normalizeRarity(String rarity) {
+        if (rarity == null || rarity.isBlank()) {
+            return null;
         }
-        log.info("Set cards already exist, checking for new card sets");
-        if (!cardSetSyncService.syncCardSets()) {
-            log.info("No new card sets detected, skipping set cards sync");
-            return false;
+        var normalized = RARITY_CODES.get(rarity.trim().toLowerCase(Locale.ROOT));
+        if (normalized == null) {
+            log.warn("Unknown rarity '{}' in onepiece_cards", rarity);
         }
-        log.info("New card sets detected, proceeding with set cards sync");
-        return true;
+        return normalized;
+    }
+
+    private static String combineCardText(String effect, String trigger) {
+        var normalizedEffect = blankToNull(effect);
+        var normalizedTrigger = blankToNull(trigger);
+        if (normalizedTrigger == null) {
+            return normalizedEffect;
+        }
+        var triggerText = normalizedTrigger.regionMatches(true, 0, "[Trigger]", 0, "[Trigger]".length())
+                ? normalizedTrigger
+                : "[Trigger] " + normalizedTrigger;
+        return normalizedEffect == null ? triggerText : normalizedEffect + "\n" + triggerText;
+    }
+
+    private static String normalizeList(String value) {
+        var normalized = blankToNull(value);
+        return normalized == null ? null : normalized.replaceAll("[,/]+", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String firstNonBlank(String preferred, String fallback) {
+        var normalized = blankToNull(preferred);
+        return normalized != null ? normalized : blankToNull(fallback);
+    }
+
+    private static String extractPrefix(String cardCode) {
+        if (cardCode == null) {
+            return null;
+        }
+        var separator = cardCode.indexOf('-');
+        return separator > 0 ? cardCode.substring(0, separator) : null;
+    }
+
+    private static String asString(Integer value) {
+        return value != null ? value.toString() : null;
     }
 }

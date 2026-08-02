@@ -33,6 +33,9 @@ public class FlatRarityCalculatorService {
         if ("P".equals(card.getCardPrefix())) {
             return "P";
         }
+        if (card.getFlatRarity() != null && !card.getFlatRarity().isBlank()) {
+            return card.getFlatRarity();
+        }
         if (card.isPromo()) {
             return rarityByCardSetId.getOrDefault(card.getCardSetId(), card.getRarity());
         }

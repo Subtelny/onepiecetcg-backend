@@ -29,9 +29,6 @@ spring:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5174,http://localhost:5173,http://localhost:4173}
 
-optcgapi:
-  base-url: https://www.optcgapi.com/api
-
 onepiece-cardgame:
   errata-url: https://en.onepiece-cardgame.com/rules/errata_card/
   topics-url: https://en.onepiece-cardgame.com/topics/

@@ -12,8 +12,8 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
   - Filter option values → PostgreSQL via Spring Data JPA, one row per distinct filterable value — a precomputed cache, not user-facing data.
   - Decks and shops → in-memory, not yet migrated to persistent storage.
-- **External sync:** independent scheduled jobs pull from `https://www.optcgapi.com/api` (configurable via an externalized base-url property) and write into Postgres: card sets; set cards (a single job that fetches both regular set cards and promo cards from OPTCG and combines them). See §4 for the extension pattern they follow. Set-cards sync is gated behind card-sets diff detection: `SetCardSyncService` first calls `CardSetSyncService.syncCardSets()`, which returns `true` only if a card set present in the external `/allSets/` response is missing locally; if no new set is found, both the card-sets write and the expensive set-cards fetch + `CardRepresentativeService.recompute()` + `CardFilterOptionService.refresh()` are skipped entirely for that run.
-  - A second group of sync jobs scrapes the official rules site (errata notices as HTML, FAQ as per-set PDFs) rather than calling OPTCG. They are scrapes, not JSON APIs, so their adapters use Jsoup/PDFBox instead of the shared OPTCG client base class — but they follow the same service/scheduler pattern as everything else (§4).
+- **Card catalog sync:** independent scheduled jobs read the scraper-populated `onepiece_card_sets` and `onepiece_cards` tables and write the application-facing `card_sets` and `set_cards` tables. `SetCardSyncService` maps every printed variant from the source table, replaces `set_cards` transactionally, recomputes representative variants, and refreshes filter options on every run.
+  - A second group of sync jobs scrapes the official rules site (errata notices as HTML, FAQ as per-set PDFs). Their adapters use Jsoup/PDFBox and follow the same service/scheduler pattern as everything else (§4).
   - **Every sync that does delete+insert uses the orchestrator + replacement split described in §4 step 3** — there are no remaining syncs where the fetch happens inside the transaction. Don't reintroduce one.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
@@ -39,7 +39,7 @@ pl.janda.onepiecetcg/
 │   │   └── service/                 # Business logic, incl. sync services
 │   ├── infrastructure/
 │   │   ├── persistence/             # Repository implementations (Jpa*/Jooq*)
-│   │   ├── client/                  # HTTP client implementations (Optcg*)
+│   │   ├── client/                  # HTTP/scraper client implementations
 │   │   └── scheduler/               # @Scheduled / @EventListener entrypoints
 │   └── web/
 │       ├── controller/              # CardController, InternalSyncController

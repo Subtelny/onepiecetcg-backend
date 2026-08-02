@@ -62,7 +62,7 @@ class JooqSetCardQueryAdapterIT {
     }
 
     // The sync schedulers trigger on ApplicationReadyEvent, which @SpringBootTest publishes too. Left
-    // real, they would hit optcgapi.com over the network on every run of this test and then delete and
+    // real, they would read the source catalog on every run of this test and then delete and
     // repopulate set_cards underneath the fixtures below. Mocked out so this test owns the table.
     @MockitoBean
     private SetCardSyncService setCardSyncService;

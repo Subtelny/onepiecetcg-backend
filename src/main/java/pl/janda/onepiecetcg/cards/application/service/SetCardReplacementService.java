@@ -14,9 +14,9 @@ import java.util.List;
  * the two derived artifacts that depend on them (the representative flag, then the filter-options
  * cache - in that order, since filter options are derived from the already-recomputed flag).
  * <p>
- * Split out of SetCardSyncService so the transaction starts here, after the outbound fetch of the full
- * catalog has already completed. Keeping the fetch outside means a multi-minute HTTP call no longer
- * holds a database connection and the delete's row locks for its entire duration.
+ * Split out of SetCardSyncService so the transaction starts here, after the full source catalog has
+ * already been loaded and mapped. Keeping that work outside bounds how long the delete's row locks and
+ * persistence context are held.
  * <p>
  * This is a transaction boundary, not an abstraction for reuse - a delete-all followed by a bulk
  * insert must be atomic, or a failure part-way through leaves the card catalog empty or truncated.

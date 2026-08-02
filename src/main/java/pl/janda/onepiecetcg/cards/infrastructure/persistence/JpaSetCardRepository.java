@@ -120,11 +120,6 @@ public class JpaSetCardRepository implements SetCardRepository {
     }
 
     @Override
-    public boolean anyExist() {
-        return jpaRepository.count() > 0;
-    }
-
-    @Override
     public List<CardSummary> search(
             String name,
             CardSearchField searchField,

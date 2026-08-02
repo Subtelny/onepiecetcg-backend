@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  * Scrapes card errata from en.onepiece-cardgame.com (no JSON API exists for this data, unlike
- * optcgapi.com used by the other sync jobs). Combines two independent HTML sources on the same site:
+ * the database-backed card catalog sync jobs). Combines two independent HTML sources on the same site:
  * <ul>
  *   <li>The canonical rules page ({@code /rules/errata_card/}), which mixes two recurring HTML
  *   structures anchored around an {@code h5.smallTitRed} heading paired with the nearest {@code dl}

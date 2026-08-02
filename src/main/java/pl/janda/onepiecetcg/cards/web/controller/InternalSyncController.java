@@ -20,7 +20,7 @@ import pl.janda.onepiecetcg.cards.web.dto.SyncResultDto;
 @RestController
 @RequestMapping("/api/internal/sync")
 @RequiredArgsConstructor
-@Tag(name = "Internal Sync", description = "Dev-only endpoints to manually trigger external-data sync jobs. Requires X-API-Key header.")
+@Tag(name = "Internal Sync", description = "Dev-only endpoints to manually trigger data sync jobs. Requires X-API-Key header.")
 @SecurityRequirement(name = "ApiKeyAuth")
 public class InternalSyncController {
 
@@ -36,7 +36,7 @@ public class InternalSyncController {
 
     @PostMapping("/card-sets")
     @Operation(summary = "Manually sync card sets",
-            description = "Fetches card sets from optcgapi.com and persists any newly detected sets.")
+            description = "Loads card sets from onepiece_card_sets and persists new or changed sets.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync completed"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
@@ -49,15 +49,15 @@ public class InternalSyncController {
 
     @PostMapping("/set-cards")
     @Operation(summary = "Manually sync set cards",
-            description = "Triggers an async set-cards sync from optcgapi.com in a separate thread, bypassing the new-card-set diff gate, " +
+            description = "Triggers an async set-cards sync from onepiece_cards in a separate thread, " +
                     "then recomputes representative flags and refreshes filter options. Returns immediately.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync triggered successfully"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
     })
     public ResponseEntity<SyncResultDto> syncSetCards() {
-        setCardSyncService.syncSetCardsAsync(true);
-        return ResponseEntity.ok(new SyncResultDto(true, "Set cards sync triggered in background (forced)"));
+        setCardSyncService.syncSetCardsAsync();
+        return ResponseEntity.ok(new SyncResultDto(true, "Set cards sync triggered in background"));
     }
 
     @PostMapping("/card-errata")

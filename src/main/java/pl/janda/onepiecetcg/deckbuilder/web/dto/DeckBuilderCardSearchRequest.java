@@ -30,10 +30,10 @@ public class DeckBuilderCardSearchRequest {
     @Parameter(description = "Card colors (RED, BLUE, GREEN, PURPLE, YELLOW, BLACK)")
     private List<String> color;
 
-    @Parameter(description = "Card rarities (C, UC, R, SR, L, PR, SEC, TR)")
+    @Parameter(description = "Card rarities (C, UC, R, SR, L, SEC, TR, SP, PR)")
     private List<String> rarity;
 
-    @Parameter(description = "Physically printed card rarities (C, UC, R, SR, L, PR, SEC, TR) - the rarity actually printed on the card, which can differ from `rarity` for promo reprints like judge packs")
+    @Parameter(description = "Physically printed card rarities (C, UC, R, SR, L, SEC, TR, SP, PR) - the rarity actually printed on the card, which can differ from `rarity` for promo reprints like judge packs")
     private List<String> flatRarity;
 
     @Parameter(description = "Accepted card costs (exact-match list, e.g. from a UI range selection expanded to individual values)")
