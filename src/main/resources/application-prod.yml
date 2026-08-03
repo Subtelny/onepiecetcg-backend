@@ -3,6 +3,11 @@
 # service sees and are paid for in RSS. The heap/metaspace side of the same budget lives in the
 # Procfile's JVM flags - see DEPLOYMENT.md.
 server:
+  # Railway injects PORT for every deployment. The fallback keeps the packaged application
+  # runnable outside Railway, while binding to all interfaces makes it reachable by the proxy
+  # even if the Procfile start command is overridden in the dashboard.
+  port: ${PORT:3000}
+  address: 0.0.0.0
   tomcat:
     threads:
       max: 20

@@ -17,7 +17,7 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - **Every sync that does delete+insert uses the orchestrator + replacement split described in §4 step 3** — there are no remaining syncs where the fetch happens inside the transaction. Don't reintroduce one.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
-- Reference key endpoints: `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/deckbuilder/cards`, `GET /api/deckbuilder/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
+- Reference key endpoints: `GET /` and `GET /health` (liveness), `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/deckbuilder/cards`, `GET /api/deckbuilder/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
 
 ---
 
@@ -45,6 +45,10 @@ pl.janda.onepiecetcg/
 │       ├── controller/              # CardController, InternalSyncController
 │       ├── dto/
 │       └── mapper/
+├── status/                          # Cross-cutting liveness HTTP endpoints used by Railway
+│   └── web/
+│       ├── controller/
+│       └── dto/
 └── deckbuilder/                     # Bounded context: deck-builder card browsing
     └── web/
         ├── controller/               # DeckBuilderCardController (/api/deckbuilder/cards)

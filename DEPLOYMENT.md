@@ -14,6 +14,15 @@ Musisz ustawić ręcznie w Railway dashboard:
   wraz z liczbą wątków. Musi być zmienną środowiskową — to ustawienie glibc, nie flaga JVM, więc nie
   ma sensu w `Procfile`.
 
+Nie ustawiaj ręcznie `PORT`, jeśli nie ma ku temu konkretnego powodu. Railway wstrzykuje tę zmienną,
+a profil `prod` nasłuchuje na `0.0.0.0:${PORT}` z fallbackiem `3000` poza Railway. Domena publiczna
+powinna korzystać z portu dostarczonego przez Railway; ręcznie ustawiony Target Port musi mieć tę samą
+wartość, którą pokazuje linia `Tomcat started on port ...` w logu deploymentu.
+
+`railway.toml` konfiguruje `/health` jako healthcheck wdrożenia i restart procesu do 10 razy po błędzie.
+`GET /health` oraz `GET /` zwracają `200 {"status":"UP"}` i nie wykonują zapytań do bazy ani zewnętrznych
+serwisów.
+
 ## Budżet Pamięci
 
 Kontener ma **1 GB limitu**, a Railway rozlicza obserwowane zużycie — dlatego limity są ustawione
@@ -23,28 +32,26 @@ jawnie, w dwóch miejscach:
 
 | Flaga | Powód |
 |---|---|
-| `-Xmx192m` | Bezwzględny limit sterty. **Celowo nie `-XX:MaxRAMPercentage`**: jeśli JVM nie odczyta limitu cgroup i wpadnie w fallback na RAM hosta, procent wyliczy się od wielogigabajtowej wartości i pogorszy sprawę. Wartość bezwzględna daje ten sam wynik w obu przypadkach. Agresywna redukcja z 256m → 192m po analizie szczytowego zużycia podczas nocnego syncu (~25MB dane + JPA overhead). |
+| `-Xmx280m` | Bezwzględny limit sterty. **Celowo nie `-XX:MaxRAMPercentage`**: jeśli JVM nie odczyta limitu cgroup i wpadnie w fallback na RAM hosta, procent wyliczy się od wielogigabajtowej wartości i pogorszy sprawę. Wartość bezwzględna daje ten sam wynik w obu przypadkach. |
 | `-Xms96m` | Niski start, żeby RSS w bezczynności był mały. Zredukowane z 128m po optymalizacji pul aplikacyjnych. |
 | `-XX:+UseSerialGC` | Znikomy narzut natywny w porównaniu z G1 (remembered sets, metadane regionów) i — ważniejsze — **oddaje pamięć systemowi po full GC**, więc RSS wraca po nocnym syncu. Dłuższe pauzy nie mają tu znaczenia. |
-| `-XX:MinHeapFreeRatio=10`<br>`-XX:MaxHeapFreeRatio=30` | Wymusza agresywne oddawanie pamięci opisane wyżej. |
-| `-XX:MaxMetaspaceSize=224m` | Metaspace jest domyślnie nieograniczony, a to największy podejrzany poza stertą (Hibernate + wygenerowane klasy jOOQ + springdoc + PDFBox + Jsoup). Zredukowane z 256m — UWAGA: może spowodować OOM podczas inicjalizacji Spring Boot, monitoruj logi. |
-| `-XX:MaxDirectMemorySize=96m` | Limit pamięci bezpośredniej dla buforów NIO. Zredukowane z 128m po analizie rzeczywistego użycia socket buffers. |
+| `-XX:MaxMetaspaceSize=160m` | Metaspace jest domyślnie nieograniczony, a to największy podejrzany poza stertą (Hibernate + wygenerowane klasy jOOQ + springdoc + PDFBox + Jsoup). Monitoruj start pod kątem `OutOfMemoryError: Metaspace`. |
+| `-XX:MaxDirectMemorySize=24m` | Limit pamięci bezpośredniej dla buforów NIO. |
+| `-Xss512k` | Ogranicza natywny stos każdego wątku; razem z limitem wątków Tomcata utrzymuje przewidywalny narzut poza stertą. |
 | `-XX:+ExitOnOutOfMemoryError` | Szybki restart przez Railway zamiast wielogodzinnego dławienia się na GC. |
-| `-Xlog:gc*:stdout:time,level,tags` | Pełne logowanie GC z timestampami i tagami do monitorowania szczytowego zużycia pamięci podczas nocnego syncu (03:15-03:30). Rozszerzone z `-Xlog:gc+init` dla obserwacji produkcyjnej. |
 
 **Limity pul — `application-prod.yml`:** wątki Tomcata (20 zamiast 200), pula Hikari (5 zamiast 10)
 i pula `@Async` (1 zamiast 8). Domyślne wartości są policzone na ruch o rząd wielkości większy niż ten
 serwis obsługuje, a płaci się za nie w RSS — każdy wątek to własny stos, a każde połączenie Hikari to
 dodatkowo osobny proces backendu Postgresa (czyli oszczędność też po stronie bazy).
 
-**Weryfikacja po deployu:** w logu deploya sprawdź blok `gc,init` — `Heap Max Capacity` musi wynosić
-192M. Jeśli wcześniej rozwiązywało się do wielu GB, to właśnie był powód wysokiego RSS. Przy
-`OutOfMemoryError: Metaspace` podnoś najpierw `-XX:MaxMetaspaceSize`, potem `-Xmx`. Po realny rozkład
-pamięci poza stertą dodaj tymczasowo `-XX:NativeMemoryTracking=summary -XX:+PrintNMTStatistics`
-(narzut 5–10%).
+**Weryfikacja po deployu:** sprawdź w logu `Tomcat started on port ...`, a następnie wywołaj
+`GET /health`. Port musi zgadzać się z `PORT`/Target Port w Railway. Przy `OutOfMemoryError: Metaspace`
+podnoś najpierw `-XX:MaxMetaspaceSize`, potem `-Xmx`. Po realny rozkład pamięci poza stertą dodaj
+tymczasowo `-XX:NativeMemoryTracking=summary -XX:+PrintNMTStatistics` (narzut 5–10%).
 
-**UWAGA - Agresywna konfiguracja:** Obecne limity (heap 192m, metaspace 224m, direct 96m) są zoptymalizowane
-pod szczytowe zużycie nocnego syncu (~25MB dane + overhead). Monitoruj logi Railway podczas:
+**UWAGA - Agresywna konfiguracja:** Obecne limity (heap 280m, metaspace 160m, direct 24m) wymagają
+monitorowania logów i metryk Railway podczas:
 - Inicjalizacji Spring Boot (metaspace może być za mały → OOM przy starcie)
 - Nocnego syncu 03:15-03:30 (heap może być za mały → OOM przy fetch/save)
 - Buildu frontendu (backend musi być dostępny, restart = failed deploy)
