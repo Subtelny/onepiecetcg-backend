@@ -144,7 +144,7 @@ public class CardmarketPriceClient implements CardmarketPriceApiClient {
             throw new IllegalStateException("Cardmarket price guide has no creation timestamp");
         }
 
-        // Cardmarket currently emits +0200, while ISO_OFFSET_DATE_TIME expects +02:00.
+
         var normalized = value.replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2");
         try {
             return OffsetDateTime.parse(normalized);

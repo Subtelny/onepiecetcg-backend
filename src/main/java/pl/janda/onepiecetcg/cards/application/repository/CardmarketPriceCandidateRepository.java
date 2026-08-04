@@ -9,5 +9,5 @@ public interface CardmarketPriceCandidateRepository {
 
     boolean existsByPriceGuideCreatedAt(OffsetDateTime priceGuideCreatedAt);
 
-    <S extends CardmarketPriceCandidate> List<S> saveAll(Iterable<S> candidates);
+    void saveAll(List<CardmarketPriceCandidate> candidates);
 }

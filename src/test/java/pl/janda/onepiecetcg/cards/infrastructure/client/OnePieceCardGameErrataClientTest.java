@@ -14,10 +14,7 @@ class OnePieceCardGameErrataClientTest {
     private static final String ERRATA_URL = "https://en.onepiece-cardgame.com/rules/errata_card/";
     private static final String TOPICS_URL = "https://en.onepiece-cardgame.com/topics/";
 
-    // Covers both recurring HTML shapes on the real page:
-    // - Pattern A (recent entries): section.contentsLCol > h4.mediumTit (date) + div.detailCol > h5.smallTitRed + dl
-    // - Pattern B (older bulk entries): div.errataModal > h5.smallTitRed (date embedded via <br>) + dl
-    // Plus two entries that must be skipped: an image-only fix (no Before/After) and an unparseable heading.
+
     private static final String SAMPLE_HTML = """
             <html>
             <body>
@@ -71,9 +68,7 @@ class OnePieceCardGameErrataClientTest {
             </html>
             """;
 
-    // Topics feed sample: 2 genuine standalone errata notices (one underscore href, one hyphenated
-    // href - mirroring the real op14-009 site quirk), 1 redundant entry linking back to the rules
-    // page (must be excluded), and 1 unrelated topic (must be excluded).
+
     private static final String TOPICS_LIST_HTML = """
             <html>
             <body>
@@ -115,9 +110,7 @@ class OnePieceCardGameErrataClientTest {
             </html>
             """;
 
-    // Real-shaped topic notice detail page (based on notice_op13-119.php), including a
-    // deliberately mismatched div id vs p.cardNum, mirroring the real op15-023 site bug, to prove
-    // the parser never relies on the id.
+
     private static final String TOPIC_DETAIL_HTML = """
             <html>
             <body>

@@ -38,7 +38,7 @@ class CardErrataSyncServiceTest {
 
         cardErrataSyncService.syncErrata();
 
-        // Order matters: the scrape must finish before the transactional replace starts - CLAUDE.md §7.
+
         var order = inOrder(cardErrataApiClient, cardErrataReplacementService);
         order.verify(cardErrataApiClient).fetchAllErrata();
         order.verify(cardErrataReplacementService).replaceAll(List.of(errata));

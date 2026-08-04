@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.janda.onepiecetcg.cards.application.model.CardSet;
+import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.CardSetRepository;
 import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardSetRepository;
 
@@ -15,18 +16,15 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CardSetSyncService {
+public class CardSetSyncService implements CardSetSyncUseCase {
 
     private final CardSetRepository cardSetRepository;
 
     private final OnePieceCardSetRepository onePieceCardSetRepository;
 
-    /**
-     * Synchronizes new sets and label changes from the source table.
-     *
-     * @return true if at least one new set was persisted, false otherwise
-     */
+
     @Transactional
+    @Override
     public boolean syncCardSets() {
         var sourceSets = onePieceCardSetRepository.findAll();
         if (sourceSets.isEmpty()) {

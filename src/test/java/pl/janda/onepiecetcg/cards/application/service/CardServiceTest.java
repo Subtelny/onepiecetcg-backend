@@ -5,15 +5,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pl.janda.onepiecetcg.cards.application.model.CardSearchCriteria;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
-import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
+import pl.janda.onepiecetcg.cards.application.model.CardSearchQuery;
+import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class CardServiceTest {
 
     @Mock
-    private SetCardRepository setCardRepository;
+    private SetCardQueryRepository setCardRepository;
 
     @Mock
     private CardFilterOptionService cardFilterOptionService;
@@ -31,22 +31,26 @@ class CardServiceTest {
 
     private CardService cardService;
 
+    private static CardSearchQuery query(
+            String text,
+            CardSearchField searchField,
+            List<Integer> costs,
+            Integer power,
+            Integer counterAmount
+    ) {
+        return new CardSearchQuery(
+                text, searchField, null, null, null, null, costs, power, counterAmount,
+                null, null, null, null, null, null, null, null, null);
+    }
+
     @Test
     void searchCards_defaultsSearchFieldToNameWhenOmitted() {
         cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
         stubRepository();
 
-        // name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-        // attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page, limit, showAllVariants
-        cardService.searchCards(
-                "Luffy", null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+        cardService.searchCards(query("Luffy", null, null, null, null));
 
-        var searchFieldCaptor = ArgumentCaptor.forClass(CardSearchField.class);
-        verify(setCardRepository).search(
-                any(), searchFieldCaptor.capture(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean());
-        assertThat(searchFieldCaptor.getValue()).isEqualTo(CardSearchField.NAME);
+        assertThat(capturedCriteria().searchField()).isEqualTo(CardSearchField.NAME);
     }
 
     @Test
@@ -55,15 +59,9 @@ class CardServiceTest {
         stubRepository();
         when(semanticQueryParser.parse("DON")).thenReturn(new SemanticQueryParser.ParsedSemanticQuery("DON", null, null, null, false));
 
-        cardService.searchCards(
-                "DON", CardSearchField.SEMANTIC, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+        cardService.searchCards(query("DON", CardSearchField.SEMANTIC, null, null, null));
 
-        var searchFieldCaptor = ArgumentCaptor.forClass(CardSearchField.class);
-        verify(setCardRepository).search(
-                any(), searchFieldCaptor.capture(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean());
-        assertThat(searchFieldCaptor.getValue()).isEqualTo(CardSearchField.SEMANTIC);
+        assertThat(capturedCriteria().searchField()).isEqualTo(CardSearchField.SEMANTIC);
     }
 
     @Test
@@ -73,24 +71,14 @@ class CardServiceTest {
         when(semanticQueryParser.parse("rush 6c 2kc"))
                 .thenReturn(new SemanticQueryParser.ParsedSemanticQuery("rush", 6, 2000, null, false));
 
-        // Sidebar already sets costs=[3] and counterAmount=5000; both must win over the parsed
-        // tokens (6 and 2000 respectively). power has no sidebar value, so it's left untouched here.
-        cardService.searchCards(
-                "rush 6c 2kc", CardSearchField.SEMANTIC, null, null, null, null, List.of(3), null, 5000,
-                null, null, null, null, null, null, null, null, null);
 
-        var nameCaptor = ArgumentCaptor.forClass(String.class);
-        var costsCaptor = ArgumentCaptor.forClass(List.class);
-        var powerCaptor = ArgumentCaptor.forClass(Integer.class);
-        var counterCaptor = ArgumentCaptor.forClass(Integer.class);
-        verify(setCardRepository).search(
-                nameCaptor.capture(), any(), any(), any(), any(), any(), costsCaptor.capture(), powerCaptor.capture(), counterCaptor.capture(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean());
+        cardService.searchCards(query("rush 6c 2kc", CardSearchField.SEMANTIC, List.of(3), null, 5000));
 
-        assertThat(nameCaptor.getValue()).isEqualTo("rush");
-        assertThat(costsCaptor.getValue()).containsExactly(3);
-        assertThat(powerCaptor.getValue()).isNull();
-        assertThat(counterCaptor.getValue()).isEqualTo(5000);
+        var criteria = capturedCriteria();
+        assertThat(criteria.text()).isEqualTo("rush");
+        assertThat(criteria.costs()).containsExactly(3);
+        assertThat(criteria.power()).isNull();
+        assertThat(criteria.counterAmount()).isEqualTo(5000);
     }
 
     @Test
@@ -100,17 +88,10 @@ class CardServiceTest {
         when(semanticQueryParser.parse("rush 6c"))
                 .thenReturn(new SemanticQueryParser.ParsedSemanticQuery("rush", 6, null, null, false));
 
-        // No sidebar costs filter provided, so the parsed token (6) is used as-is.
-        cardService.searchCards(
-                "rush 6c", CardSearchField.SEMANTIC, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
 
-        var costsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(setCardRepository).search(
-                any(), any(), any(), any(), any(), any(), costsCaptor.capture(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean());
+        cardService.searchCards(query("rush 6c", CardSearchField.SEMANTIC, null, null, null));
 
-        assertThat(costsCaptor.getValue()).containsExactly(6);
+        assertThat(capturedCriteria().costs()).containsExactly(6);
     }
 
     @Test
@@ -119,15 +100,9 @@ class CardServiceTest {
         stubRepository();
         when(semanticQueryParser.parse("6c")).thenReturn(new SemanticQueryParser.ParsedSemanticQuery("", 6, null, null, false));
 
-        cardService.searchCards(
-                "6c", CardSearchField.SEMANTIC, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+        cardService.searchCards(query("6c", CardSearchField.SEMANTIC, null, null, null));
 
-        var nameCaptor = ArgumentCaptor.forClass(String.class);
-        verify(setCardRepository).search(
-                nameCaptor.capture(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean());
-        assertThat(nameCaptor.getValue()).isEqualTo("");
+        assertThat(capturedCriteria().text()).isEqualTo("");
     }
 
     @Test
@@ -137,15 +112,9 @@ class CardServiceTest {
         when(semanticQueryParser.parse("errata Luffy"))
                 .thenReturn(new SemanticQueryParser.ParsedSemanticQuery("Luffy", null, null, null, true));
 
-        cardService.searchCards(
-                "errata Luffy", CardSearchField.SEMANTIC, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+        cardService.searchCards(query("errata Luffy", CardSearchField.SEMANTIC, null, null, null));
 
-        var errataOnlyCaptor = ArgumentCaptor.forClass(Boolean.class);
-        verify(setCardRepository).search(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), errataOnlyCaptor.capture());
-        assertThat(errataOnlyCaptor.getValue()).isTrue();
+        assertThat(capturedCriteria().errataOnly()).isTrue();
     }
 
     @Test
@@ -153,30 +122,19 @@ class CardServiceTest {
         cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
         stubRepository();
 
-        cardService.searchCards(
-                "Luffy", CardSearchField.NAME, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+        cardService.searchCards(query("Luffy", CardSearchField.NAME, null, null, null));
 
-        var errataOnlyCaptor = ArgumentCaptor.forClass(Boolean.class);
-        verify(setCardRepository).search(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), errataOnlyCaptor.capture());
-        assertThat(errataOnlyCaptor.getValue()).isFalse();
+        assertThat(capturedCriteria().errataOnly()).isFalse();
     }
 
     private void stubRepository() {
-        // search(): name, searchField, types, colors, rarities, flatRarities, costs, power,
-        // counterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, page,
-        // limit, showAllVariants
-        when(setCardRepository.search(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean()))
-                .thenReturn(List.of());
-        // countSearch(): name, searchField, types, colors, rarities, flatRarities, costs, power,
-        // counterAmount, attributes, attributeCombos, subTypes, prefixes
-        when(setCardRepository.countSearch(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), anyBoolean(), anyBoolean()))
-                .thenReturn(0L);
+        when(setCardRepository.search(any(CardSearchCriteria.class))).thenReturn(List.of());
+        when(setCardRepository.countSearch(any(CardSearchCriteria.class))).thenReturn(0L);
+    }
+
+    private CardSearchCriteria capturedCriteria() {
+        var captor = ArgumentCaptor.forClass(CardSearchCriteria.class);
+        verify(setCardRepository).search(captor.capture());
+        return captor.getValue();
     }
 }

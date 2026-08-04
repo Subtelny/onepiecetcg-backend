@@ -16,10 +16,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CardFaqSyncServiceTest {
@@ -72,8 +69,7 @@ class CardFaqSyncServiceTest {
 
         cardFaqSyncService.syncFaq();
 
-        // Order matters: the PDF download and parse must finish before the transactional replace
-        // starts - CLAUDE.md §7.
+
         var order = inOrder(cardFaqApiClient, cardFaqReplacementService);
         order.verify(cardFaqApiClient).fetchFaqListing();
         order.verify(cardFaqApiClient).fetchFaqEntries("op01", newDate, pdfUrl);

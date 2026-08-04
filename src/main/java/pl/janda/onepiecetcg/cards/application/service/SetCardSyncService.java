@@ -6,24 +6,18 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.cards.application.model.OnePieceCard;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
+import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardRepository;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Orchestrates the set-cards sync: load, map, enrich, then hand the result to
- * SetCardReplacementService for the transactional write.
- * <p>
- * Deliberately not @Transactional. Loading and mapping the whole source catalog does not need to hold
- * the target table's delete locks or a persistence context.
- * The atomic part is exactly the replace, which owns its own transaction - see SetCardReplacementService.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class SetCardSyncService {
+public class SetCardSyncService implements SetCardSyncUseCase {
 
     private static final String PROMOTION_CARD_SET_ID = "569901";
 
@@ -45,6 +39,7 @@ public class SetCardSyncService {
 
     private final SetCardReplacementService setCardReplacementService;
 
+    @Override
     public void syncSetCards() {
         var startTime = System.currentTimeMillis();
         log.info("Set cards sync started");
@@ -78,13 +73,9 @@ public class SetCardSyncService {
                 totalDuration, totalDuration / 1000, loadDuration, rarityDuration);
     }
 
-    /**
-     * Logs and swallows failures because it runs detached on an @Async thread with no caller to report
-     * to. Safe to swallow here only because this method is not transactional: the write is atomic
-     * inside SetCardReplacementService, so a failure rolls that transaction back rather than committing
-     * a half-applied sync.
-     */
+
     @Async
+    @Override
     public void syncSetCardsAsync() {
         log.info("Starting async set cards sync in separate thread");
         try {

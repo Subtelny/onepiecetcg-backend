@@ -22,18 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-/**
- * Scrapes per-card FAQ rulings from en.onepiece-cardgame.com. The site publishes these as one PDF
- * per card set (no JSON API), listed on {@code /rules/faq/} alongside a separate general-rules FAQ
- * PDF (identified by the {@code qa_rules.pdf} filename) which has a different Category/Question/Answer
- * schema (not tied to any card) and is intentionally excluded here.
- * <p>
- * Each per-set PDF is a 4-column table (Card No. / Card Name / Question / Answer). PDFBox's default
- * text extraction has no notion of table columns, so {@link #fetchFaqEntries} uses a custom
- * {@link PDFTextStripper} that buckets each extracted line by its X-coordinate into one of the 4
- * columns (thresholds calibrated against real sample PDFs, which all share the same generated
- * template) and detects the start of a new row via a card-code regex match in the first column.
- */
+
 @Slf4j
 @Component
 public class OnePieceCardGameFaqClient implements CardFaqApiClient {
@@ -43,7 +32,7 @@ public class OnePieceCardGameFaqClient implements CardFaqApiClient {
     private static final Pattern CARD_CODE = Pattern.compile("^[A-Za-z0-9]+-\\d+$");
     private static final String GENERAL_RULES_SLUG = "rules";
 
-    // Column boundaries in PDF points, calibrated against real sample PDFs (qa_op01.pdf, qa_st-36.pdf).
+
     private static final float CARD_NO_MAX_X = 60f;
     private static final float CARD_NAME_MAX_X = 150f;
     private static final float QUESTION_MAX_X = 300f;
@@ -109,14 +98,7 @@ public class OnePieceCardGameFaqClient implements CardFaqApiClient {
         return rows;
     }
 
-    /**
-     * Extends {@link PDFTextStripper} to reconstruct the 4-column FAQ table. PDFBox emits one
-     * {@link #writeString} call per rendered line, in content-stream order - which on this site's
-     * generated PDFs already matches row-major reading order (Card No, Card Name, Question line(s),
-     * Answer line(s), then the next row's Card No, ...). Rows are therefore assembled by watching for
-     * a new Card No match rather than by sorting on Y position (columns of the same visual row have
-     * differing Y anchors, so position-sorting would interleave them incorrectly).
-     */
+
     private static final class RowExtractingStripper extends PDFTextStripper {
 
         private final List<CardFaq> results;
@@ -142,7 +124,7 @@ public class OnePieceCardGameFaqClient implements CardFaqApiClient {
                 return;
             }
             var x = textPositions.getFirst().getX();
-            var trimmed = text.trim();
+            var trimmed = normalizeTypography(text.trim());
             if (trimmed.isEmpty()) {
                 return;
             }
@@ -152,7 +134,7 @@ public class OnePieceCardGameFaqClient implements CardFaqApiClient {
                     flushCurrentRow();
                     currentCardCode = trimmed;
                 }
-                // non-matching column-1 text (e.g. repeated page headers) is ignored
+
             } else if (x < CARD_NAME_MAX_X) {
                 currentCardName = currentCardName == null ? trimmed : currentCardName + " " + trimmed;
             } else if (x < QUESTION_MAX_X) {
@@ -167,6 +149,12 @@ public class OnePieceCardGameFaqClient implements CardFaqApiClient {
                 builder.append(' ');
             }
             builder.append(text);
+        }
+
+        private String normalizeTypography(String text) {
+            return text
+                    .replace('\u2018', '\'')
+                    .replace('\u2019', '\'');
         }
 
         private void flushCurrentRow() {

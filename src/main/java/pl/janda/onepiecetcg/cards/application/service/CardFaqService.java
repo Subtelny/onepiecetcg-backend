@@ -3,6 +3,7 @@ package pl.janda.onepiecetcg.cards.application.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.cards.application.model.CardFaq;
+import pl.janda.onepiecetcg.cards.application.port.in.CardFaqQueryUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.CardFaqRepository;
 
 import java.util.Comparator;
@@ -13,15 +14,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CardFaqService {
+public class CardFaqService implements CardFaqQueryUseCase {
 
     private final CardFaqRepository cardFaqRepository;
 
-    /**
-     * Resolves the full FAQ history per card code (a card can accumulate more than one Q&A entry
-     * over time), sorted oldest to newest. Missing/never-clarified codes are simply absent from the
-     * returned map.
-     */
+
+    @Override
     public Map<String, List<CardFaq>> historyByCardCodes(List<String> cardCodes) {
         var distinctCodes = cardCodes.stream().filter(Objects::nonNull).distinct().toList();
         if (distinctCodes.isEmpty()) {

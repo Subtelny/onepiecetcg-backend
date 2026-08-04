@@ -13,9 +13,7 @@ import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardSetReposito
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CardSetSyncServiceTest {
@@ -40,9 +38,9 @@ class CardSetSyncServiceTest {
         var newSetsFound = service.syncCardSets();
 
         assertThat(newSetsFound).isTrue();
-        var captor = ArgumentCaptor.forClass(Iterable.class);
+        var captor = ArgumentCaptor.forClass(List.class);
         verify(cardSetRepository).saveAll(captor.capture());
-        assertThat((Iterable<CardSet>) captor.getValue()).singleElement().satisfies(cardSet -> {
+        assertThat((List<CardSet>) captor.getValue()).singleElement().satisfies(cardSet -> {
             assertThat(cardSet.getSetId()).isEqualTo("OP-01");
             assertThat(cardSet.getSetName()).isEqualTo("BOOSTER PACK -ROMANCE DAWN- [OP-01]");
             assertThat(cardSet.getLastSyncedAt()).isNotNull();

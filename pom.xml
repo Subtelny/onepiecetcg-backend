@@ -23,7 +23,7 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>3.0.3</springdoc.version>
-        <!-- jOOQ codegen connects to the local dev DB (docker-compose) to read the Hibernate-managed schema; no migration tool exists yet, see CLAUDE.md §3. Override with -D if your local DB credentials differ from docker-compose.yml. -->
+
         <jooq.codegen.jdbc.url>jdbc:postgresql://localhost:5432/optcg</jooq.codegen.jdbc.url>
         <jooq.codegen.jdbc.username>optcg</jooq.codegen.jdbc.username>
         <jooq.codegen.jdbc.password>optcg</jooq.codegen.jdbc.password>
@@ -31,72 +31,72 @@
     </properties>
 
     <dependencies>
-        <!-- Spring Boot Web - REST API support -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
-        <!-- RestClient.Builder auto-configuration - no longer pulled in transitively by webmvc starter -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
-        <!-- Spring Boot Validation - Request validation -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- Spring Boot Data JPA - Persistence -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- PostgreSQL JDBC Driver -->
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- JOOQ - typesafe SQL for complex/read-heavy queries (auto-configures DSLContext against the existing datasource) -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jooq</artifactId>
         </dependency>
 
-        <!-- SpringDoc OpenAPI - Swagger UI and API documentation -->
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
 
-        <!-- Jsoup - HTML parsing for the card errata scraper (en.onepiece-cardgame.com has no JSON API) -->
+
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.18.1</version>
         </dependency>
 
-        <!-- Apache PDFBox - PDF text/position extraction for the card FAQ scraper (en.onepiece-cardgame.com publishes FAQ rulings as PDFs, no JSON API) -->
+
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.3</version>
         </dependency>
 
-        <!-- Lombok - Reduce boilerplate code -->
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Boot DevTools - Auto-reload during development -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -104,21 +104,21 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Boot Test - Testing support -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- MockMvc test autoconfiguration - no longer pulled in transitively by spring-boot-starter-test -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- Testcontainers - real Postgres for JooqSetCardQueryAdapterIT (full-text search can't be verified against a mocked DSLContext) -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
@@ -151,9 +151,7 @@
                 </configuration>
             </plugin>
 
-            <!-- No Failsafe plugin in this repo - Surefire's default include pattern (**/*Test.java)
-                 wouldn't pick up the Testcontainers-based *IT.java naming convention, so it's added
-                 explicitly here to keep `mvn test` running all tests. -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -165,7 +163,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Add generated-jooq directory as source folder so Maven compiles it even when codegen is skipped -->
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -186,11 +184,7 @@
                 </executions>
             </plugin>
 
-            <!-- jOOQ Codegen: Sources committed to git for Railway compatibility.
-                 To regenerate after schema changes:
-                 1. Ensure docker-compose postgres is running
-                 2. Run: mvn clean generate-sources -Djooq.codegen.skip=false
-                 3. Commit updated sources -->
+
             <plugin>
                 <groupId>org.jooq</groupId>
                 <artifactId>jooq-codegen-maven</artifactId>

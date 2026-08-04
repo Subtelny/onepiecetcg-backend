@@ -44,7 +44,7 @@ class CardmarketPriceClientTest {
                 .isEqualTo(OffsetDateTime.parse("2026-08-02T02:44:43+02:00"));
         assertThat(firstPrinting.getProductCatalogVersion()).isEqualTo("1");
 
-        // Products stay visible as candidates even when today's guide has no price row.
+
         assertThat(result.getLast().getCardCode()).isEqualTo("ST01-001");
         assertThat(result.getLast().getAveragePrice()).isNull();
     }

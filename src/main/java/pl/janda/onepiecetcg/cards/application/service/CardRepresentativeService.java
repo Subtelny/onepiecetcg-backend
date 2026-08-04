@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.janda.onepiecetcg.cards.application.model.CardRarity;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
-import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
+import pl.janda.onepiecetcg.cards.application.repository.SetCardCommandRepository;
 
 import java.util.Comparator;
 
@@ -21,7 +21,7 @@ public class CardRepresentativeService {
             .thenComparingInt((SetCard card) -> nameLength(card.getCardName()))
             .thenComparing(SetCard::getId, Comparator.reverseOrder());
 
-    private final SetCardRepository setCardRepository;
+    private final SetCardCommandRepository setCardRepository;
 
     @Transactional
     public void recompute() {

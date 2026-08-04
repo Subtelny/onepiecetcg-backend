@@ -34,9 +34,10 @@ pl.janda.onepiecetcg/
 ├── cards/                           # Bounded context: card catalog, search, sync
 │   ├── application/
 │   │   ├── model/                   # Domain POJOs (JPA-annotated only for persisted entities)
-│   │   ├── repository/              # Repository interfaces (ports)
+│   │   ├── port/in/                 # Use-case interfaces consumed by controllers/schedulers
+│   │   ├── repository/              # Outbound persistence interfaces (ports)
 │   │   ├── client/                  # Outbound API client interfaces (ports)
-│   │   └── service/                 # Business logic, incl. sync services
+│   │   └── service/                 # Use-case implementations and transaction orchestration
 │   ├── infrastructure/
 │   │   ├── persistence/             # Repository implementations (Jpa*/Jooq*)
 │   │   ├── client/                  # HTTP/scraper client implementations
@@ -66,7 +67,12 @@ application ──X──► infrastructure  (forbidden)
 infrastructure ──X──► web          (forbidden)
 ```
 
-**Cross-bounded-context dependency (the one deliberate, documented exception):** `deckbuilder.web` has no `application`/`infrastructure` layers of its own — it directly injects `cards.application.service.CardService` to reuse the existing search/filter/lookup logic (semantic search, variant resolution, filter-options cache) rather than forking it. This is intentional, not an oversight: `deckbuilder` only needs card-browsing behavior identical to `cards`, with no deck-specific business rules yet, so introducing an anti-corruption layer or a shared/common package for a single consumer would be premature abstraction. If `deckbuilder` ever needs behavior that diverges from `cards`, add it in `deckbuilder`'s own application layer at that point — don't fork `CardService` preemptively.
+**Cross-bounded-context dependency (the one deliberate, documented exception):** `deckbuilder.web` has no `application`/
+`infrastructure` layers of its own — it injects `cards.application.port.in.CardCatalogUseCase` to reuse the existing
+search/filter/lookup behavior (semantic search, variant resolution, filter-options cache) rather than forking it. This
+is intentional, not an oversight: `deckbuilder` only needs card-browsing behavior identical to `cards`, with no
+deck-specific business rules yet. If `deckbuilder` ever needs behavior that diverges from `cards`, add it in
+`deckbuilder`'s own application layer at that point.
 
 **DTO/mapper duplication (accepted, deliberate exception to the dedup rule in §8):** `cards.web.dto`/`cards.web.mapper` and `deckbuilder.web.dto`/`deckbuilder.web.mapper` intentionally define separate, near-identical DTOs and mappers (e.g. `CardDto`/`DeckBuilderCardDto`) even though their shapes look the same today. Bounded contexts don't share web-facing contracts — a change to one context's response shape (e.g. adding deck-specific fields to `DeckBuilderCardDto` later) must not silently ripple into the other's frontend contract. Do not "clean this up" by extracting a shared DTO/mapper.
 
@@ -74,10 +80,21 @@ infrastructure ──X──► web          (forbidden)
 
 ## 3. Hexagonal Rules (Ports & Adapters)
 
-- `application/repository/*` and `application/client/*` are **ports** — interfaces only, no implementation, no framework types beyond return values (`Optional<T>`, `List<T>`).
+- `application/port/in/*` contains **inbound use-case ports**. Controllers, schedulers, and cross-context consumers
+  depend on these interfaces, never on concrete `@Service` classes.
+- `application/repository/*` and `application/client/*` are **outbound ports** — interfaces only, no implementation, no
+  framework types beyond return values (`Optional<T>`, `List<T>`).
 - `infrastructure/persistence/*` and `infrastructure/client/*` are **adapters** — implement the ports, contain all framework/HTTP/SQL-specific code.
+- Spring Data interfaces are package-private infrastructure details and never extend an application repository port
+  directly. A `Jpa{Noun}Repository` adapter implements the application port and delegates simple operations to a
+  `{Noun}JpaRepository` Spring Data interface; this keeps framework-generated interfaces separate from application
+  contracts.
 - One port method per external capability — do not bundle unrelated operations into one method.
-- Schedulers (`infrastructure/scheduler/*`) and controllers (`web/controller/*`) are **entrypoints**: they call `application/service/*`, never call adapters directly.
+- Schedulers (`infrastructure/scheduler/*`) and controllers (`web/controller/*`) are **entrypoints**: they call
+  `application/port/in/*`, never concrete services or outbound adapters directly.
+- Large request parameter lists do not cross layers. Web adapters map their DTOs to an application input object (for
+  card search: `CardSearchQuery`); the service resolves defaults/semantic shorthand into persistence criteria
+  (`CardSearchCriteria`) before calling an outbound port.
 - Derived-query methods with no custom filtering logic are declared directly on the JPA repository interface (Spring Data generates them) — no need for a manual implementation.
 - Complex/read-heavy queries (multi-field dynamic search/filtering, cross-row aggregation, bulk recompute) are implemented with **JOOQ** (`DSLContext`) in a dedicated class in `infrastructure/persistence/` (e.g. `Jooq{Noun}QueryAdapter`), called from the corresponding `Jpa{Noun}Repository` method — pushes filtering, sorting, pagination (`LIMIT`/`OFFSET`), counting, and grouping to the database instead of loading full tables into memory and processing them with Java Streams. This superseded the earlier `findAll()` + Streams default-method convention for these cases; simple derived queries with no such logic still don't need it.
 - JOOQ generated sources (jOOQ codegen, target `generated-sources`), `DSLContext`, and JOOQ record/table types are adapter-only — they must never appear in `application/repository/*` port signatures or in `application/service/*`; ports keep returning plain domain types (`Optional<T>`, `List<T>`).
@@ -100,7 +117,10 @@ infrastructure ──X──► web          (forbidden)
 1. Port: add a fetch method to a new/existing client interface in `application/client/`.
 2. Adapter: create a class in `infrastructure/client/` extending the existing abstract base class for API clients (pick the more specific one if the response shape already matches) — reuse the shared fetch/map/null-check helper, do not duplicate that logic.
 3. Service: add a sync method in `application/service/`, using a **scoped delete** if sharing a table with another sync job (never delete-all on a shared table). Keep the remote fetch **outside** the transaction: an HTTP call inside `@Transactional` holds a database connection open for the whole round trip. Where a sync does delete+insert, split it across **two classes**, which is the convention every existing sync now follows:
-   - `<Noun>SyncService` — the orchestrator, **not** `@Transactional`. Owns the fetch, the decision whether to run at all, the mapping, and the `lastSyncedAt` stamp. Plain reads used only to decide whether to skip (e.g. an up-to-date check) belong here too; they don't need a transaction.
+    - `<Noun>SyncService` — the orchestrator implementing a matching `application/port/in/<Noun>SyncUseCase`, **not**
+      `@Transactional`. Owns the fetch, the decision whether to run at all, the mapping, and the `lastSyncedAt` stamp.
+      Plain reads used only to decide whether to skip (e.g. an up-to-date check) belong here too; they don't need a
+      transaction.
    - `<Noun>ReplacementService` — `@Transactional`, one method (`replaceAll`/`replaceSet`) doing just the delete + insert, so the two commit or roll back together.
 
    Scope that transaction as tightly as the delete allows: where the delete is already set-scoped, replace **one set per transaction** inside the orchestrator's loop rather than wrapping the whole loop — it keeps atomicity at the right granularity and bounds the persistence context to one set's rows instead of the entire run's. A `@Transactional` method must never swallow its own exceptions — catching inside the transaction lets a half-finished replace commit (e.g. the delete without the insert); let it propagate to the scheduler's safe-run helper (step 4) instead.
@@ -110,11 +130,19 @@ infrastructure ──X──► web          (forbidden)
 5. Cron property: add a new hyphenated `<entity>.sync.cron` property to config, matching the naming pattern of its siblings.
 6. If the sync writes to the `set_cards` table, recompute the `representative` flag (`CardRepresentativeService.recompute()`) before refreshing the filter-options cache, then refresh the filter-options cache (`CardFilterOptionService.refresh()`) — both at the end of the transactional replace method described in step 3, in that order (filter options must be derived from the already-recomputed flag). Follow the pattern of the existing sync jobs that already do this. Don't add a live/on-demand recompute path instead; the `representative` flag and the filter-options cache table are the single source of truth for, respectively, variant deduplication and the filters endpoint.
 
-**Adding a new controller/endpoint:** follow `cards.web.controller.CardController` as the reference — thin controller, full OpenAPI annotations (`@Tag`/`@Operation`/`@Parameter`/`@ApiResponses`) on every public method, delegate to a service, map via a dedicated mapper. Place it in the bounded context it belongs to (`cards.web.*`, `deckbuilder.web.*`, or a new bounded-context subpackage) rather than the root `web/` package, which is reserved for cross-cutting concerns (`GlobalExceptionHandler`, `web/config/*`).
+**Adding a new controller/endpoint:** follow `cards.web.controller.CardController` as the reference — thin controller,
+full OpenAPI annotations (`@Tag`/`@Operation`/`@Parameter`/`@ApiResponses`) on every public method, delegate to an
+inbound use-case port, map via a dedicated mapper. Place it in the bounded context it belongs to (`cards.web.*`,
+`deckbuilder.web.*`, or a new bounded-context subpackage) rather than the root `web/` package, which is reserved for
+cross-cutting concerns (`GlobalExceptionHandler`, `web/config/*`).
 
 **Adding a new entity:** model in `<context>/application/model/`, repository interface in `<context>/application/repository/`, JPA or in-memory implementation in `<context>/infrastructure/persistence/`, DTO + mapper + controller in `<context>/web/`. Services depend only on the repository interface — persistence choice never touches service code.
 
-**Adding a new bounded context:** mirror the `cards`/`deckbuilder` layout — a new top-level subpackage of `pl.janda.onepiecetcg` with its own `application`/`infrastructure`/`web` layers (or just `web` if it's a pure consumer of another context's service, like `deckbuilder`). Don't add a shared/common package for cross-context reuse unless ≥3 bounded contexts would need it (see §8) — a single consumer should depend directly on the owning context's `application/service/*`, as `deckbuilder` does on `cards`.
+**Adding a new bounded context:** mirror the `cards`/`deckbuilder` layout — a new top-level subpackage of
+`pl.janda.onepiecetcg` with its own `application`/`infrastructure`/`web` layers (or just `web` if it's a pure consumer
+of another context's use-case port, like `deckbuilder`). Don't add a shared/common package for cross-context reuse
+unless ≥3 bounded contexts would need it (see §8) — a single consumer should depend directly on the owning context's
+`application/port/in/*`.
 
 ---
 
@@ -136,7 +164,9 @@ infrastructure ──X──► web          (forbidden)
   - **Services:** `@ExtendWith(MockitoExtension.class)`, mock repositories/clients, assert business logic in isolation.
   - **Controllers:** `@SpringBootTest` + `MockMvc`, assert HTTP status + JSON shape (enum casing, date format, field names) — this is the actual frontend contract, treat it as such.
   - **Persistence adapters:** `@SpringBootTest` + Testcontainers Postgres wired via `@DynamicPropertySource`, asserting real SQL behavior (the point is the database, so don't mock it away). Append `prepareThreshold=0` to the container JDBC URL — startup DDL adds a column mid-session, and a cached server-side plan otherwise fails with "cached plan must not change result type".
-  - Any `@SpringBootTest` must `@MockitoBean` every sync service, in every bounded context. `ApplicationReadyEvent` fires in tests, so the schedulers would otherwise hit the real external API and replace the table contents underneath the fixtures.
+  - Any `@SpringBootTest` must `@MockitoBean` every sync use-case port, in every bounded context.
+    `ApplicationReadyEvent` fires in tests, so the schedulers would otherwise hit the real external API and replace the
+    table contents underneath the fixtures.
   - Never re-create schema that application startup already creates (see §3) — a test that sets up its own copy of the DDL stops proving the shipped schema is correct and silently drifts from it.
   - Prefer testing behavior through the public port (service method, controller endpoint) over testing private helper methods directly.
 

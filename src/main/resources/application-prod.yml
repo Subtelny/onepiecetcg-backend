@@ -1,10 +1,4 @@
-# Prod runs in a 1 GB container, so the framework defaults (200 Tomcat threads, 10 pooled
-# connections, 8 idle @Async threads) are sized for an order of magnitude more traffic than this
-# service sees and are paid for in RSS. The heap/metaspace side of the same budget lives in the
-# Procfile's JVM flags - see DEPLOYMENT.md.
 server:
-  # Railway uses its PORT variable for both routing and deployment healthchecks.
-  # Keep this in application config so it also applies when the Procfile command changes.
   port: ${PORT:3000}
   address: 0.0.0.0
   tomcat:
@@ -17,31 +11,18 @@ spring:
     url: jdbc:postgresql://${PGHOST}:${PGPORT:5432}/${PGDATABASE}
     username: ${PGUSER}
     password: ${PGPASSWORD}
-    # Each pooled connection is a Postgres backend process, so this caps memory on the database
-    # side too, not just here.
     hikari:
       maximum-pool-size: 5
       minimum-idle: 1
-  # Only consumer is SetCardSyncService.syncSetCardsAsync, which runs one task at a time.
   task:
     execution:
       pool:
         core-size: 1
   jpa:
     hibernate:
-      # Stays on 'update': with no migration tool in the project, this is what creates and evolves the
-      # JPA-mapped schema on deploy. 'validate' would turn every entity change into a boot failure
-      # until someone had applied the DDL by hand. The one thing ddl-auto cannot express - the
-      # generated card_semantic_search_vector column - is applied at startup by
-      # SetCardSearchVectorSchemaInitializer instead. See DEPLOYMENT.md.
       ddl-auto: update
     show-sql: false
 
-# Off in prod: the spec is an unauthenticated, machine-readable map of every route, including
-# /api/internal/* - which is protected only by a shared API key, so advertising it is pure
-# attacker convenience. Both flags are set because swagger-ui serves nothing without api-docs,
-# but leaving api-docs on would keep the raw spec reachable. Use the local profile's Swagger UI
-# when you need to inspect a contract.
 springdoc:
   api-docs:
     enabled: false

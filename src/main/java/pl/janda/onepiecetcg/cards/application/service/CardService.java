@@ -2,33 +2,29 @@ package pl.janda.onepiecetcg.cards.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import pl.janda.onepiecetcg.cards.application.model.CardColor;
-import pl.janda.onepiecetcg.cards.application.model.CardFilterOptions;
-import pl.janda.onepiecetcg.cards.application.model.CardRarity;
-import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
-import pl.janda.onepiecetcg.cards.application.model.CardSortField;
-import pl.janda.onepiecetcg.cards.application.model.CardType;
-import pl.janda.onepiecetcg.cards.application.model.SetCard;
-import pl.janda.onepiecetcg.cards.application.model.SortDirection;
-import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
+import pl.janda.onepiecetcg.cards.application.model.*;
+import pl.janda.onepiecetcg.cards.application.port.in.CardCatalogUseCase;
+import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class CardService {
+public class CardService implements CardCatalogUseCase {
 
-    private final SetCardRepository setCardRepository;
+    private final SetCardQueryRepository setCardRepository;
 
     private final CardFilterOptionService cardFilterOptionService;
 
     private final SemanticQueryParser semanticQueryParser;
 
+    @Override
     public SetCard getCardById(String id) {
         return setCardRepository.findById(Long.valueOf(id))
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id: " + id));
     }
 
+    @Override
     public List<SetCard> getVariantsByCardId(String id) {
         var card = getCardById(id);
         var cardSetId = card.getCardSetId();
@@ -40,10 +36,12 @@ public class CardService {
                 .toList();
     }
 
+    @Override
     public List<String> getAllCardCodes() {
         return setCardRepository.findAllCardCodes();
     }
 
+    @Override
     public SetCard getVariantByCardCode(String cardCode, Integer variant) {
         var variants = setCardRepository.findByCardSetId(cardCode).stream()
                 .sorted(CardRepresentativeService.CANONICAL_VARIANT_ORDER)
@@ -58,62 +56,63 @@ public class CardService {
         return variants.get(index);
     }
 
-    public PagedCards searchCards(
-            String name,
-            CardSearchField searchField,
-            List<CardType> types,
-            List<CardColor> colors,
-            List<CardRarity> rarities,
-            List<CardRarity> flatRarities,
-            List<Integer> costs,
-            Integer power,
-            Integer counterAmount,
-            List<String> attributes,
-            List<String> attributeCombos,
-            String subTypes,
-            List<String> prefixes,
-            CardSortField sortBy,
-            SortDirection sortOrder,
-            Integer page,
-            Integer limit,
-            Boolean showAllVariants
-    ) {
-        var resolvedPage = page != null ? page : 0;
-        var resolvedLimit = limit != null ? limit : 50;
-        var resolvedSearchField = searchField != null ? searchField : CardSearchField.NAME;
-        var resolvedShowAllVariants = Boolean.TRUE.equals(showAllVariants);
+    @Override
+    public PagedCards searchCards(CardSearchQuery query) {
+        var resolvedPage = query.page() != null ? query.page() : 0;
+        var resolvedLimit = query.limit() != null ? query.limit() : 50;
+        var resolvedSearchField = query.searchField() != null ? query.searchField() : CardSearchField.NAME;
+        var resolvedShowAllVariants = Boolean.TRUE.equals(query.showAllVariants());
 
-        var resolvedName = name;
-        var resolvedCosts = costs;
-        var resolvedPower = power;
-        var resolvedCounterAmount = counterAmount;
+        var resolvedText = query.text();
+        var resolvedCosts = query.costs();
+        var resolvedPower = query.power();
+        var resolvedCounterAmount = query.counterAmount();
         var resolvedErrataOnly = false;
 
-        // SEMANTIC mode: pull inline "6c"/"2kc"/"5kp" tokens out of the free text into the same
-        // cost/power/counterAmount filters the sidebar uses - an explicit sidebar value always wins
-        // over a token - then full-text search/rank whatever text remains (see JooqSetCardQueryAdapter).
-        // The standalone "errata" keyword is also pulled out and turned into an errata-only filter.
-        if (resolvedSearchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()) {
-            var parsed = semanticQueryParser.parse(name);
-            if (parsed.cost() != null && (costs == null || costs.isEmpty())) {
+
+        if (resolvedSearchField == CardSearchField.SEMANTIC && query.text() != null && !query.text().isBlank()) {
+            var parsed = semanticQueryParser.parse(query.text());
+            if (parsed.cost() != null && (query.costs() == null || query.costs().isEmpty())) {
                 resolvedCosts = List.of(parsed.cost());
             }
-            if (parsed.power() != null && power == null) {
+            if (parsed.power() != null && query.power() == null) {
                 resolvedPower = parsed.power();
             }
-            if (parsed.counter() != null && counterAmount == null) {
+            if (parsed.counter() != null && query.counterAmount() == null) {
                 resolvedCounterAmount = parsed.counter();
             }
-            resolvedName = parsed.remainingText();
+            resolvedText = parsed.remainingText();
             resolvedErrataOnly = parsed.errataOnly();
         }
 
-        var pageContent = setCardRepository.search(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, sortBy, sortOrder, resolvedPage, resolvedLimit, resolvedShowAllVariants, resolvedErrataOnly);
-        var totalCount = setCardRepository.countSearch(resolvedName, resolvedSearchField, types, colors, rarities, flatRarities, resolvedCosts, resolvedPower, resolvedCounterAmount, attributes, attributeCombos, subTypes, prefixes, resolvedShowAllVariants, resolvedErrataOnly);
+        var criteria = new CardSearchCriteria(
+                resolvedText,
+                resolvedSearchField,
+                query.types(),
+                query.colors(),
+                query.rarities(),
+                query.flatRarities(),
+                resolvedCosts,
+                resolvedPower,
+                resolvedCounterAmount,
+                query.attributes(),
+                query.attributeCombos(),
+                query.subTypes(),
+                query.prefixes(),
+                query.sortBy(),
+                query.sortOrder(),
+                resolvedPage,
+                resolvedLimit,
+                resolvedShowAllVariants,
+                resolvedErrataOnly);
+
+        var pageContent = setCardRepository.search(criteria);
+        var totalCount = setCardRepository.countSearch(criteria);
 
         return new PagedCards(pageContent, totalCount, resolvedPage, resolvedLimit);
     }
 
+    @Override
     public CardFilterOptions getFilterOptions() {
         return cardFilterOptionService.getFilterOptions();
     }

@@ -1,14 +1,14 @@
 package pl.janda.onepiecetcg.cards.application.model;
 
 public enum CardRarity {
-    C,    // Common
-    UC,   // Uncommon
-    R,    // Rare
-    SR,   // Super Rare
-    L,    // Leader
-    SEC,  // Secret Rare
-    TR,   // Treasure Rare
-    SP,   // Special
-    PR,   // Promo - always the lowest-priority rarity for canonical-variant ranking (CardService.rarityRank)
-    P     // flatRarity override for set cards whose cardPrefix is "P" (SetCardSyncService)
+    C,
+    UC,
+    R,
+    SR,
+    L,
+    SEC,
+    TR,
+    SP,
+    PR,
+    P
 }

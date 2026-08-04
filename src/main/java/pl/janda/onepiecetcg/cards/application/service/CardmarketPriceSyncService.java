@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.cards.application.client.CardmarketPriceApiClient;
 import pl.janda.onepiecetcg.cards.application.model.CardmarketPriceCandidate;
+import pl.janda.onepiecetcg.cards.application.port.in.CardmarketPriceSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.CardmarketPriceCandidateRepository;
 
 import java.time.LocalDateTime;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CardmarketPriceSyncService {
+public class CardmarketPriceSyncService implements CardmarketPriceSyncUseCase {
 
     private final CardmarketPriceApiClient cardmarketPriceApiClient;
 
@@ -20,6 +21,7 @@ public class CardmarketPriceSyncService {
 
     private final CardmarketPriceHistoryService cardmarketPriceHistoryService;
 
+    @Override
     public void syncPrices() {
         var candidates = cardmarketPriceApiClient.fetchPriceCandidates();
         if (candidates.isEmpty()) {

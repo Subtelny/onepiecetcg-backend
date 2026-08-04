@@ -14,28 +14,11 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * Scrapes card errata from en.onepiece-cardgame.com (no JSON API exists for this data, unlike
- * the database-backed card catalog sync jobs). Combines two independent HTML sources on the same site:
- * <ul>
- *   <li>The canonical rules page ({@code /rules/errata_card/}), which mixes two recurring HTML
- *   structures anchored around an {@code h5.smallTitRed} heading paired with the nearest {@code dl}
- *   of Before/After text - see {@link #parse(Document)}.</li>
- *   <li>Individual "Apology for the errata..." notice pages under {@code /topics/notice_*.php},
- *   which are NOT all listed on the rules page, discovered by scanning the {@code /topics/} feed
- *   for entries mentioning "errata" - see {@link #parseTopicDetailPage(Document, String)}.</li>
- * </ul>
- * Results from both sources are combined and deduplicated by (cardCode, noticeDate) - see
- * CardErrata's sync job for how the combined results are used.
- */
+
 @Slf4j
 @Component
 public class OnePieceCardGameErrataClient implements CardErrataApiClient {

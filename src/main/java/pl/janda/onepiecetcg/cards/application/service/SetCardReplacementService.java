@@ -5,28 +5,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
-import pl.janda.onepiecetcg.cards.application.repository.SetCardRepository;
+import pl.janda.onepiecetcg.cards.application.repository.SetCardCommandRepository;
 
 import java.util.List;
 
-/**
- * Owns the transactional write half of the set-cards sync: replace the table contents, then recompute
- * the two derived artifacts that depend on them (the representative flag, then the filter-options
- * cache - in that order, since filter options are derived from the already-recomputed flag).
- * <p>
- * Split out of SetCardSyncService so the transaction starts here, after the full source catalog has
- * already been loaded and mapped. Keeping that work outside bounds how long the delete's row locks and
- * persistence context are held.
- * <p>
- * This is a transaction boundary, not an abstraction for reuse - a delete-all followed by a bulk
- * insert must be atomic, or a failure part-way through leaves the card catalog empty or truncated.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class SetCardReplacementService {
 
-    private final SetCardRepository setCardRepository;
+    private final SetCardCommandRepository setCardRepository;
 
     private final CardRepresentativeService cardRepresentativeService;
 

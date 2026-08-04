@@ -70,8 +70,8 @@ class SemanticQueryParserTest {
 
     @Test
     void parse_tokenEmbeddedMidWord_isNotTreatedAsAToken() {
-        // No word boundary before the digits (attached to "abc") or after the suffix (attached to
-        // "ats") - must not be parsed as a cost token.
+
+
         var prefixed = parser.parse("abc6c");
         assertThat(prefixed.cost()).isNull();
         assertThat(prefixed.remainingText()).isEqualTo("abc6c");

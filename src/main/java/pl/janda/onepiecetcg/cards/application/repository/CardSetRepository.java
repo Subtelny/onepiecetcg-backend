@@ -11,5 +11,5 @@ public interface CardSetRepository {
 
     Optional<CardSet> findById(String setId);
 
-    <S extends CardSet> List<S> saveAll(Iterable<S> cardSets);
+    void saveAll(List<CardSet> cardSets);
 }

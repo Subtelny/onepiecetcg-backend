@@ -10,7 +10,7 @@ public interface CardErrataRepository {
 
     void deleteAll();
 
-    <S extends CardErrata> List<S> saveAll(Iterable<S> errata);
+    void saveAll(List<CardErrata> errata);
 
     List<CardErrata> findByCardCodeIn(List<String> cardCodes);
 }

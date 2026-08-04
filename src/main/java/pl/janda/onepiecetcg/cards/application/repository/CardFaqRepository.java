@@ -14,5 +14,5 @@ public interface CardFaqRepository {
 
     void deleteBySetId(String setId);
 
-    <S extends CardFaq> List<S> saveAll(Iterable<S> faqEntries);
+    void saveAll(List<CardFaq> faqEntries);
 }

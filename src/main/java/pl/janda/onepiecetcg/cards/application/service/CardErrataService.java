@@ -3,6 +3,7 @@ package pl.janda.onepiecetcg.cards.application.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.cards.application.model.CardErrata;
+import pl.janda.onepiecetcg.cards.application.port.in.CardErrataQueryUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.CardErrataRepository;
 
 import java.util.Comparator;
@@ -13,19 +14,17 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CardErrataService {
+public class CardErrataService implements CardErrataQueryUseCase {
 
     private final CardErrataRepository cardErrataRepository;
 
+    @Override
     public List<CardErrata> listAll() {
         return cardErrataRepository.findAll();
     }
 
-    /**
-     * Resolves the full errata history per card code (a card can receive more than one errata over
-     * time), sorted oldest to newest. Missing/never-erratad codes are simply absent from the
-     * returned map.
-     */
+
+    @Override
     public Map<String, List<CardErrata>> historyByCardCodes(List<String> cardCodes) {
         var distinctCodes = cardCodes.stream().filter(Objects::nonNull).distinct().toList();
         if (distinctCodes.isEmpty()) {

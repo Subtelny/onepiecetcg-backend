@@ -12,9 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CardErrataServiceTest {
@@ -50,7 +48,7 @@ class CardErrataServiceTest {
         cardErrataService = new CardErrataService(cardErrataRepository);
         var older = errataFor("OP13-119", LocalDate.of(2023, 6, 1));
         var newer = errataFor("OP13-119", LocalDate.of(2024, 1, 1));
-        // stored out of order to prove the service sorts rather than relying on repository order
+
         when(cardErrataRepository.findByCardCodeIn(List.of("OP13-119"))).thenReturn(List.of(newer, older));
 
         var result = cardErrataService.historyByCardCodes(Arrays.asList("OP13-119", "OP13-119", null));
