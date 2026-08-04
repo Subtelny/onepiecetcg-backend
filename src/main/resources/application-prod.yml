@@ -3,6 +3,10 @@
 # service sees and are paid for in RSS. The heap/metaspace side of the same budget lives in the
 # Procfile's JVM flags - see DEPLOYMENT.md.
 server:
+  # Railway uses its PORT variable for both routing and deployment healthchecks.
+  # Keep this in application config so it also applies when the Procfile command changes.
+  port: ${PORT:3000}
+  address: 0.0.0.0
   tomcat:
     threads:
       max: 20

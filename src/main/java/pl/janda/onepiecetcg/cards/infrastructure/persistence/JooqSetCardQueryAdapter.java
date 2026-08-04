@@ -19,7 +19,9 @@ import pl.janda.onepiecetcg.cards.application.model.SortDirection;
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records.SetCardsRecord;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import static org.jooq.impl.DSL.case_;
@@ -153,11 +155,11 @@ class JooqSetCardQueryAdapter {
         var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
                 attributes, attributeCombos, subTypes, prefixes, showAllVariants, errataOnly);
 
-        // SEMANTIC mode ranks by full-text relevance instead of CARD_NUMBER default ordering, but
-        // only when the caller didn't explicitly request a sortBy - an explicit sortBy always wins.
-        // See the @Parameter javadoc on CardSearchRequest.sortBy.
+        // SEMANTIC mode ranks matching card types first, then by full-text relevance, instead of
+        // CARD_NUMBER default ordering. This only applies when the caller didn't explicitly request
+        // a sortBy - an explicit sortBy always wins. See CardSearchRequest.sortBy.
         var orderBy = sortBy == null && searchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()
-                ? List.<SortField<?>>of(semanticRank(name).desc(), SET_CARDS.ID.asc())
+                ? buildSemanticOrderBy(name)
                 : buildOrderBy(sortBy, sortOrder);
 
         // Only the fields the search-result list actually renders are selected here - ORDER BY/WHERE
@@ -303,6 +305,11 @@ class JooqSetCardQueryAdapter {
 
     private static final Pattern QUOTED_PHRASE = Pattern.compile("(['\"])(.*?)\\1");
 
+    private static final Pattern CARD_TYPE_KEYWORD = Pattern.compile(
+            "(?i)(?<![\\p{L}\\p{N}_])(" + String.join("|", Arrays.stream(CardType.values())
+                    .map(type -> Pattern.quote(type.name()))
+                    .toList()) + ")(?![\\p{L}\\p{N}_])");
+
     private record QuotedQuery(String phrase, String remainder) {}
 
     /**
@@ -404,6 +411,33 @@ class JooqSetCardQueryAdapter {
         }
         return field("ts_rank_cd({0}, {1} && phraseto_tsquery('simple', {2}))", Double.class,
                 SET_CARDS.CARD_SEMANTIC_SEARCH_VECTOR, prefixTsQuery(parsed.remainder()), parsed.phrase());
+    }
+
+    /**
+     * Gives an exact card_type match precedence when the semantic query contains a whole-word
+     * CardType keyword. Full-text rank still orders rows within the matching/non-matching groups.
+     */
+    private static List<SortField<?>> buildSemanticOrderBy(String query) {
+        var orderBy = new ArrayList<SortField<?>>();
+        var cardTypeKeywords = extractCardTypeKeywords(query);
+        if (!cardTypeKeywords.isEmpty()) {
+            orderBy.add(when(upper(SET_CARDS.CARD_TYPE).in(cardTypeKeywords), 0).else_(1).asc());
+        }
+        orderBy.add(semanticRank(query).desc());
+        orderBy.add(SET_CARDS.ID.asc());
+        return orderBy;
+    }
+
+    private static List<String> extractCardTypeKeywords(String query) {
+        var keywords = new ArrayList<String>();
+        var matcher = CARD_TYPE_KEYWORD.matcher(query);
+        while (matcher.find()) {
+            var keyword = matcher.group(1).toUpperCase(Locale.ROOT);
+            if (!keywords.contains(keyword)) {
+                keywords.add(keyword);
+            }
+        }
+        return keywords;
     }
 
     /**

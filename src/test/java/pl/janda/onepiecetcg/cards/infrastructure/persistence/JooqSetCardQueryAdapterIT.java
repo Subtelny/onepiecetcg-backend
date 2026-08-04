@@ -451,6 +451,60 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
+    void semanticSearch_cardTypeKeyword_prioritizesActualCardTypeOverDescriptionMatch() {
+        jpaRepository.saveAllAndFlush(List.of(
+                SetCard.builder()
+                        .cardName("Red Captain")
+                        .cardSetId("OP01-006")
+                        .cardType("LEADER")
+                        .cardText("A fierce captain.")
+                        .cardCost("9")
+                        .representative(true)
+                        .build(),
+                SetCard.builder()
+                        .cardName("History Scholar")
+                        .cardSetId("OP01-007")
+                        .cardType("CHARACTER")
+                        .cardText("Give up to 1 of your Leader cards +1000 power.")
+                        .cardCost("1")
+                        .representative(true)
+                        .build(),
+                SetCard.builder()
+                        .cardName("Surprise Maneuver")
+                        .cardSetId("OP01-008")
+                        .cardType("EVENT")
+                        .cardText("Draw 1 card.")
+                        .representative(true)
+                        .build(),
+                SetCard.builder()
+                        .cardName("Tactical Analyst")
+                        .cardSetId("OP01-009")
+                        .cardType("CHARACTER")
+                        .cardText("Return up to 1 Event card to its owner's hand.")
+                        .representative(true)
+                        .build()
+        ));
+
+        var leaderResults = adapter.search(
+                "leader", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+        assertThat(leaderResults.getFirst().getCardName()).isEqualTo("Red Captain");
+
+        var eventResults = adapter.search(
+                "EvEnT", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+        assertThat(eventResults.getFirst().getCardName()).isEqualTo("Surprise Maneuver");
+
+        var explicitlySortedLeaderResults = adapter.search(
+                "leader", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                CardSortField.COST, SortDirection.ASC, 0, 50, false, false);
+        assertThat(explicitlySortedLeaderResults.getFirst().getCardName()).isEqualTo("History Scholar");
+    }
+
+    @Test
     void semanticSearch_withExplicitSortBy_overridesRelevanceRanking() {
         // SEMANTIC "Straw Hat" matches Luffy (cost=1) and Usopp (cost=2) - relevance ranking would
         // put Luffy first (exact phrase match), but an explicit sortBy=COST DESC must override that.

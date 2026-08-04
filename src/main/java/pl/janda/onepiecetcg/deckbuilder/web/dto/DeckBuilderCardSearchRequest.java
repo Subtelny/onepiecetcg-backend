@@ -57,7 +57,7 @@ public class DeckBuilderCardSearchRequest {
     @Parameter(description = "Card prefixes, e.g. ST, OP01, EB01")
     private List<String> prefixes;
 
-    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to CARD_NUMBER ascending if omitted - except when searchIn=SEMANTIC and the query text is non-blank, in which case omitting sortBy orders by full-text relevance (ts_rank) instead. An explicitly provided sortBy always overrides relevance ranking, even in SEMANTIC mode with non-blank text.")
+    @Parameter(description = "Field to sort by (CARD_NUMBER, COST, POWER, FLAT_RARITY). Defaults to CARD_NUMBER ascending if omitted - except when searchIn=SEMANTIC and the query text is non-blank, in which case omitting sortBy prioritizes cards whose actual type matches a whole-word type keyword (LEADER, CHARACTER, EVENT, STAGE), then orders by full-text relevance (ts_rank). An explicitly provided sortBy always overrides semantic ranking.")
     private CardSortField sortBy;
 
     @Parameter(description = "Sort direction (ASC, DESC). Defaults to ASC.")
