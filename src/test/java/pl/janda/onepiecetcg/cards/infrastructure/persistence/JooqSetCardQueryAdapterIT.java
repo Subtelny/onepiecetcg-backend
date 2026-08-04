@@ -125,6 +125,22 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
+    void representativeLookup_returnsOnlyRequestedRepresentativePrints() {
+        jpaRepository.saveAndFlush(SetCard.builder()
+                .cardName("Alternate Luffy")
+                .cardSetId("OP01-001")
+                .representative(false)
+                .build());
+
+        var results = jpaRepository.findByCardSetIdInAndRepresentativeTrue(List.of("OP01-001", "OP01-003"));
+
+        assertThat(results)
+                .extracting(SetCard::getCardSetId)
+                .containsExactlyInAnyOrder("OP01-001", "OP01-003");
+        assertThat(results).allMatch(SetCard::isRepresentative);
+    }
+
+    @Test
     void descriptionSearch_doesNotAffectDefaultSortOrder() {
         var results = adapter.search(
                 null, CardSearchField.NAME,

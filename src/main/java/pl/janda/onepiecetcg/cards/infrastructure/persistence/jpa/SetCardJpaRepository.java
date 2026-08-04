@@ -11,6 +11,8 @@ public interface SetCardJpaRepository extends JpaRepository<SetCard, Long> {
 
     List<SetCard> findByCardSetId(String cardSetId);
 
+    List<SetCard> findByCardSetIdInAndRepresentativeTrue(List<String> cardSetIds);
+
     @Query("select distinct c.cardSetId from SetCard c where c.cardSetId is not null order by c.cardSetId")
     List<String> findDistinctCardSetIds();
 }

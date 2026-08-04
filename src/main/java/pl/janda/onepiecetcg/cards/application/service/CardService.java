@@ -57,6 +57,14 @@ public class CardService implements CardCatalogUseCase {
     }
 
     @Override
+    public List<SetCard> getRepresentativeCardsByCardCodes(List<String> cardCodes) {
+        if (cardCodes == null || cardCodes.isEmpty()) {
+            return List.of();
+        }
+        return setCardRepository.findRepresentativesByCardSetIds(cardCodes);
+    }
+
+    @Override
     public PagedCards searchCards(CardSearchQuery query) {
         var resolvedPage = query.page() != null ? query.page() : 0;
         var resolvedLimit = query.limit() != null ? query.limit() : 50;

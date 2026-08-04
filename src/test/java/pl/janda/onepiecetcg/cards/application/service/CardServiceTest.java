@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchCriteria;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchQuery;
+import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 
 import java.util.List;
@@ -125,6 +126,19 @@ class CardServiceTest {
         cardService.searchCards(query("Luffy", CardSearchField.NAME, null, null, null));
 
         assertThat(capturedCriteria().errataOnly()).isFalse();
+    }
+
+    @Test
+    void getRepresentativeCardsByCardCodes_usesSingleBulkRepositoryLookup() {
+        cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
+        var cards = List.of(SetCard.builder().cardSetId("OP01-001").representative(true).build());
+        when(setCardRepository.findRepresentativesByCardSetIds(List.of("OP01-001", "OP01-006")))
+                .thenReturn(cards);
+
+        var result = cardService.getRepresentativeCardsByCardCodes(List.of("OP01-001", "OP01-006"));
+
+        assertThat(result).isSameAs(cards);
+        verify(setCardRepository).findRepresentativesByCardSetIds(List.of("OP01-001", "OP01-006"));
     }
 
     private void stubRepository() {

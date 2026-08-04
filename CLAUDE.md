@@ -11,13 +11,17 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
 - **Persistence status:**
   - Card sets and set/promo cards → PostgreSQL via Spring Data JPA.
   - Filter option values → PostgreSQL via Spring Data JPA, one row per distinct filterable value — a precomputed cache, not user-facing data.
-  - Decks and shops → in-memory, not yet migrated to persistent storage.
+  - Immutable shared deck snapshots → PostgreSQL via Spring Data JPA. They store stable card numbers rather than
+    `set_cards` identity IDs because catalog sync replaces that table.
+  - Browsable community decks and shops → not yet migrated to persistent storage.
 - **Card catalog sync:** independent scheduled jobs read the scraper-populated `onepiece_card_sets` and `onepiece_cards` tables and write the application-facing `card_sets` and `set_cards` tables. `SetCardSyncService` maps every printed variant from the source table, replaces `set_cards` transactionally, recomputes representative variants, and refreshes filter options on every run.
   - A second group of sync jobs scrapes the official rules site (errata notices as HTML, FAQ as per-set PDFs). Their adapters use Jsoup/PDFBox and follow the same service/scheduler pattern as everything else (§4).
   - **Every sync that does delete+insert uses the orchestrator + replacement split described in §4 step 3** — there are no remaining syncs where the fetch happens inside the transaction. Don't reintroduce one.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
-- Reference key endpoints: `GET /` and `GET /health` (liveness), `GET/POST/PUT/DELETE /api/decks`, `GET /api/decks/featured`, `GET/POST /api/shops`, `GET /api/cards`, `GET /api/cards/{id}`, `GET /api/deckbuilder/cards`, `GET /api/deckbuilder/cards/{id}`, `GET /api/home/*`, `/api/tournaments/*`.
+- Reference key endpoints: `GET /` and `GET /health` (liveness), `GET /api/cards`, `GET /api/cards/{id}`,
+  `GET /api/deckbuilder/cards`, `GET /api/deckbuilder/cards/{id}`, `POST /api/deckbuilder/shared-decks`, and
+  `GET /api/deckbuilder/shared-decks/{code}`.
 
 ---
 
@@ -27,10 +31,14 @@ Hexagonal architecture (Ports & Adapters) with DDD-flavored naming, organized in
 
 ```
 pl.janda.onepiecetcg/
-├── application/                     # Root-only: app bootstrap (OnePieceTcgApplication), not a bounded context
-├── web/
-│   ├── controller/GlobalExceptionHandler.java   # Cross-cutting, shared by every bounded context
-│   └── config/                      # Cross-cutting: CorsConfig, OpenApiConfig, InternalSecurityConfig, InternalApiKeyFilter
+├── OnePieceTcgApplication.java      # App bootstrap, not a bounded context
+├── infrastructure/                 # Cross-cutting infrastructure
+│   ├── web/
+│   │   ├── controller/              # GlobalExceptionHandler
+│   │   └── config/                  # CORS, OpenAPI, internal endpoint security
+│   └── status/
+│       ├── controller/              # Railway liveness endpoints
+│       └── dto/
 ├── cards/                           # Bounded context: card catalog, search, sync
 │   ├── application/
 │   │   ├── model/                   # Domain POJOs (JPA-annotated only for persisted entities)
@@ -42,39 +50,45 @@ pl.janda.onepiecetcg/
 │   │   ├── persistence/             # Repository implementations (Jpa*/Jooq*)
 │   │   ├── client/                  # HTTP/scraper client implementations
 │   │   └── scheduler/               # @Scheduled / @EventListener entrypoints
-│   └── web/
+│   └── rest/
 │       ├── controller/              # CardController, InternalSyncController
 │       ├── dto/
 │       └── mapper/
-├── status/                          # Cross-cutting liveness HTTP endpoints used by Railway
-│   └── web/
-│       ├── controller/
-│       └── dto/
-└── deckbuilder/                     # Bounded context: deck-builder card browsing
-    └── web/
-        ├── controller/               # DeckBuilderCardController (/api/deckbuilder/cards)
-        ├── dto/                      # Own DeckBuilderCard*Dto — not shared with cards.web.dto
-        └── mapper/                   # DeckBuilderCardMapper — own explicit mapping, not shared with cards.web.mapper
+└── deckbuilder/                     # Bounded context: deck building and immutable shared snapshots
+    ├── application/
+    │   ├── model/                   # Shared-deck commands, persisted snapshot, hydrated details
+    │   ├── port/in/                 # SharedDeckUseCase
+    │   ├── repository/              # SharedDeckRepository outbound port
+    │   └── service/                 # Snapshot validation, short-code generation, catalog hydration
+    ├── infrastructure/persistence/  # Spring Data adapter for shared_decks/shared_deck_cards
+    └── rest/
+        ├── controller/              # Card browsing and shared-deck endpoints
+        ├── dto/                     # Own DeckBuilder*/SharedDeck* contracts
+        └── mapper/                  # Explicit context-owned mappings
 ```
 
 `OnePieceTcgApplication` declares `@ComponentScan`, `@EnableJpaRepositories`, and `@EntityScan`, all explicitly `basePackages = "pl.janda.onepiecetcg"` — this is required so Spring picks up components/repositories/entities across every bounded-context subpackage; do not narrow these to a single bounded context.
 
 **Dependency direction (enforced within each bounded context, no exceptions):**
 ```
-web ──► application ◄── infrastructure
-application ──X──► web            (forbidden)
+rest ──► application ◄── infrastructure
+application ──X──► rest           (forbidden)
 application ──X──► infrastructure  (forbidden)
-infrastructure ──X──► web          (forbidden)
+infrastructure ──X──► rest         (forbidden)
 ```
 
-**Cross-bounded-context dependency (the one deliberate, documented exception):** `deckbuilder.web` has no `application`/
-`infrastructure` layers of its own — it injects `cards.application.port.in.CardCatalogUseCase` to reuse the existing
-search/filter/lookup behavior (semantic search, variant resolution, filter-options cache) rather than forking it. This
-is intentional, not an oversight: `deckbuilder` only needs card-browsing behavior identical to `cards`, with no
-deck-specific business rules yet. If `deckbuilder` ever needs behavior that diverges from `cards`, add it in
-`deckbuilder`'s own application layer at that point.
+**Cross-bounded-context dependency (the deliberate, documented exception):** `deckbuilder` injects
+`cards.application.port.in.CardCatalogUseCase` rather than forking catalog behavior. Its card-browsing controller uses
+the shared search/filter/lookup behavior directly, while `SharedDeckService` uses the bulk representative-card lookup to
+validate and hydrate stable card-number references. Shared-deck persistence deliberately has no foreign key to
+`set_cards`: catalog sync replaces that table and its generated identity IDs are not durable references.
 
-**DTO/mapper duplication (accepted, deliberate exception to the dedup rule in §8):** `cards.web.dto`/`cards.web.mapper` and `deckbuilder.web.dto`/`deckbuilder.web.mapper` intentionally define separate, near-identical DTOs and mappers (e.g. `CardDto`/`DeckBuilderCardDto`) even though their shapes look the same today. Bounded contexts don't share web-facing contracts — a change to one context's response shape (e.g. adding deck-specific fields to `DeckBuilderCardDto` later) must not silently ripple into the other's frontend contract. Do not "clean this up" by extracting a shared DTO/mapper.
+**DTO/mapper duplication (accepted, deliberate exception to the dedup rule in §8):** `cards.rest.dto`/
+`cards.rest.mapper` and `deckbuilder.rest.dto`/`deckbuilder.rest.mapper` intentionally define separate, near-identical
+DTOs and mappers (e.g. `CardDto`/`DeckBuilderCardDto`) even though their shapes look the same today. Bounded contexts
+don't share REST-facing contracts — a change to one context's response shape (e.g. adding deck-specific fields to
+`DeckBuilderCardDto` later) must not silently ripple into the other's frontend contract. Do not "clean this up" by
+extracting a shared DTO/mapper.
 
 ---
 
@@ -90,7 +104,7 @@ deck-specific business rules yet. If `deckbuilder` ever needs behavior that dive
   `{Noun}JpaRepository` Spring Data interface; this keeps framework-generated interfaces separate from application
   contracts.
 - One port method per external capability — do not bundle unrelated operations into one method.
-- Schedulers (`infrastructure/scheduler/*`) and controllers (`web/controller/*`) are **entrypoints**: they call
+- Schedulers (`infrastructure/scheduler/*`) and controllers (`rest/controller/*`) are **entrypoints**: they call
   `application/port/in/*`, never concrete services or outbound adapters directly.
 - Large request parameter lists do not cross layers. Web adapters map their DTOs to an application input object (for
   card search: `CardSearchQuery`); the service resolves defaults/semantic shorthand into persistence criteria
@@ -130,16 +144,19 @@ deck-specific business rules yet. If `deckbuilder` ever needs behavior that dive
 5. Cron property: add a new hyphenated `<entity>.sync.cron` property to config, matching the naming pattern of its siblings.
 6. If the sync writes to the `set_cards` table, recompute the `representative` flag (`CardRepresentativeService.recompute()`) before refreshing the filter-options cache, then refresh the filter-options cache (`CardFilterOptionService.refresh()`) — both at the end of the transactional replace method described in step 3, in that order (filter options must be derived from the already-recomputed flag). Follow the pattern of the existing sync jobs that already do this. Don't add a live/on-demand recompute path instead; the `representative` flag and the filter-options cache table are the single source of truth for, respectively, variant deduplication and the filters endpoint.
 
-**Adding a new controller/endpoint:** follow `cards.web.controller.CardController` as the reference — thin controller,
+**Adding a new controller/endpoint:** follow `cards.rest.controller.CardController` as the reference — thin controller,
 full OpenAPI annotations (`@Tag`/`@Operation`/`@Parameter`/`@ApiResponses`) on every public method, delegate to an
-inbound use-case port, map via a dedicated mapper. Place it in the bounded context it belongs to (`cards.web.*`,
-`deckbuilder.web.*`, or a new bounded-context subpackage) rather than the root `web/` package, which is reserved for
-cross-cutting concerns (`GlobalExceptionHandler`, `web/config/*`).
+inbound use-case port, map via a dedicated mapper. Place it in the bounded context it belongs to (`cards.rest.*`,
+`deckbuilder.rest.*`, or a new bounded-context subpackage) rather than the root `infrastructure.web` package, which is
+reserved for cross-cutting concerns (`GlobalExceptionHandler`, `infrastructure/web/config/*`).
 
-**Adding a new entity:** model in `<context>/application/model/`, repository interface in `<context>/application/repository/`, JPA or in-memory implementation in `<context>/infrastructure/persistence/`, DTO + mapper + controller in `<context>/web/`. Services depend only on the repository interface — persistence choice never touches service code.
+**Adding a new entity:** model in `<context>/application/model/`, repository interface in
+`<context>/application/repository/`, JPA or in-memory implementation in `<context>/infrastructure/persistence/`, DTO +
+mapper + controller in `<context>/rest/`. Services depend only on the repository interface — persistence choice never
+touches service code.
 
 **Adding a new bounded context:** mirror the `cards`/`deckbuilder` layout — a new top-level subpackage of
-`pl.janda.onepiecetcg` with its own `application`/`infrastructure`/`web` layers (or just `web` if it's a pure consumer
+`pl.janda.onepiecetcg` with its own `application`/`infrastructure`/`rest` layers (or just `rest` if it's a pure consumer
 of another context's use-case port, like `deckbuilder`). Don't add a shared/common package for cross-context reuse
 unless ≥3 bounded contexts would need it (see §8) — a single consumer should depend directly on the owning context's
 `application/port/in/*`.
@@ -195,12 +212,15 @@ unless ≥3 bounded contexts would need it (see §8) — a single consumer shoul
 
 - ❌ Business logic in controllers or mappers — controllers delegate, mappers only convert.
 - ❌ DTOs, Jackson, or other framework annotations inside `application/model/*`.
-- ❌ Services returning DTOs — services return domain models; mapping happens in `web/mapper/*` or the controller.
+- ❌ Services returning DTOs — services return domain models; mapping happens in `rest/mapper/*` or the controller.
 - ❌ Lowercase enum serialization.
 - ❌ Field injection (`@Autowired` on a field).
 - ❌ Custom exception classes — use standard `IllegalArgumentException`/`MethodArgumentNotValidException`.
 - ❌ MapStruct or reflection-based mapping — explicit mapping only.
-- ❌ Premature abstraction / over-engineering: don't introduce a shared base class, config flag, or generic utility for a single use case. Only extract shared abstractions when ≥3 near-identical implementations already exist. (Exception: `deckbuilder.web` and `cards.web` intentionally keep separate, near-identical DTOs/mappers — see §2 — because they're different bounded-context contracts, not incidental duplication.)
+- ❌ Premature abstraction / over-engineering: don't introduce a shared base class, config flag, or generic utility for a
+  single use case. Only extract shared abstractions when ≥3 near-identical implementations already exist. (Exception:
+  `deckbuilder.rest` and `cards.rest` intentionally keep separate, near-identical DTOs/mappers — see §2 — because
+  they're different bounded-context contracts, not incidental duplication.)
 - ❌ `deleteAll()` on a table shared by multiple sync jobs.
 - ❌ Hardcoding an external base URL inline in more than one class — externalize to `application.yml` instead.
 - ❌ JOOQ `DSLContext`/generated record/table types leaking into `application/repository/*` ports or `application/service/*` — confine them to `infrastructure/persistence/*` adapters.

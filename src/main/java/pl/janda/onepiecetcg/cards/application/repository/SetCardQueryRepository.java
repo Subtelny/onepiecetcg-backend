@@ -13,6 +13,8 @@ public interface SetCardQueryRepository {
 
     List<SetCard> findByCardSetId(String cardSetId);
 
+    List<SetCard> findRepresentativesByCardSetIds(List<String> cardSetIds);
+
     List<String> findAllCardCodes();
 
     List<CardSummary> search(CardSearchCriteria criteria);

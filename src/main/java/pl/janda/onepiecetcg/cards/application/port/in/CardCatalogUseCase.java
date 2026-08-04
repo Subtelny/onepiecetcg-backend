@@ -17,6 +17,8 @@ public interface CardCatalogUseCase {
 
     SetCard getVariantByCardCode(String cardCode, Integer variant);
 
+    List<SetCard> getRepresentativeCardsByCardCodes(List<String> cardCodes);
+
     PagedCards searchCards(CardSearchQuery query);
 
     CardFilterOptions getFilterOptions();
