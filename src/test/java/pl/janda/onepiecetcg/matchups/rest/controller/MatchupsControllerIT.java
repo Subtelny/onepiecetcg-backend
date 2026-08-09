@@ -11,11 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
-import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
-import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
-import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
-import pl.janda.onepiecetcg.cards.application.port.in.CardmarketPriceSyncUseCase;
-import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.*;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jpa.SetCardJpaRepository;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
 import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
@@ -77,6 +73,7 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 CREATE TABLE IF NOT EXISTS tcgmatchmaking_leader_stats (
                     snapshot_id BIGINT NOT NULL,
                     leader TEXT NOT NULL,
+                    leader_group BIGINT NOT NULL,
                     wins BIGINT NOT NULL,
                     losses BIGINT NOT NULL,
                     number_of_matches BIGINT NOT NULL,
@@ -106,7 +103,7 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
     }
 
     @Test
-    void getMatchups_afterRealSync_dropsNonLeaderCardAndMergesNearDuplicateLeaderRows() throws Exception {
+    void getMatchups_afterRealSync_filtersInvalidAndDuplicateLeaderRows() throws Exception {
         setCardJpaRepository.saveAllAndFlush(List.of(
                 SetCard.builder().cardSetId("OP14-020").cardName("Dracule Mihawk")
                         .cardColor("GREEN").cardImage("https://cdn.example/op14-020.png")
@@ -122,21 +119,25 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 1L, "lw", 1000L, OffsetDateTime.now().toString());
 
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                1L, "1xOP14-020", 100L, 100L, 200L, new BigDecimal("50.00"), new BigDecimal("20.00"));
+                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                1L, "1xOP14-020", 0L, 100L, 100L, 200L, new BigDecimal("50.00"), new BigDecimal("20.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                1L, "1xOP13-079", 50L, 50L, 100L, new BigDecimal("50.00"), new BigDecimal("10.00"));
+                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                1L, "1xOP14-020", 1L, 90L, 60L, 150L, new BigDecimal("60.00"), new BigDecimal("15.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                1L, "1 OP13-079 Imu", 10L, 0L, 10L, new BigDecimal("100.00"), new BigDecimal("0.00"));
+                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                1L, "1xOP13-079", 0L, 50L, 50L, 100L, new BigDecimal("50.00"), new BigDecimal("10.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                1L, "4xST34-003", 1L, 2L, 3L, new BigDecimal("33.33"), new BigDecimal("0.00"));
+                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                1L, "1 OP13-079 Imu", 0L, 10L, 0L, 10L, new BigDecimal("100.00"), new BigDecimal("0.00"));
+        dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
+                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                1L, "4xST34-003", 0L, 1L, 2L, 3L, new BigDecimal("33.33"), new BigDecimal("0.00"));
 
         dsl.execute("INSERT INTO tcgmatchmaking_matchups " +
                         "(snapshot_id, leader, opponent, wins, losses, games, win_rate, " +
@@ -171,10 +172,16 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                         .isNotEmpty())
                 .andReturn();
 
-        List<Map<String, Object>> mergedLeader = JsonPath.read(result.getResponse().getContentAsString(),
+        var mergedLeader = JsonPath.<List<Map<String, Object>>>read(result.getResponse().getContentAsString(),
                 "$.leaders[?(@.code=='OP13-079')]");
         assertThat(mergedLeader).hasSize(1);
         assertThat(mergedLeader.get(0).get("matches")).isEqualTo(110);
         assertThat(((Number) mergedLeader.get(0).get("winRate")).doubleValue()).isEqualTo(54.55);
+
+        var groupedLeader = JsonPath.<List<Map<String, Object>>>read(result.getResponse().getContentAsString(),
+                "$.leaders[?(@.code=='OP14-020')]");
+        assertThat(groupedLeader).hasSize(1);
+        assertThat(groupedLeader.get(0).get("matches")).isEqualTo(200);
+        assertThat(((Number) groupedLeader.get(0).get("winRate")).doubleValue()).isEqualTo(50.0);
     }
 }

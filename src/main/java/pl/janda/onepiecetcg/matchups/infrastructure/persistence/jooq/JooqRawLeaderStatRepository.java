@@ -19,8 +19,16 @@ public class JooqRawLeaderStatRepository implements RawLeaderStatRepository {
     public List<RawLeaderStat> findBySnapshotId(Long snapshotId) {
         return dsl.fetch("""
                         SELECT snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity
-                        FROM tcgmatchmaking_leader_stats
-                        WHERE snapshot_id = ?
+                        FROM (
+                            SELECT snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY snapshot_id, leader
+                                       ORDER BY number_of_matches DESC, leader_group ASC
+                                   ) AS leader_rank
+                            FROM tcgmatchmaking_leader_stats
+                            WHERE snapshot_id = ?
+                        ) ranked_leader_stats
+                        WHERE leader_rank = 1
                         """, snapshotId)
                 .map(record -> RawLeaderStat.builder()
                         .snapshotId(record.get("snapshot_id", Long.class))
