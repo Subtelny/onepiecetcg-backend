@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.janda.onepiecetcg.cards.application.port.in.*;
 import pl.janda.onepiecetcg.cards.rest.dto.SyncResultDto;
+import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
 
 @RestController
 @RequestMapping("/api/internal/sync")
@@ -29,6 +30,8 @@ public class InternalSyncController {
     private final CardFaqSyncUseCase cardFaqSyncUseCase;
 
     private final CardmarketPriceSyncUseCase cardmarketPriceSyncUseCase;
+
+    private final MatchupSyncUseCase matchupSyncUseCase;
 
     @PostMapping("/card-sets")
     @Operation(summary = "Manually sync card sets",
@@ -93,5 +96,20 @@ public class InternalSyncController {
     public ResponseEntity<SyncResultDto> syncCardmarketPrices() {
         cardmarketPriceSyncUseCase.syncPrices();
         return ResponseEntity.ok(new SyncResultDto(true, "Cardmarket price sync completed"));
+    }
+
+    @PostMapping("/matchups")
+    @Operation(summary = "Manually sync matchups",
+            description = "Loads the latest snapshot from tcgmatchmaking_matchup_snapshots/tcgmatchmaking_leader_stats/" +
+                    "tcgmatchmaking_matchups, normalizes and merges dirty leader/opponent codes, enriches with card data, " +
+                    "and fully replaces the matchup_snapshot_info/matchup_leaders/matchup_pairs tables.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Sync completed"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
+    })
+    public ResponseEntity<SyncResultDto> syncMatchups() {
+        var synced = matchupSyncUseCase.syncMatchups();
+        var message = synced ? "Matchups synced" : "No matchmaking snapshot found, sync skipped";
+        return ResponseEntity.ok(new SyncResultDto(synced, message));
     }
 }

@@ -60,7 +60,9 @@
       "Bash(PGHOST=localhost PGPORT=5432 PGDATABASE=onepiecetcg PGUSER=onepiecetcg PGPASSWORD=onepiecetcg java -Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=256m -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+ExitOnOutOfMemoryError -Xlog:gc+init:stdout -jar target/onepiecetcg-backend-1.0-SNAPSHOT.jar --spring.profiles.active=prod --server.port=300)",
       "Bash(jcmd:*)",
       "Bash(git --no-pager diff --stat -- . ':!.claude')",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(wc:*)",
+      "Bash(psql:*)"
     ]
   }
 }
