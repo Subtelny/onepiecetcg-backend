@@ -23,7 +23,7 @@ public class JooqRawLeaderStatRepository implements RawLeaderStatRepository {
                             SELECT snapshot_id, leader, wins, losses, number_of_matches, win_rate, popularity,
                                    ROW_NUMBER() OVER (
                                        PARTITION BY snapshot_id, leader
-                                       ORDER BY number_of_matches DESC, leader_group ASC
+                                       ORDER BY number_of_matches DESC, leader_group_index ASC
                                    ) AS leader_rank
                             FROM tcgmatchmaking_leader_stats
                             WHERE snapshot_id = ?

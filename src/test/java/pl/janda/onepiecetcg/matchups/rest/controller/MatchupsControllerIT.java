@@ -73,7 +73,7 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 CREATE TABLE IF NOT EXISTS tcgmatchmaking_leader_stats (
                     snapshot_id BIGINT NOT NULL,
                     leader TEXT NOT NULL,
-                    leader_group BIGINT NOT NULL,
+                    leader_group_index BIGINT NOT NULL,
                     wins BIGINT NOT NULL,
                     losses BIGINT NOT NULL,
                     number_of_matches BIGINT NOT NULL,
@@ -119,23 +119,23 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 1L, "lw", 1000L, OffsetDateTime.now().toString());
 
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "(snapshot_id, leader, leader_group_index, wins, losses, number_of_matches, win_rate, popularity) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 1L, "1xOP14-020", 0L, 100L, 100L, 200L, new BigDecimal("50.00"), new BigDecimal("20.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "(snapshot_id, leader, leader_group_index, wins, losses, number_of_matches, win_rate, popularity) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 1L, "1xOP14-020", 1L, 90L, 60L, 150L, new BigDecimal("60.00"), new BigDecimal("15.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "(snapshot_id, leader, leader_group_index, wins, losses, number_of_matches, win_rate, popularity) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 1L, "1xOP13-079", 0L, 50L, 50L, 100L, new BigDecimal("50.00"), new BigDecimal("10.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "(snapshot_id, leader, leader_group_index, wins, losses, number_of_matches, win_rate, popularity) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 1L, "1 OP13-079 Imu", 0L, 10L, 0L, 10L, new BigDecimal("100.00"), new BigDecimal("0.00"));
         dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
-                        "(snapshot_id, leader, leader_group, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "(snapshot_id, leader, leader_group_index, wins, losses, number_of_matches, win_rate, popularity) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 1L, "4xST34-003", 0L, 1L, 2L, 3L, new BigDecimal("33.33"), new BigDecimal("0.00"));
 
