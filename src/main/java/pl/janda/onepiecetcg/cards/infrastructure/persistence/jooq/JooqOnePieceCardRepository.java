@@ -32,6 +32,7 @@ public class JooqOnePieceCardRepository implements OnePieceCardRepository {
                                c.counter,
                                c.attributes,
                                c.types,
+                               c.source_product,
                                c.effect,
                                c.trigger,
                                c.scraped_at
@@ -54,6 +55,7 @@ public class JooqOnePieceCardRepository implements OnePieceCardRepository {
                         .counter(record.get("counter", Integer.class))
                         .attributes(record.get("attributes", String.class))
                         .types(record.get("types", String.class))
+                        .sourceProduct(record.get("source_product", String.class))
                         .effect(record.get("effect", String.class))
                         .trigger(record.get("trigger", String.class))
                         .scrapedAt(record.get("scraped_at", OffsetDateTime.class))

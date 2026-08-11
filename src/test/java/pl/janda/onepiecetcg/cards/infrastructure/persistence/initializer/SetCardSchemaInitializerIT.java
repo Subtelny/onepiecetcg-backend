@@ -69,6 +69,23 @@ class SetCardSchemaInitializerIT {
     }
 
     @Test
+    void apply_createsVariantDisplayColumns() throws Exception {
+        dsl.execute("ALTER TABLE set_cards DROP COLUMN IF EXISTS display_name");
+        dsl.execute("ALTER TABLE set_cards DROP COLUMN IF EXISTS source_product");
+
+        initializer.apply();
+
+        var columns = dsl.fetch("""
+                select column_name from information_schema.columns
+                 where table_name = 'set_cards'
+                   and column_name in ('display_name', 'source_product')
+                order by column_name
+                """).getValues("column_name", String.class);
+
+        assertThat(columns).containsExactly("display_name", "source_product");
+    }
+
+    @Test
     void apply_removesObsoleteSetCardColumns() throws Exception {
         dsl.execute("ALTER TABLE set_cards ADD COLUMN IF NOT EXISTS is_representative boolean NOT NULL DEFAULT false");
         dsl.execute("ALTER TABLE set_cards ADD COLUMN IF NOT EXISTS date_scraped varchar(255)");

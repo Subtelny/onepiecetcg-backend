@@ -20,6 +20,9 @@ class DeckBuilderCardMapperTest {
                 .id(1L)
                 .cardSetId("OP10-009")
                 .cardName("Monkey.D.Luffy")
+                .displayName("Monkey.D.Luffy (Winner)")
+                .sourceProduct("Winner Pack 2026 Vol. 2")
+                .variantIndex("p1")
                 .cardType("LEADER")
                 .cardColor("red green")
                 .cardCost("5")
@@ -38,6 +41,9 @@ class DeckBuilderCardMapperTest {
 
         assertThat(dto.getId()).isEqualTo("1");
         assertThat(dto.getName()).isEqualTo("Monkey.D.Luffy");
+        assertThat(dto.getDisplayName()).isEqualTo("Monkey.D.Luffy (Winner)");
+        assertThat(dto.getSourceProduct()).isEqualTo("Winner Pack 2026 Vol. 2");
+        assertThat(dto.getVariantIndex()).isEqualTo("p1");
         assertThat(dto.getType()).isEqualTo("LEADER");
         assertThat(dto.getColor()).containsExactly("RED", "GREEN");
         assertThat(dto.getCost()).isEqualTo(5);
@@ -74,6 +80,9 @@ class DeckBuilderCardMapperTest {
                 .id(2L)
                 .cardSetId("OP13-119")
                 .cardName("Charlotte Katakuri")
+                .displayName("Charlotte Katakuri (Winner)")
+                .sourceProduct("Winner Pack 2026 Vol. 1")
+                .variantIndex("p2")
                 .flatRarity("SR")
                 .cardImage("https://example.com/katakuri.png")
                 .build();
@@ -82,6 +91,9 @@ class DeckBuilderCardMapperTest {
 
         assertThat(dto.getId()).isEqualTo("2");
         assertThat(dto.getName()).isEqualTo("Charlotte Katakuri");
+        assertThat(dto.getDisplayName()).isEqualTo("Charlotte Katakuri (Winner)");
+        assertThat(dto.getSourceProduct()).isEqualTo("Winner Pack 2026 Vol. 1");
+        assertThat(dto.getVariantIndex()).isEqualTo("p2");
         assertThat(dto.getCardNumber()).isEqualTo("OP13-119");
         assertThat(dto.getFlatRarity()).isEqualTo("SR");
         assertThat(dto.getImageUrl()).isEqualTo("https://example.com/katakuri.png");

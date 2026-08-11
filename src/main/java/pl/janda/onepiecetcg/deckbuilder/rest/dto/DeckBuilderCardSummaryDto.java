@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 public class DeckBuilderCardSummaryDto {
     private String id;
     private String name;
+    private String displayName;
+    private String sourceProduct;
+    private String variantIndex;
     private String cardNumber;
     private String flatRarity;
     private String imageUrl;

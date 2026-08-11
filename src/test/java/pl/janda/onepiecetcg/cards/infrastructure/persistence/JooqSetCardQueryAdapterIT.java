@@ -125,6 +125,29 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
+    void searchField_name_matchesVariantDisplayNameAndReturnsItsMetadata() {
+        jpaRepository.saveAndFlush(SetCard.builder()
+                .cardName("Nami")
+                .displayName("Nami (Winner)")
+                .sourceProduct("Winner Pack 2026 Vol. 2")
+                .cardSetId("OP01-003")
+                .variantIndex("p1")
+                .build());
+
+        var results = adapter.search(
+                "Winner", CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, true, false);
+
+        assertThat(results).singleElement().satisfies(card -> {
+            assertThat(card.getCardName()).isEqualTo("Nami");
+            assertThat(card.getDisplayName()).isEqualTo("Nami (Winner)");
+            assertThat(card.getSourceProduct()).isEqualTo("Winner Pack 2026 Vol. 2");
+            assertThat(card.getVariantIndex()).isEqualTo("p1");
+        });
+    }
+
+    @Test
     void representativeLookup_returnsOnlyRequestedZeroIndexVariants() {
         jpaRepository.saveAndFlush(SetCard.builder()
                 .cardName("Alternate Luffy")

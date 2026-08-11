@@ -17,6 +17,10 @@ public class CardSummary {
 
     private String cardName;
 
+    private String displayName;
+
+    private String sourceProduct;
+
     private String flatRarity;
 
     private String cardImage;

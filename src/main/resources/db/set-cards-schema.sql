@@ -7,6 +7,10 @@ COLUMN IF EXISTS date_scraped,
 COLUMN IF EXISTS is_promo;
 
 ALTER TABLE set_cards
+    ADD COLUMN IF NOT EXISTS display_name varchar (255),
+    ADD COLUMN IF NOT EXISTS source_product varchar (255);
+
+ALTER TABLE set_cards
 ALTER
 COLUMN variant_index TYPE varchar(16) USING variant_index::varchar,
     ALTER

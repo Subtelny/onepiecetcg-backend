@@ -190,7 +190,7 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
     /**
      * Create a detached, initialised SetCardsRecord
      */
-    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Object cardSemanticSearchVector, String variantIndex) {
+    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Object cardSemanticSearchVector, String variantIndex, String displayName, String sourceProduct) {
         super(SetCards.SET_CARDS);
 
         setId(id);
@@ -217,6 +217,8 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
         setFlatRarity(flatRarity);
         setCardSemanticSearchVector(cardSemanticSearchVector);
         setVariantIndex(variantIndex);
+        setDisplayName(displayName);
+        setSourceProduct(sourceProduct);
         resetTouchedOnNotNull();
     }
 
@@ -418,5 +420,33 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
      */
     public void setVariantIndex(String value) {
         set(23, value);
+    }
+
+    /**
+     * Getter for <code>public.set_cards.display_name</code>.
+     */
+    public String getDisplayName() {
+        return (String) get(24);
+    }
+
+    /**
+     * Setter for <code>public.set_cards.display_name</code>.
+     */
+    public void setDisplayName(String value) {
+        set(24, value);
+    }
+
+    /**
+     * Getter for <code>public.set_cards.source_product</code>.
+     */
+    public String getSourceProduct() {
+        return (String) get(25);
+    }
+
+    /**
+     * Setter for <code>public.set_cards.source_product</code>.
+     */
+    public void setSourceProduct(String value) {
+        set(25, value);
     }
 }

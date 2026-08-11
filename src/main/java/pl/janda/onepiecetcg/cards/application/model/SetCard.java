@@ -31,6 +31,12 @@ public class SetCard {
     @Column(name = "card_name")
     private String cardName;
 
+    @Column(name = "display_name")
+    private String displayName;
+
+    @Column(name = "source_product")
+    private String sourceProduct;
+
     @Column(name = "set_id")
     private String setId;
 

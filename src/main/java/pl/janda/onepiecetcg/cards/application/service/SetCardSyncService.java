@@ -40,6 +40,8 @@ public class SetCardSyncService implements SetCardSyncUseCase {
 
     private final FlatRarityCalculatorService flatRarityCalculatorService;
 
+    private final CardDisplayNameService cardDisplayNameService;
+
     private final SetCardReplacementService setCardReplacementService;
 
     @Override
@@ -62,6 +64,9 @@ public class SetCardSyncService implements SetCardSyncUseCase {
         log.info("Setting sync timestamp on fetched cards");
         var now = LocalDateTime.now();
         fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
+
+        log.info("Assigning display names to {} cards", fetched.size());
+        cardDisplayNameService.assignDisplayNames(fetched);
 
         log.info("Assigning flat rarities to {} cards", fetched.size());
         var rarityStartTime = System.currentTimeMillis();
@@ -159,6 +164,7 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 .cardSetId(cardCode)
                 .cardPrefix(extractPrefix(cardCode))
                 .cardName(source.getName())
+                .sourceProduct(blankToNull(source.getSourceProduct()))
                 .setId(source.getSetId())
                 .setName(source.getSetName())
                 .cardText(combineCardText(source.getEffect(), source.getTrigger()))

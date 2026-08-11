@@ -82,10 +82,13 @@ class CardControllerTest extends PostgresSpringBootTest {
     }
 
     @Test
-    void searchCards_returnsSourceDerivedVariantIndexAsString() throws Exception {
+    void searchCards_returnsVariantDisplayMetadata() throws Exception {
         var summary = CardSummary.builder()
                 .id(1L)
                 .cardSetId("OP16-079")
+                .cardName("Nami")
+                .displayName("Nami (Winner)")
+                .sourceProduct("Winner Pack 2026 Vol. 2")
                 .variantIndex("r1")
                 .build();
         when(cardCatalogUseCase.searchCards(any(CardSearchQuery.class)))
@@ -93,6 +96,9 @@ class CardControllerTest extends PostgresSpringBootTest {
 
         mockMvc.perform(get("/api/cards"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards[0].name").value("Nami"))
+                .andExpect(jsonPath("$.cards[0].displayName").value("Nami (Winner)"))
+                .andExpect(jsonPath("$.cards[0].sourceProduct").value("Winner Pack 2026 Vol. 2"))
                 .andExpect(jsonPath("$.cards[0].variantIndex").value("r1"));
     }
 

@@ -14,6 +14,19 @@ import java.util.stream.Collectors;
 @Component
 public class DeckBuilderCardMapper {
 
+    private static String displayNameOrCardName(String displayName, String cardName) {
+        return displayName == null || displayName.isBlank() ? cardName : displayName;
+    }
+
+    public List<DeckBuilderCardDto> toDtoList(List<SetCard> cards) {
+        if (cards == null) {
+            return List.of();
+        }
+        return cards.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
     public DeckBuilderCardDto toDto(SetCard card) {
         if (card == null) {
             return null;
@@ -22,6 +35,9 @@ public class DeckBuilderCardMapper {
         return DeckBuilderCardDto.builder()
                 .id(card.getId() != null ? String.valueOf(card.getId()) : null)
                 .name(card.getCardName())
+                .displayName(displayNameOrCardName(card.getDisplayName(), card.getCardName()))
+                .sourceProduct(card.getSourceProduct())
+                .variantIndex(card.getVariantIndex())
                 .type(parseCardType(card.getCardType()))
                 .color(parseColors(card.getCardColor()))
                 .cost(parseIntSafe(card.getCardCost()))
@@ -38,13 +54,13 @@ public class DeckBuilderCardMapper {
                 .build();
     }
 
-    public List<DeckBuilderCardDto> toDtoList(List<SetCard> cards) {
+    public List<DeckBuilderCardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+                .map(this::toSummaryDto)
+                .toList();
     }
 
     public DeckBuilderCardSummaryDto toSummaryDto(CardSummary card) {
@@ -54,19 +70,13 @@ public class DeckBuilderCardMapper {
         return DeckBuilderCardSummaryDto.builder()
                 .id(card.getId() != null ? String.valueOf(card.getId()) : null)
                 .name(card.getCardName())
+                .displayName(displayNameOrCardName(card.getDisplayName(), card.getCardName()))
+                .sourceProduct(card.getSourceProduct())
+                .variantIndex(card.getVariantIndex())
                 .cardNumber(card.getCardSetId())
                 .flatRarity(card.getFlatRarity())
                 .imageUrl(card.getCardImage())
                 .build();
-    }
-
-    public List<DeckBuilderCardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
-        if (cards == null) {
-            return List.of();
-        }
-        return cards.stream()
-                .map(this::toSummaryDto)
-                .toList();
     }
 
     public DeckBuilderCardFilterOptionsDto toFilterOptionsDto(CardFilterOptions options) {

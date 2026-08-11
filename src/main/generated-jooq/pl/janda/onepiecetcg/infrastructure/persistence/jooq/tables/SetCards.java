@@ -165,6 +165,16 @@ public class SetCards extends TableImpl<SetCardsRecord> {
      */
     public final TableField<SetCardsRecord, String> VARIANT_INDEX = createField(DSL.name("variant_index"), SQLDataType.VARCHAR(16).nullable(false).defaultValue(DSL.field(DSL.raw("'0'::character varying"), SQLDataType.VARCHAR)), this, "");
 
+    /**
+     * The column <code>public.set_cards.display_name</code>.
+     */
+    public final TableField<SetCardsRecord, String> DISPLAY_NAME = createField(DSL.name("display_name"), SQLDataType.VARCHAR(255), this, "");
+
+    /**
+     * The column <code>public.set_cards.source_product</code>.
+     */
+    public final TableField<SetCardsRecord, String> SOURCE_PRODUCT = createField(DSL.name("source_product"), SQLDataType.VARCHAR(255), this, "");
+
     private SetCards(Name alias, Table<SetCardsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

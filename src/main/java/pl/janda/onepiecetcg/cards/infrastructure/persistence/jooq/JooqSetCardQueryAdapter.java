@@ -55,47 +55,12 @@ public class JooqSetCardQueryAdapter {
         return field("CASE WHEN {0} ~ '^-?[0-9]+$' THEN {0}::int ELSE NULL END", Integer.class, column);
     }
 
-    public List<CardSummary> search(
-            String name,
-            CardSearchField searchField,
-            List<CardType> types,
-            List<CardColor> colors,
-            List<CardRarity> rarities,
-            List<CardRarity> flatRarities,
-            List<Integer> costs,
-            Integer power,
-            Integer counterAmount,
-            List<String> attributes,
-            List<String> attributeCombos,
-            String subTypes,
-            List<String> prefixes,
-            CardSortField sortBy,
-            SortDirection sortOrder,
-            int page,
-            int limit,
-            boolean showAllVariants,
-            boolean errataOnly
-    ) {
-        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
-                attributes, attributeCombos, subTypes, prefixes, showAllVariants, errataOnly);
-
-
-        var orderBy = sortBy == null && searchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()
-                ? buildSemanticOrderBy(name)
-                : buildOrderBy(sortBy, sortOrder);
-
-
-        var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME, SET_CARDS.FLAT_RARITY, SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX)
-                .from(SET_CARDS)
-                .where(conditions)
-                .orderBy(orderBy)
-                .limit(limit)
-                .offset(page * limit)
-                .fetch();
-
-        return records.stream()
-                .map(JooqSetCardQueryAdapter::toCardSummary)
-                .toList();
+    private static Condition nameMatch(String name) {
+        var pattern = "%" + name.toLowerCase() + "%";
+        return lower(SET_CARDS.CARD_NAME).like(pattern)
+                .or(lower(SET_CARDS.DISPLAY_NAME).like(pattern))
+                .or(lower(SET_CARDS.SOURCE_PRODUCT).like(pattern))
+                .or(lower(SET_CARDS.CARD_SET_ID).like(pattern));
     }
 
     public long countSearch(
@@ -199,9 +164,17 @@ public class JooqSetCardQueryAdapter {
         return condition("{0} ~* ('(^|[\\s/])' || {1} || '($|[\\s/])')", column, escaped);
     }
 
-    private static Condition nameMatch(String name) {
-        var pattern = "%" + name.toLowerCase() + "%";
-        return lower(SET_CARDS.CARD_NAME).like(pattern).or(lower(SET_CARDS.CARD_SET_ID).like(pattern));
+    private static CardSummary toCardSummary(Record r) {
+        return CardSummary.builder()
+                .id(r.get(SET_CARDS.ID))
+                .cardSetId(r.get(SET_CARDS.CARD_SET_ID))
+                .cardName(r.get(SET_CARDS.CARD_NAME))
+                .displayName(r.get(SET_CARDS.DISPLAY_NAME))
+                .sourceProduct(r.get(SET_CARDS.SOURCE_PRODUCT))
+                .flatRarity(r.get(SET_CARDS.FLAT_RARITY))
+                .cardImage(r.get(SET_CARDS.CARD_IMAGE))
+                .variantIndex(r.get(SET_CARDS.VARIANT_INDEX))
+                .build();
     }
 
 
@@ -315,14 +288,48 @@ public class JooqSetCardQueryAdapter {
                 String.class, column);
     }
 
-    private static CardSummary toCardSummary(Record r) {
-        return CardSummary.builder()
-                .id(r.get(SET_CARDS.ID))
-                .cardSetId(r.get(SET_CARDS.CARD_SET_ID))
-                .cardName(r.get(SET_CARDS.CARD_NAME))
-                .flatRarity(r.get(SET_CARDS.FLAT_RARITY))
-                .cardImage(r.get(SET_CARDS.CARD_IMAGE))
-                .variantIndex(r.get(SET_CARDS.VARIANT_INDEX))
-                .build();
+    public List<CardSummary> search(
+            String name,
+            CardSearchField searchField,
+            List<CardType> types,
+            List<CardColor> colors,
+            List<CardRarity> rarities,
+            List<CardRarity> flatRarities,
+            List<Integer> costs,
+            Integer power,
+            Integer counterAmount,
+            List<String> attributes,
+            List<String> attributeCombos,
+            String subTypes,
+            List<String> prefixes,
+            CardSortField sortBy,
+            SortDirection sortOrder,
+            int page,
+            int limit,
+            boolean showAllVariants,
+            boolean errataOnly
+    ) {
+        var conditions = buildConditions(name, searchField, types, colors, rarities, flatRarities, costs, power, counterAmount,
+                attributes, attributeCombos, subTypes, prefixes, showAllVariants, errataOnly);
+
+
+        var orderBy = sortBy == null && searchField == CardSearchField.SEMANTIC && name != null && !name.isBlank()
+                ? buildSemanticOrderBy(name)
+                : buildOrderBy(sortBy, sortOrder);
+
+
+        var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME,
+                        SET_CARDS.DISPLAY_NAME, SET_CARDS.SOURCE_PRODUCT, SET_CARDS.FLAT_RARITY,
+                        SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX)
+                .from(SET_CARDS)
+                .where(conditions)
+                .orderBy(orderBy)
+                .limit(limit)
+                .offset(page * limit)
+                .fetch();
+
+        return records.stream()
+                .map(JooqSetCardQueryAdapter::toCardSummary)
+                .toList();
     }
 }

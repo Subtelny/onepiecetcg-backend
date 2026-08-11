@@ -44,12 +44,14 @@ class SetCardSyncServiceTest {
                 .power(5000)
                 .attributes("Slash")
                 .types("Supernovas,Straw Hat Crew")
+                .sourceProduct("Winner Pack 2026 Vol. 2")
                 .effect("[Activate: Main] Do something.")
                 .trigger("Draw 1 card.")
                 .build();
         when(onePieceCardRepository.findAll()).thenReturn(List.of(source));
         var service = new SetCardSyncService(
-                onePieceCardRepository, flatRarityCalculatorService, setCardReplacementService);
+                onePieceCardRepository, flatRarityCalculatorService, new CardDisplayNameService(),
+                setCardReplacementService);
 
         service.syncSetCards();
 
@@ -69,6 +71,8 @@ class SetCardSyncServiceTest {
         assertThat(mapped.getSubTypes()).isEqualTo("Supernovas Straw Hat Crew");
         assertThat(mapped.getCardText()).isEqualTo("[Activate: Main] Do something.\n[Trigger] Draw 1 card.");
         assertThat(mapped.getCardImageId()).isEqualTo("OP01-001_p1");
+        assertThat(mapped.getSourceProduct()).isEqualTo("Winner Pack 2026 Vol. 2");
+        assertThat(mapped.getDisplayName()).isEqualTo("Roronoa Zoro (Winner)");
         assertThat(mapped.getLastSyncedAt()).isNotNull();
         assertThat(mapped.getVariantIndex()).isEqualTo("p1");
         verify(setCardReplacementService).replaceAll(captor.getValue());
@@ -88,7 +92,8 @@ class SetCardSyncServiceTest {
                 .build();
         when(onePieceCardRepository.findAll()).thenReturn(List.of(source));
         var service = new SetCardSyncService(
-                onePieceCardRepository, flatRarityCalculatorService, setCardReplacementService);
+                onePieceCardRepository, flatRarityCalculatorService, new CardDisplayNameService(),
+                setCardReplacementService);
 
         service.syncSetCards();
 
@@ -117,7 +122,8 @@ class SetCardSyncServiceTest {
                         .build()
         ));
         var service = new SetCardSyncService(
-                onePieceCardRepository, flatRarityCalculatorService, setCardReplacementService);
+                onePieceCardRepository, flatRarityCalculatorService, new CardDisplayNameService(),
+                setCardReplacementService);
 
         service.syncSetCards();
 
@@ -132,7 +138,8 @@ class SetCardSyncServiceTest {
     void syncSetCards_refusesToTruncateTargetWhenSourceIsEmpty() {
         when(onePieceCardRepository.findAll()).thenReturn(List.of());
         var service = new SetCardSyncService(
-                onePieceCardRepository, flatRarityCalculatorService, setCardReplacementService);
+                onePieceCardRepository, flatRarityCalculatorService, new CardDisplayNameService(),
+                setCardReplacementService);
 
         assertThatThrownBy(service::syncSetCards)
                 .isInstanceOf(IllegalStateException.class)

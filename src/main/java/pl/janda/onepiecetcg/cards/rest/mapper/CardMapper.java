@@ -16,6 +16,24 @@ public class CardMapper {
         return toDto(card, List.of(), List.of());
     }
 
+    private static String displayNameOrCardName(String displayName, String cardName) {
+        return displayName == null || displayName.isBlank() ? cardName : displayName;
+    }
+
+    public List<CardDto> toDtoList(List<SetCard> cards) {
+        return toDtoList(cards, Map.of(), Map.of());
+    }
+
+    public List<CardDto> toDtoList(List<SetCard> cards, Map<String, List<CardErrata>> errataByCardCode,
+                                    Map<String, List<CardFaq>> faqByCardCode) {
+        if (cards == null) {
+            return List.of();
+        }
+        return cards.stream()
+                .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId()), faqByCardCode.get(card.getCardSetId())))
+                .collect(Collectors.toList());
+    }
+
     public CardDto toDto(SetCard card, List<CardErrata> errataHistory, List<CardFaq> faqHistory) {
         if (card == null) {
             return null;
@@ -24,6 +42,9 @@ public class CardMapper {
         return CardDto.builder()
                 .id(card.getId() != null ? String.valueOf(card.getId()) : null)
                 .name(card.getCardName())
+                .displayName(displayNameOrCardName(card.getDisplayName(), card.getCardName()))
+                .sourceProduct(card.getSourceProduct())
+                .variantIndex(card.getVariantIndex())
                 .type(parseCardType(card.getCardType()))
                 .color(parseColors(card.getCardColor()))
                 .cost(parseIntSafe(card.getCardCost()))
@@ -42,18 +63,13 @@ public class CardMapper {
                 .build();
     }
 
-    public List<CardDto> toDtoList(List<SetCard> cards) {
-        return toDtoList(cards, Map.of(), Map.of());
-    }
-
-    public List<CardDto> toDtoList(List<SetCard> cards, Map<String, List<CardErrata>> errataByCardCode,
-                                    Map<String, List<CardFaq>> faqByCardCode) {
+    public List<CardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId()), faqByCardCode.get(card.getCardSetId())))
-                .collect(Collectors.toList());
+                .map(this::toSummaryDto)
+                .toList();
     }
 
     public CardSummaryDto toSummaryDto(CardSummary card) {
@@ -63,20 +79,13 @@ public class CardMapper {
         return CardSummaryDto.builder()
                 .id(card.getId() != null ? String.valueOf(card.getId()) : null)
                 .name(card.getCardName())
+                .displayName(displayNameOrCardName(card.getDisplayName(), card.getCardName()))
+                .sourceProduct(card.getSourceProduct())
                 .cardNumber(card.getCardSetId())
                 .flatRarity(card.getFlatRarity())
                 .imageUrl(card.getCardImage())
                 .variantIndex(card.getVariantIndex())
                 .build();
-    }
-
-    public List<CardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
-        if (cards == null) {
-            return List.of();
-        }
-        return cards.stream()
-                .map(this::toSummaryDto)
-                .toList();
     }
 
     private List<CardErrataEntryDto> toErrataEntryDtoList(List<CardErrata> errataHistory) {

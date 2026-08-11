@@ -41,7 +41,8 @@ public class CardController {
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
             description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
-                    "Each result is a lightweight summary (id, name, cardNumber, flatRarity, imageUrl, variantIndex) - " +
+                    "Each result is a lightweight summary (id, name, displayName, sourceProduct, cardNumber, " +
+                    "flatRarity, imageUrl, variantIndex) - " +
                     "variantIndex comes from the source card ID: 0 for the default print, pN for a parallel, " +
                     "or rN for a reprint (and matches /by-code's variant param) - " +
                     "fetch /api/cards/{id} for full card details (effect, stats, prices, errata).")

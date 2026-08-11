@@ -14,6 +14,9 @@ import java.util.List;
 public class CardDto {
     private String id;
     private String name;
+    private String displayName;
+    private String sourceProduct;
+    private String variantIndex;
     private String type;
     private List<String> color;
     private Integer cost;

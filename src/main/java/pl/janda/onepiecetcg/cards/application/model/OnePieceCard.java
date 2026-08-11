@@ -41,6 +41,8 @@ public class OnePieceCard {
 
     private String types;
 
+    private String sourceProduct;
+
     private String effect;
 
     private String trigger;

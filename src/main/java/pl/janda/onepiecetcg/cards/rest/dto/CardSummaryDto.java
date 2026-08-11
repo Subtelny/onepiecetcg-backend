@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 public class CardSummaryDto {
     private String id;
     private String name;
+    private String displayName;
+    private String sourceProduct;
     private String cardNumber;
     private String flatRarity;
     private String imageUrl;
