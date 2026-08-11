@@ -53,7 +53,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_set_cards_card_id
 ALTER TABLE set_cards
     ADD COLUMN IF NOT EXISTS card_semantic_search_vector tsvector
     GENERATED ALWAYS AS (
-    setweight(to_tsvector('simple'::regconfig, coalesce (card_name, '') || ' ' || coalesce (card_set_id, '')), 'A') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce (display_name, card_name, '') || ' ' || coalesce (card_set_id, '')), 'A') ||
     setweight(to_tsvector('simple'::regconfig, coalesce (sub_types, '')), 'B') ||
     setweight(to_tsvector('simple'::regconfig, coalesce (card_text, '')), 'C') ||
     setweight(to_tsvector('simple'::regconfig,

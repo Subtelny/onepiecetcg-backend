@@ -234,6 +234,26 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
+    void semanticSearch_matchesVariantDisplayName() {
+        jpaRepository.saveAndFlush(SetCard.builder()
+                .cardName("Nami")
+                .displayName("Nami (Winner)")
+                .cardSetId("OP01-003")
+                .variantIndex("p1")
+                .build());
+
+        var results = adapter.search(
+                "Winner", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, true, false);
+
+        assertThat(results).singleElement().satisfies(card -> {
+            assertThat(card.getCardName()).isEqualTo("Nami");
+            assertThat(card.getDisplayName()).isEqualTo("Nami (Winner)");
+        });
+    }
+
+    @Test
     void semanticSearch_quotedPhrase_matchesExactWordOrderOnly() {
 
 

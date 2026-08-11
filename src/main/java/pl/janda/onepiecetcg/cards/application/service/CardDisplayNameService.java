@@ -19,6 +19,7 @@ public class CardDisplayNameService {
             SetCard card,
             long winnerCount,
             Map<String, Integer> productCounts,
+            Map<SimplifiedProduct, Long> simplifiedProductCounts,
             Map<SetProductVariantKind, Long> setProductVariantCounts
     ) {
         var cardName = blankToNull(card.getCardName());
@@ -36,6 +37,14 @@ public class CardDisplayNameService {
             var displayName = cardName + " (" + productLabel + ")";
             var productKey = normalizeProductKey(sourceProduct);
             return productCounts.getOrDefault(productKey, 0) > 1
+                    ? appendVariantIndex(displayName, card.getVariantIndex())
+                    : displayName;
+        }
+
+        var simplifiedProduct = simplifiedProduct(sourceProduct);
+        if (simplifiedProduct != null) {
+            var displayName = cardName + " (" + simplifiedProduct.label + ")";
+            return simplifiedProductCounts.getOrDefault(simplifiedProduct, 0L) > 1
                     ? appendVariantIndex(displayName, card.getVariantIndex())
                     : displayName;
         }
@@ -69,6 +78,17 @@ public class CardDisplayNameService {
     private static boolean isCardSetProduct(String sourceProduct) {
         var normalized = blankToNull(sourceProduct);
         return normalized != null && CARD_SET_PRODUCT.matcher(normalized).find();
+    }
+
+    private static SimplifiedProduct simplifiedProduct(String sourceProduct) {
+        var normalized = blankToNull(sourceProduct);
+        if (normalized == null) {
+            return null;
+        }
+        return Arrays.stream(SimplifiedProduct.values())
+                .filter(product -> product.pattern.matcher(normalized).find())
+                .findFirst()
+                .orElse(null);
     }
 
     private static SetProductVariantKind setProductVariantKind(SetCard card) {
@@ -116,16 +136,46 @@ public class CardDisplayNameService {
                 .map(CardDisplayNameService::normalizeProductKey)
                 .filter(product -> product != null)
                 .forEach(product -> productCounts.merge(product, 1, Integer::sum));
+        var simplifiedProductCounts = new EnumMap<SimplifiedProduct, Long>(SimplifiedProduct.class);
+        nonDefaultVariants.stream()
+                .filter(card -> !isWinnerProduct(card.getSourceProduct()))
+                .map(SetCard::getSourceProduct)
+                .map(CardDisplayNameService::simplifiedProduct)
+                .filter(Objects::nonNull)
+                .forEach(product -> simplifiedProductCounts.merge(product, 1L, Long::sum));
         var setProductVariantCounts = new EnumMap<SetProductVariantKind, Long>(SetProductVariantKind.class);
         nonDefaultVariants.stream()
                 .filter(card -> !isWinnerProduct(card.getSourceProduct()))
+                .filter(card -> simplifiedProduct(card.getSourceProduct()) == null)
                 .filter(card -> isCardSetProduct(card.getSourceProduct()))
                 .map(CardDisplayNameService::setProductVariantKind)
                 .filter(Objects::nonNull)
                 .forEach(kind -> setProductVariantCounts.merge(kind, 1L, Long::sum));
 
         for (var card : variants) {
-            card.setDisplayName(buildDisplayName(card, winnerCount, productCounts, setProductVariantCounts));
+            card.setDisplayName(buildDisplayName(
+                    card, winnerCount, productCounts, simplifiedProductCounts, setProductVariantCounts));
+        }
+    }
+
+    private enum SimplifiedProduct {
+        TOURNAMENT_KIT("Tournament Kit"),
+        TOURNAMENT_PACK("Tournament Pack"),
+        PREMIUM_CARD_COLLECTION("Premium Card Collection"),
+        CELEBRATION_PACK("Celebration Pack"),
+        RELEASE_EVENT("Release Event"),
+        PARTICIPATION_PACK("Participation Pack"),
+        PRE_RELEASE("Pre-Release"),
+        FINALIST("Finalist"),
+        CHAMPION("Champion");
+
+        private final String label;
+        private final Pattern pattern;
+
+        SimplifiedProduct(String label) {
+            this.label = label;
+            this.pattern = Pattern.compile(
+                    "(?i)(?<![\\p{L}\\p{N}_])" + Pattern.quote(label) + "(?![\\p{L}\\p{N}_])");
         }
     }
 

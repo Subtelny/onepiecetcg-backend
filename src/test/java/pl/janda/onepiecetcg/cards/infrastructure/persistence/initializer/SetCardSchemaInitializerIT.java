@@ -65,7 +65,9 @@ class SetCardSchemaInitializerIT {
 
 
         assertThat(generationExpression).isNotNull();
-        assertThat(generationExpression.toString()).contains("setweight");
+        assertThat(generationExpression.toString())
+                .contains("setweight")
+                .contains("COALESCE(display_name, card_name");
     }
 
     @Test
@@ -81,6 +83,8 @@ class SetCardSchemaInitializerIT {
 
     @Test
     void apply_createsVariantDisplayColumns() throws Exception {
+        dsl.execute("DROP INDEX IF EXISTS idx_set_cards_card_semantic_search_vector");
+        dsl.execute("ALTER TABLE set_cards DROP COLUMN IF EXISTS card_semantic_search_vector");
         dsl.execute("ALTER TABLE set_cards DROP COLUMN IF EXISTS display_name");
         dsl.execute("ALTER TABLE set_cards DROP COLUMN IF EXISTS source_product");
 

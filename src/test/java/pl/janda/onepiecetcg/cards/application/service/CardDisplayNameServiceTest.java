@@ -54,14 +54,76 @@ class CardDisplayNameServiceTest {
     }
 
     @Test
-    void assignDisplayNames_usesFullNonWinnerProductAndFallsBackToVariantIndex() {
-        var productVariant = card("OP01-016", "Nami", "p1", "Premium Card Collection");
+    void assignDisplayNames_usesFullUnsimplifiedProductAndFallsBackToVariantIndex() {
+        var productVariant = card("OP01-016", "Nami", "p1", "Treasure Cup 2025");
         var unknownProductVariant = card("OP01-016", "Nami", "r1", null);
 
         service.assignDisplayNames(List.of(productVariant, unknownProductVariant));
 
-        assertThat(productVariant.getDisplayName()).isEqualTo("Nami (Premium Card Collection)");
+        assertThat(productVariant.getDisplayName()).isEqualTo("Nami (Treasure Cup 2025)");
         assertThat(unknownProductVariant.getDisplayName()).isEqualTo("Nami [r1]");
+    }
+
+    @Test
+    void assignDisplayNames_simplifiesKnownProductNames() {
+        var tournamentKit = card("OP01-001", "Luffy", "p1", "Tournament Kit 2025 Vol.2");
+        var tournamentPack = card("OP01-002", "Zoro", "p1", "Tournament Pack Vol.2");
+        var premiumCollection = card(
+                "OP01-003", "Nami", "p1", "Premium Card Collection -FILM RED Edition-");
+        var celebrationPack = card("OP01-004", "Usopp", "p1", "CS 25-26 Celebration Pack");
+        var releaseEvent = card("OP01-005", "Sanji", "p1", "ST15-20 Release Event");
+
+        service.assignDisplayNames(List.of(
+                tournamentKit, tournamentPack, premiumCollection, celebrationPack, releaseEvent));
+
+        assertThat(tournamentKit.getDisplayName()).isEqualTo("Luffy (Tournament Kit)");
+        assertThat(tournamentPack.getDisplayName()).isEqualTo("Zoro (Tournament Pack)");
+        assertThat(premiumCollection.getDisplayName()).isEqualTo("Nami (Premium Card Collection)");
+        assertThat(celebrationPack.getDisplayName()).isEqualTo("Usopp (Celebration Pack)");
+        assertThat(releaseEvent.getDisplayName()).isEqualTo("Sanji (Release Event)");
+    }
+
+    @Test
+    void assignDisplayNames_addsIndexesWhenSimplifiedProductLabelIsRepeated() {
+        var firstKit = card("OP01-016", "Nami", "p1", "Tournament Kit 2024 Vol.1");
+        var secondKit = card("OP01-016", "Nami", "p2", "Tournament Kit 2025 Vol.2");
+
+        service.assignDisplayNames(List.of(firstKit, secondKit));
+
+        assertThat(firstKit.getDisplayName()).isEqualTo("Nami (Tournament Kit) [p1]");
+        assertThat(secondKit.getDisplayName()).isEqualTo("Nami (Tournament Kit) [p2]");
+    }
+
+    @Test
+    void assignDisplayNames_simplifiesRegionalProductNamesAndAddsIndexesForRepeatedLabels() {
+        var offlineParticipation = card(
+                "OP02-001", "Luffy", "p1", "Offline Regional Participation Pack 2024 Vol. 2");
+        var includedParticipation = card(
+                "OP02-001", "Luffy", "p2", "Included in Online Regional Participation Pack Vol.1");
+        var onlineParticipation = card(
+                "OP02-001", "Luffy", "p3", "Online Regional Participation Pack 25-26 Season 1");
+        var preRelease = card("OP02-002", "Zoro", "p1", "Pre-Release OP03");
+        var offlineFinalist = card(
+                "OP02-003", "Nami", "p1", "Offline Regional Finalist Card Set 25-26 Season 1");
+        var onlineFinalist = card(
+                "OP02-003", "Nami", "p2", "Online Regional Finalist Card Set 25-26 Season 1");
+        var offlineChampion = card(
+                "OP02-004", "Sanji", "p1", "Offline Regional Champion Card Set 25-26 Season 1");
+        var onlineChampion = card(
+                "OP02-004", "Sanji", "p2", "Online Regional Champion Card Set 25-26 Season 1");
+
+        service.assignDisplayNames(List.of(
+                offlineParticipation, includedParticipation, onlineParticipation, preRelease,
+                offlineFinalist, onlineFinalist, offlineChampion, onlineChampion));
+
+        assertThat(offlineParticipation.getDisplayName()).isEqualTo("Luffy (Participation Pack) [p1]");
+        assertThat(includedParticipation.getDisplayName()).isEqualTo("Luffy (Participation Pack) [p2]");
+        assertThat(onlineParticipation.getDisplayName()).isEqualTo("Luffy (Participation Pack) [p3]");
+        assertThat(preRelease.getDisplayName()).isEqualTo("Zoro (Pre-Release)");
+        assertThat(offlineFinalist.getDisplayName()).isEqualTo("Nami (Finalist) [p1]");
+        assertThat(onlineFinalist.getDisplayName()).isEqualTo("Nami (Finalist) [p2]");
+        assertThat(offlineChampion.getDisplayName()).isEqualTo("Sanji (Champion) [p1]");
+        assertThat(onlineChampion.getDisplayName()).isEqualTo("Sanji (Champion) [p2]");
     }
 
     @Test

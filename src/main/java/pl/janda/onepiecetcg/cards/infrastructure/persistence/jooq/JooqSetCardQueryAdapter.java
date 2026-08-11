@@ -231,7 +231,7 @@ public class JooqSetCardQueryAdapter {
 
     private static Field<String> combinedSemanticText() {
         return concat(
-                coalesce(SET_CARDS.CARD_NAME, inline("")), inline(" "),
+                coalesce(SET_CARDS.DISPLAY_NAME, SET_CARDS.CARD_NAME, inline("")), inline(" "),
                 coalesce(SET_CARDS.CARD_TYPE, inline("")), inline(" "),
                 coalesce(SET_CARDS.CARD_COLOR, inline("")), inline(" "),
                 coalesce(SET_CARDS.CARD_COST, inline("")), inline(" "),
