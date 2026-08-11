@@ -63,4 +63,39 @@ class CardDisplayNameServiceTest {
         assertThat(productVariant.getDisplayName()).isEqualTo("Nami (Premium Card Collection)");
         assertThat(unknownProductVariant.getDisplayName()).isEqualTo("Nami [r1]");
     }
+
+    @Test
+    void assignDisplayNames_usesAltAndReprintForCardSetProducts() {
+        var alt = card("P-102", "Nami", "p1", "STARTER DECK -BLUE Kuzan- [ST-33]");
+        var reprint = card("P-102", "Nami", "r1", "-THE TIME OF BATTLE- [OP-16]");
+
+        service.assignDisplayNames(List.of(alt, reprint));
+
+        assertThat(alt.getDisplayName()).isEqualTo("Nami (Alt)");
+        assertThat(reprint.getDisplayName()).isEqualTo("Nami (Reprint)");
+    }
+
+    @Test
+    void assignDisplayNames_addsIndexesWhenSeveralSetProductAltsShareACard() {
+        var firstAlt = card("OP01-006", "Otama", "p3", "-ONE PIECE CARD THE BEST- [PRB-01]");
+        var secondAlt = card("OP01-006", "Otama", "p4", "-ROMANCE DAWN- [OP01]");
+        var reprint = card("OP01-006", "Otama", "r1", "-ONE PIECE CARD THE BEST- [PRB-01]");
+
+        service.assignDisplayNames(List.of(firstAlt, secondAlt, reprint));
+
+        assertThat(firstAlt.getDisplayName()).isEqualTo("Otama (Alt) [p3]");
+        assertThat(secondAlt.getDisplayName()).isEqualTo("Otama (Alt) [p4]");
+        assertThat(reprint.getDisplayName()).isEqualTo("Otama (Reprint)");
+    }
+
+    @Test
+    void assignDisplayNames_addsIndexesWhenSeveralSetProductReprintsShareACard() {
+        var firstReprint = card("OP03-003", "Izo", "r1", "-ONE PIECE CARD THE BEST- [PRB-01]");
+        var secondReprint = card("OP03-003", "Izo", "r2", "-ONE PIECE CARD THE BEST vol.2- [PRB-02]");
+
+        service.assignDisplayNames(List.of(firstReprint, secondReprint));
+
+        assertThat(firstReprint.getDisplayName()).isEqualTo("Izo (Reprint) [r1]");
+        assertThat(secondReprint.getDisplayName()).isEqualTo("Izo (Reprint) [r2]");
+    }
 }
