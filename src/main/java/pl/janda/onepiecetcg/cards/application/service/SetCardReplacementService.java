@@ -21,6 +21,9 @@ public class SetCardReplacementService {
 
     @Transactional
     public void replaceAll(List<SetCard> setCards) {
+        log.info("Acquiring exclusive set_cards replacement lock");
+        setCardRepository.lockForReplacement();
+
         log.info("Deleting existing set cards from database");
         var deleteStartTime = System.currentTimeMillis();
         setCardRepository.deleteAll();

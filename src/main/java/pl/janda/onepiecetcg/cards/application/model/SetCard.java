@@ -76,8 +76,8 @@ public class SetCard {
     @Column(name = "attribute")
     private String attribute;
 
-    @Column(name = "card_image_id")
-    private String cardImageId;
+    @Column(name = "card_id")
+    private String cardId;
 
     @Column(name = "card_image")
     private String cardImage;

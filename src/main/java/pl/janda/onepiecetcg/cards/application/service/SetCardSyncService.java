@@ -178,7 +178,7 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 .subTypes(normalizeList(source.getTypes()))
                 .counterAmount(source.getCounter())
                 .attribute(normalizeList(source.getAttributes()))
-                .cardImageId(source.getId())
+                .cardId(source.getId())
                 .cardImage(source.getImageUrl())
                 .variantIndex(extractVariantIndex(source.getId(), cardCode))
                 .build();

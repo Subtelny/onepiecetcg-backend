@@ -65,9 +65,9 @@ public class SetCards extends TableImpl<SetCardsRecord> {
     public final TableField<SetCardsRecord, String> CARD_IMAGE = createField(DSL.name("card_image"), SQLDataType.VARCHAR(255), this, "");
 
     /**
-     * The column <code>public.set_cards.card_image_id</code>.
+     * The column <code>public.set_cards.card_id</code>.
      */
-    public final TableField<SetCardsRecord, String> CARD_IMAGE_ID = createField(DSL.name("card_image_id"), SQLDataType.VARCHAR(255), this, "");
+    public final TableField<SetCardsRecord, String> CARD_ID = createField(DSL.name("card_id"), SQLDataType.VARCHAR(255), this, "");
 
     /**
      * The column <code>public.set_cards.card_name</code>.

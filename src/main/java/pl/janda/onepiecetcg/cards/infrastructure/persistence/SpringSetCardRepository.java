@@ -28,6 +28,12 @@ public class SpringSetCardRepository implements SetCardQueryRepository, SetCardC
 
 
     @Override
+    public void lockForReplacement() {
+        entityManager.createNativeQuery("LOCK TABLE set_cards IN EXCLUSIVE MODE").executeUpdate();
+    }
+
+
+    @Override
     public void deleteAll() {
         jpaRepository.deleteAllInBatch();
     }

@@ -90,16 +90,44 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
     }
 
     /**
-     * Setter for <code>public.set_cards.card_image_id</code>.
+     * Create a detached, initialised SetCardsRecord
      */
-    public void setCardImageId(String value) {
-        set(5, value);
+    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Object cardSemanticSearchVector, String variantIndex, String displayName, String sourceProduct) {
+        super(SetCards.SET_CARDS);
+
+        setId(id);
+        setAttribute(attribute);
+        setCardColor(cardColor);
+        setCardCost(cardCost);
+        setCardImage(cardImage);
+        setCardId(cardId);
+        setCardName(cardName);
+        setCardPower(cardPower);
+        setCardSetId(cardSetId);
+        setCardText(cardText);
+        setCardType(cardType);
+        setCounterAmount(counterAmount);
+        setInventoryPrice(inventoryPrice);
+        setLastSyncedAt(lastSyncedAt);
+        setLife(life);
+        setMarketPrice(marketPrice);
+        setRarity(rarity);
+        setSetId(setId);
+        setSetName(setName);
+        setSubTypes(subTypes);
+        setCardPrefix(cardPrefix);
+        setFlatRarity(flatRarity);
+        setCardSemanticSearchVector(cardSemanticSearchVector);
+        setVariantIndex(variantIndex);
+        setDisplayName(displayName);
+        setSourceProduct(sourceProduct);
+        resetTouchedOnNotNull();
     }
 
     /**
-     * Getter for <code>public.set_cards.card_image_id</code>.
+     * Getter for <code>public.set_cards.card_id</code>.
      */
-    public String getCardImageId() {
+    public String getCardId() {
         return (String) get(5);
     }
 
@@ -188,38 +216,10 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
     }
 
     /**
-     * Create a detached, initialised SetCardsRecord
+     * Setter for <code>public.set_cards.card_id</code>.
      */
-    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Object cardSemanticSearchVector, String variantIndex, String displayName, String sourceProduct) {
-        super(SetCards.SET_CARDS);
-
-        setId(id);
-        setAttribute(attribute);
-        setCardColor(cardColor);
-        setCardCost(cardCost);
-        setCardImage(cardImage);
-        setCardImageId(cardImageId);
-        setCardName(cardName);
-        setCardPower(cardPower);
-        setCardSetId(cardSetId);
-        setCardText(cardText);
-        setCardType(cardType);
-        setCounterAmount(counterAmount);
-        setInventoryPrice(inventoryPrice);
-        setLastSyncedAt(lastSyncedAt);
-        setLife(life);
-        setMarketPrice(marketPrice);
-        setRarity(rarity);
-        setSetId(setId);
-        setSetName(setName);
-        setSubTypes(subTypes);
-        setCardPrefix(cardPrefix);
-        setFlatRarity(flatRarity);
-        setCardSemanticSearchVector(cardSemanticSearchVector);
-        setVariantIndex(variantIndex);
-        setDisplayName(displayName);
-        setSourceProduct(sourceProduct);
-        resetTouchedOnNotNull();
+    public void setCardId(String value) {
+        set(5, value);
     }
 
     /**

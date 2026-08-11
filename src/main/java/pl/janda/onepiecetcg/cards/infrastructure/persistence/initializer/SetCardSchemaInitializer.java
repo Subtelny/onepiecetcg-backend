@@ -28,8 +28,29 @@ public class SetCardSchemaInitializer implements ApplicationRunner {
 
     void apply() throws Exception {
         try (var connection = dataSource.getConnection()) {
+            migrateLegacyCardIdColumn(connection);
             ScriptUtils.executeSqlScript(connection, new ClassPathResource(DDL_SCRIPT));
         }
         log.info("Applied set_cards schema from {}", DDL_SCRIPT);
+    }
+
+    private void migrateLegacyCardIdColumn(java.sql.Connection connection) throws Exception {
+        try (var statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE set_cards ADD COLUMN IF NOT EXISTS card_id varchar(255)");
+        }
+
+        try (var legacyColumn = connection.getMetaData().getColumns(
+                connection.getCatalog(), null, "set_cards", "card_image_id")) {
+            if (!legacyColumn.next()) {
+                return;
+            }
+        }
+
+        try (var statement = connection.createStatement()) {
+            var migratedRows = statement.executeUpdate(
+                    "UPDATE set_cards SET card_id = card_image_id WHERE card_id IS NULL");
+            statement.execute("ALTER TABLE set_cards DROP COLUMN card_image_id");
+            log.info("Migrated {} set_cards rows from card_image_id to card_id", migratedRows);
+        }
     }
 }

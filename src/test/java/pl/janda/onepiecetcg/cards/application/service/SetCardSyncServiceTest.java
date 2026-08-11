@@ -70,7 +70,7 @@ class SetCardSyncServiceTest {
         assertThat(mapped.getCardPower()).isEqualTo("5000");
         assertThat(mapped.getSubTypes()).isEqualTo("Supernovas Straw Hat Crew");
         assertThat(mapped.getCardText()).isEqualTo("[Activate: Main] Do something.\n[Trigger] Draw 1 card.");
-        assertThat(mapped.getCardImageId()).isEqualTo("OP01-001_p1");
+        assertThat(mapped.getCardId()).isEqualTo("OP01-001_p1");
         assertThat(mapped.getSourceProduct()).isEqualTo("Winner Pack 2026 Vol. 2");
         assertThat(mapped.getDisplayName()).isEqualTo("Roronoa Zoro (Winner)");
         assertThat(mapped.getLastSyncedAt()).isNotNull();

@@ -6,6 +6,8 @@ import java.util.List;
 
 public interface SetCardCommandRepository {
 
+    void lockForReplacement();
+
     void deleteAll();
 
     void saveAll(List<SetCard> setCards);
