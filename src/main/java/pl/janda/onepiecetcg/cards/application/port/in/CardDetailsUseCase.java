@@ -8,7 +8,7 @@ public interface CardDetailsUseCase {
 
     CardDetails getCardById(String id);
 
-    CardDetails getCardByCode(String cardCode, Integer variant);
+    CardDetails getCardByCode(String cardCode, String variant);
 
     List<CardDetails> getCardVariants(String id);
 }

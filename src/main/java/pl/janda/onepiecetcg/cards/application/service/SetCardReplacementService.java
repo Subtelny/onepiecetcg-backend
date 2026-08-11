@@ -17,8 +17,6 @@ public class SetCardReplacementService {
 
     private final SetCardCommandRepository setCardRepository;
 
-    private final CardRepresentativeService cardRepresentativeService;
-
     private final CardFilterOptionService cardFilterOptionService;
 
     @Transactional
@@ -36,19 +34,13 @@ public class SetCardReplacementService {
         log.info("Successfully saved {} set cards to database in {}ms ({} seconds)",
                 setCards.size(), saveDuration, saveDuration / 1000);
 
-        log.info("Recomputing representative flags for card variants");
-        var recomputeStartTime = System.currentTimeMillis();
-        cardRepresentativeService.recompute();
-        var recomputeDuration = System.currentTimeMillis() - recomputeStartTime;
-        log.info("Representative flags recomputed successfully in {}ms", recomputeDuration);
-
         log.info("Refreshing card filter options cache");
         var refreshStartTime = System.currentTimeMillis();
         cardFilterOptionService.refresh();
         var refreshDuration = System.currentTimeMillis() - refreshStartTime;
         log.info("Card filter options cache refreshed successfully in {}ms", refreshDuration);
 
-        log.info("Set cards replacement completed - Breakdown: delete={}ms, save={}ms, recompute={}ms, refresh={}ms",
-                deleteDuration, saveDuration, recomputeDuration, refreshDuration);
+        log.info("Set cards replacement completed - Breakdown: delete={}ms, save={}ms, refresh={}ms",
+                deleteDuration, saveDuration, refreshDuration);
     }
 }

@@ -6,11 +6,20 @@ import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.CardCatalogUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class CardService implements CardCatalogUseCase {
+
+    private static final Pattern VARIANT_INDEX_PATTERN = Pattern.compile("(?:0|[pr][1-9]\\d*)");
+
+    private static final Comparator<SetCard> VARIANT_INDEX_ORDER = Comparator
+            .comparingInt((SetCard card) -> variantKindRank(card.getVariantIndex()))
+            .thenComparingInt(card -> variantNumber(card.getVariantIndex()));
 
     private final SetCardQueryRepository setCardRepository;
 
@@ -24,16 +33,14 @@ public class CardService implements CardCatalogUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id: " + id));
     }
 
-    @Override
-    public List<SetCard> getVariantsByCardId(String id) {
-        var card = getCardById(id);
-        var cardSetId = card.getCardSetId();
-        if (cardSetId == null) {
-            return List.of(card);
+    private static String normalizeVariantIndex(String variantIndex) {
+        var normalized = variantIndex == null || variantIndex.isBlank()
+                ? SetCard.DEFAULT_VARIANT_INDEX
+                : variantIndex.trim().toLowerCase(Locale.ROOT);
+        if (!VARIANT_INDEX_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Invalid variant index: " + variantIndex);
         }
-        return setCardRepository.findByCardSetId(cardSetId).stream()
-                .sorted(CardRepresentativeService.CANONICAL_VARIANT_ORDER)
-                .toList();
+        return normalized;
     }
 
     @Override
@@ -41,19 +48,17 @@ public class CardService implements CardCatalogUseCase {
         return setCardRepository.findAllCardCodes();
     }
 
-    @Override
-    public SetCard getVariantByCardCode(String cardCode, Integer variant) {
-        var variants = setCardRepository.findByCardSetId(cardCode).stream()
-                .sorted(CardRepresentativeService.CANONICAL_VARIANT_ORDER)
-                .toList();
-        if (variants.isEmpty()) {
-            throw new IllegalArgumentException("Card not found with code: " + cardCode);
+    private static int variantKindRank(String variantIndex) {
+        if (SetCard.DEFAULT_VARIANT_INDEX.equals(variantIndex)) {
+            return 0;
         }
-        var index = variant != null ? variant : 0;
-        if (index < 0 || index >= variants.size()) {
-            throw new IllegalArgumentException("Variant index out of range for card code: " + cardCode + ", variant: " + index);
+        if (variantIndex != null && variantIndex.startsWith("p")) {
+            return 1;
         }
-        return variants.get(index);
+        if (variantIndex != null && variantIndex.startsWith("r")) {
+            return 2;
+        }
+        return 3;
     }
 
     @Override
@@ -123,5 +128,36 @@ public class CardService implements CardCatalogUseCase {
     @Override
     public CardFilterOptions getFilterOptions() {
         return cardFilterOptionService.getFilterOptions();
+    }
+
+    private static int variantNumber(String variantIndex) {
+        if (variantIndex == null || variantIndex.length() < 2) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(variantIndex.substring(1));
+        } catch (NumberFormatException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public List<SetCard> getVariantsByCardId(String id) {
+        var card = getCardById(id);
+        var cardSetId = card.getCardSetId();
+        if (cardSetId == null) {
+            return List.of(card);
+        }
+        return setCardRepository.findByCardSetId(cardSetId).stream()
+                .sorted(VARIANT_INDEX_ORDER)
+                .toList();
+    }
+
+    @Override
+    public SetCard getVariantByCardCode(String cardCode, String variant) {
+        var variantIndex = normalizeVariantIndex(variant);
+        return setCardRepository.findByCardSetIdAndVariantIndex(cardCode, variantIndex)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Card not found with code: " + cardCode + ", variant: " + variantIndex));
     }
 }

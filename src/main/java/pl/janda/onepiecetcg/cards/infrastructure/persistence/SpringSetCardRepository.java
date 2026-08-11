@@ -87,18 +87,18 @@ public class SpringSetCardRepository implements SetCardQueryRepository, SetCardC
     }
 
     @Override
+    public Optional<SetCard> findByCardSetIdAndVariantIndex(String cardSetId, String variantIndex) {
+        return jpaRepository.findByCardSetIdAndVariantIndex(cardSetId, variantIndex);
+    }
+
+    @Override
     public List<SetCard> findRepresentativesByCardSetIds(List<String> cardSetIds) {
-        return jpaRepository.findByCardSetIdInAndRepresentativeTrue(cardSetIds);
+        return jpaRepository.findByCardSetIdInAndVariantIndex(cardSetIds, SetCard.DEFAULT_VARIANT_INDEX);
     }
 
     @Override
     public List<String> findAllCardCodes() {
         return jpaRepository.findDistinctCardSetIds();
-    }
-
-    @Override
-    public void recomputeRepresentative() {
-        jooqQueryAdapter.recomputeRepresentative();
     }
 
     @Override

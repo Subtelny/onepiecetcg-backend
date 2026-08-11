@@ -107,12 +107,12 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
         setCardJpaRepository.saveAllAndFlush(List.of(
                 SetCard.builder().cardSetId("OP14-020").cardName("Dracule Mihawk")
                         .cardColor("GREEN").cardImage("https://cdn.example/op14-020.png")
-                        .cardType("Leader").representative(true).build(),
+                        .cardType("Leader").variantIndex("0").build(),
                 SetCard.builder().cardSetId("OP13-079").cardName("Charlotte Katakuri")
                         .cardColor("RED").cardImage("https://cdn.example/op13-079.png")
-                        .cardType("Leader").representative(true).build(),
+                        .cardType("Leader").variantIndex("0").build(),
                 SetCard.builder().cardSetId("ST34-003").cardName("Imu")
-                        .cardColor("PURPLE").cardType("Character").representative(true).build()));
+                        .cardColor("PURPLE").cardType("Character").variantIndex("0").build()));
 
         dsl.execute("INSERT INTO tcgmatchmaking_matchup_snapshots (id, dataset, total_matches, scraped_at) " +
                         "VALUES (?, ?, ?, ?::timestamptz)",

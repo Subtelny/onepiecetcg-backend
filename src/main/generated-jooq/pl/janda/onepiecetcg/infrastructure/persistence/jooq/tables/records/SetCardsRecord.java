@@ -4,12 +4,11 @@
 package pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records;
 
 
-import java.time.LocalDateTime;
-
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
-
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.SetCards;
+
+import java.time.LocalDateTime;
 
 
 /**
@@ -189,198 +188,176 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
     }
 
     /**
-     * Setter for <code>public.set_cards.date_scraped</code>.
+     * Create a detached, initialised SetCardsRecord
      */
-    public void setDateScraped(String value) {
-        set(12, value);
-    }
+    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Object cardSemanticSearchVector, String variantIndex) {
+        super(SetCards.SET_CARDS);
 
-    /**
-     * Getter for <code>public.set_cards.date_scraped</code>.
-     */
-    public String getDateScraped() {
-        return (String) get(12);
-    }
-
-    /**
-     * Setter for <code>public.set_cards.inventory_price</code>.
-     */
-    public void setInventoryPrice(Double value) {
-        set(13, value);
+        setId(id);
+        setAttribute(attribute);
+        setCardColor(cardColor);
+        setCardCost(cardCost);
+        setCardImage(cardImage);
+        setCardImageId(cardImageId);
+        setCardName(cardName);
+        setCardPower(cardPower);
+        setCardSetId(cardSetId);
+        setCardText(cardText);
+        setCardType(cardType);
+        setCounterAmount(counterAmount);
+        setInventoryPrice(inventoryPrice);
+        setLastSyncedAt(lastSyncedAt);
+        setLife(life);
+        setMarketPrice(marketPrice);
+        setRarity(rarity);
+        setSetId(setId);
+        setSetName(setName);
+        setSubTypes(subTypes);
+        setCardPrefix(cardPrefix);
+        setFlatRarity(flatRarity);
+        setCardSemanticSearchVector(cardSemanticSearchVector);
+        setVariantIndex(variantIndex);
+        resetTouchedOnNotNull();
     }
 
     /**
      * Getter for <code>public.set_cards.inventory_price</code>.
      */
     public Double getInventoryPrice() {
-        return (Double) get(13);
+        return (Double) get(12);
     }
 
     /**
-     * Setter for <code>public.set_cards.last_synced_at</code>.
+     * Setter for <code>public.set_cards.inventory_price</code>.
      */
-    public void setLastSyncedAt(LocalDateTime value) {
-        set(14, value);
+    public void setInventoryPrice(Double value) {
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.set_cards.last_synced_at</code>.
      */
     public LocalDateTime getLastSyncedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(13);
     }
 
     /**
-     * Setter for <code>public.set_cards.life</code>.
+     * Setter for <code>public.set_cards.last_synced_at</code>.
      */
-    public void setLife(String value) {
-        set(15, value);
+    public void setLastSyncedAt(LocalDateTime value) {
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.set_cards.life</code>.
      */
     public String getLife() {
-        return (String) get(15);
+        return (String) get(14);
     }
 
     /**
-     * Setter for <code>public.set_cards.market_price</code>.
+     * Setter for <code>public.set_cards.life</code>.
      */
-    public void setMarketPrice(Double value) {
-        set(16, value);
+    public void setLife(String value) {
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.set_cards.market_price</code>.
      */
     public Double getMarketPrice() {
-        return (Double) get(16);
+        return (Double) get(15);
     }
 
     /**
-     * Setter for <code>public.set_cards.is_promo</code>.
+     * Setter for <code>public.set_cards.market_price</code>.
      */
-    public void setIsPromo(Boolean value) {
-        set(17, value);
-    }
-
-    /**
-     * Getter for <code>public.set_cards.is_promo</code>.
-     */
-    public Boolean getIsPromo() {
-        return (Boolean) get(17);
-    }
-
-    /**
-     * Setter for <code>public.set_cards.rarity</code>.
-     */
-    public void setRarity(String value) {
-        set(18, value);
+    public void setMarketPrice(Double value) {
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.set_cards.rarity</code>.
      */
     public String getRarity() {
-        return (String) get(18);
+        return (String) get(16);
     }
 
     /**
-     * Setter for <code>public.set_cards.set_id</code>.
+     * Setter for <code>public.set_cards.rarity</code>.
      */
-    public void setSetId(String value) {
-        set(19, value);
+    public void setRarity(String value) {
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.set_cards.set_id</code>.
      */
     public String getSetId() {
-        return (String) get(19);
+        return (String) get(17);
     }
 
     /**
-     * Setter for <code>public.set_cards.set_name</code>.
+     * Setter for <code>public.set_cards.set_id</code>.
      */
-    public void setSetName(String value) {
-        set(20, value);
+    public void setSetId(String value) {
+        set(17, value);
     }
 
     /**
      * Getter for <code>public.set_cards.set_name</code>.
      */
     public String getSetName() {
-        return (String) get(20);
+        return (String) get(18);
     }
 
     /**
-     * Setter for <code>public.set_cards.sub_types</code>.
+     * Setter for <code>public.set_cards.set_name</code>.
      */
-    public void setSubTypes(String value) {
-        set(21, value);
+    public void setSetName(String value) {
+        set(18, value);
     }
 
     /**
      * Getter for <code>public.set_cards.sub_types</code>.
      */
     public String getSubTypes() {
-        return (String) get(21);
+        return (String) get(19);
     }
 
     /**
-     * Setter for <code>public.set_cards.card_prefix</code>.
+     * Setter for <code>public.set_cards.sub_types</code>.
      */
-    public void setCardPrefix(String value) {
-        set(22, value);
+    public void setSubTypes(String value) {
+        set(19, value);
     }
 
     /**
      * Getter for <code>public.set_cards.card_prefix</code>.
      */
     public String getCardPrefix() {
-        return (String) get(22);
+        return (String) get(20);
     }
 
     /**
-     * Setter for <code>public.set_cards.flat_rarity</code>.
+     * Setter for <code>public.set_cards.card_prefix</code>.
      */
-    public void setFlatRarity(String value) {
-        set(23, value);
+    public void setCardPrefix(String value) {
+        set(20, value);
     }
 
     /**
      * Getter for <code>public.set_cards.flat_rarity</code>.
      */
     public String getFlatRarity() {
-        return (String) get(23);
+        return (String) get(21);
     }
 
     /**
-     * Setter for <code>public.set_cards.is_representative</code>.
+     * Setter for <code>public.set_cards.flat_rarity</code>.
      */
-    public void setIsRepresentative(Boolean value) {
-        set(24, value);
-    }
-
-    /**
-     * Getter for <code>public.set_cards.is_representative</code>.
-     */
-    public Boolean getIsRepresentative() {
-        return (Boolean) get(24);
-    }
-
-    /**
-     * @deprecated Unknown data type. If this is a qualified, user-defined type,
-     * it may have been excluded from code generation. If this is a built-in
-     * type, you can define an explicit {@link org.jooq.Binding} to specify how
-     * this type should be handled. Deprecation can be turned off using
-     * {@literal <deprecationOnUnknownTypes/>} in your code generator
-     * configuration.
-     */
-    @Deprecated
-    public void setCardSemanticSearchVector(Object value) {
-        set(25, value);
+    public void setFlatRarity(String value) {
+        set(21, value);
     }
 
     /**
@@ -393,21 +370,27 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
      */
     @Deprecated
     public Object getCardSemanticSearchVector() {
-        return get(25);
+        return get(22);
     }
 
     /**
-     * Setter for <code>public.set_cards.variant_index</code>.
+     * @deprecated Unknown data type. If this is a qualified, user-defined type,
+     * it may have been excluded from code generation. If this is a built-in
+     * type, you can define an explicit {@link org.jooq.Binding} to specify how
+     * this type should be handled. Deprecation can be turned off using
+     * {@literal <deprecationOnUnknownTypes/>} in your code generator
+     * configuration.
      */
-    public void setVariantIndex(Integer value) {
-        set(26, value);
+    @Deprecated
+    public void setCardSemanticSearchVector(Object value) {
+        set(22, value);
     }
 
     /**
      * Getter for <code>public.set_cards.variant_index</code>.
      */
-    public Integer getVariantIndex() {
-        return (Integer) get(26);
+    public String getVariantIndex() {
+        return (String) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -431,38 +414,9 @@ public class SetCardsRecord extends UpdatableRecordImpl<SetCardsRecord> {
     }
 
     /**
-     * Create a detached, initialised SetCardsRecord
+     * Setter for <code>public.set_cards.variant_index</code>.
      */
-    public SetCardsRecord(Long id, String attribute, String cardColor, String cardCost, String cardImage, String cardImageId, String cardName, String cardPower, String cardSetId, String cardText, String cardType, Integer counterAmount, String dateScraped, Double inventoryPrice, LocalDateTime lastSyncedAt, String life, Double marketPrice, Boolean isPromo, String rarity, String setId, String setName, String subTypes, String cardPrefix, String flatRarity, Boolean isRepresentative, Object cardSemanticSearchVector, Integer variantIndex) {
-        super(SetCards.SET_CARDS);
-
-        setId(id);
-        setAttribute(attribute);
-        setCardColor(cardColor);
-        setCardCost(cardCost);
-        setCardImage(cardImage);
-        setCardImageId(cardImageId);
-        setCardName(cardName);
-        setCardPower(cardPower);
-        setCardSetId(cardSetId);
-        setCardText(cardText);
-        setCardType(cardType);
-        setCounterAmount(counterAmount);
-        setDateScraped(dateScraped);
-        setInventoryPrice(inventoryPrice);
-        setLastSyncedAt(lastSyncedAt);
-        setLife(life);
-        setMarketPrice(marketPrice);
-        setIsPromo(isPromo);
-        setRarity(rarity);
-        setSetId(setId);
-        setSetName(setName);
-        setSubTypes(subTypes);
-        setCardPrefix(cardPrefix);
-        setFlatRarity(flatRarity);
-        setIsRepresentative(isRepresentative);
-        setCardSemanticSearchVector(cardSemanticSearchVector);
-        setVariantIndex(variantIndex);
-        resetTouchedOnNotNull();
+    public void setVariantIndex(String value) {
+        set(23, value);
     }
 }

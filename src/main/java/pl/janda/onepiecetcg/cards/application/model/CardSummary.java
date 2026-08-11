@@ -21,5 +21,5 @@ public class CardSummary {
 
     private String cardImage;
 
-    private Integer variantIndex;
+    private String variantIndex;
 }

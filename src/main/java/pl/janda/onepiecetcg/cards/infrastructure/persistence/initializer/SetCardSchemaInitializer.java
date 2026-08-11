@@ -14,9 +14,9 @@ import javax.sql.DataSource;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class SetCardSearchVectorSchemaInitializer implements ApplicationRunner {
+public class SetCardSchemaInitializer implements ApplicationRunner {
 
-    private static final String DDL_SCRIPT = "db/set-cards-search-vector.sql";
+    private static final String DDL_SCRIPT = "db/set-cards-schema.sql";
 
     private final DataSource dataSource;
 
@@ -30,6 +30,6 @@ public class SetCardSearchVectorSchemaInitializer implements ApplicationRunner {
         try (var connection = dataSource.getConnection()) {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource(DDL_SCRIPT));
         }
-        log.info("Applied set_cards search vector schema from {}", DDL_SCRIPT);
+        log.info("Applied set_cards schema from {}", DDL_SCRIPT);
     }
 }

@@ -16,7 +16,7 @@ public class FlatRarityCalculatorService {
 
     public void assignFlatRarities(List<SetCard> cards) {
         var rarityByCardSetId = cards.stream()
-                .filter(c -> !c.isPromo() && c.getCardSetId() != null && c.getRarity() != null)
+                .filter(c -> !"PR".equals(c.getRarity()) && c.getCardSetId() != null && c.getRarity() != null)
                 .collect(Collectors.toMap(SetCard::getCardSetId, SetCard::getRarity, (a, b) -> a));
 
         cards.forEach(card -> card.setFlatRarity(calculate(card, rarityByCardSetId)));
@@ -36,7 +36,7 @@ public class FlatRarityCalculatorService {
         if (card.getFlatRarity() != null && !card.getFlatRarity().isBlank()) {
             return card.getFlatRarity();
         }
-        if (card.isPromo()) {
+        if ("PR".equals(card.getRarity())) {
             return rarityByCardSetId.getOrDefault(card.getCardSetId(), card.getRarity());
         }
         return card.getRarity();

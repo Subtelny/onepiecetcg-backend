@@ -49,7 +49,7 @@ public class InternalSyncController {
     @PostMapping("/set-cards")
     @Operation(summary = "Manually sync set cards",
             description = "Triggers an async set-cards sync from onepiece_cards in a separate thread, " +
-                    "then recomputes representative flags and refreshes filter options. Returns immediately.")
+                    "derives variant indexes from source card IDs and refreshes filter options. Returns immediately.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync triggered successfully"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")

@@ -42,8 +42,8 @@ public class CardController {
     @Operation(summary = "Get all cards or search with filters",
             description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
                     "Each result is a lightweight summary (id, name, cardNumber, flatRarity, imageUrl, variantIndex) - " +
-                    "variantIndex is the 0-based index into the canonically sorted variant list (same order as " +
-                    "/{id}/variants and /by-code's variant param; 0 = representative variant) - " +
+                    "variantIndex comes from the source card ID: 0 for the default print, pN for a parallel, " +
+                    "or rN for a reprint (and matches /by-code's variant param) - " +
                     "fetch /api/cards/{id} for full card details (effect, stats, prices, errata).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",
@@ -118,16 +118,16 @@ public class CardController {
 
     @GetMapping("/by-code")
     @Operation(summary = "Get a card variant by card code",
-            description = "Returns a single card variant matching the given card code (e.g. OP10-009), selected by a 0-based index into the canonically sorted variant list (same order as /{id}/variants; defaults to 0 = representative variant)")
+            description = "Returns a single card variant matching the given card code (e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, pN for a parallel, or rN for a reprint")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card variant found",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = CardDto.class))),
-            @ApiResponse(responseCode = "404", description = "Card not found or variant index out of range")
+            @ApiResponse(responseCode = "404", description = "Card or variant index not found")
     })
     public ResponseEntity<CardDto> getCardByCode(
             @Parameter(description = "Card code / card number, e.g. OP10-009") @RequestParam String cardCode,
-            @Parameter(description = "0-based variant index; defaults to 0 (representative variant)") @RequestParam(required = false) Integer variant
+            @Parameter(description = "Source-derived variant index: 0 (default), pN (parallel), or rN (reprint); defaults to 0") @RequestParam(required = false) String variant
     ) {
         var details = cardDetailsUseCase.getCardByCode(cardCode, variant);
         return ResponseEntity.ok(cardMapper.toDto(details.card(), details.errata(), details.faq()));

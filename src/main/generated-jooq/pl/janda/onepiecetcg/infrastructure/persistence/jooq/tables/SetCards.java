@@ -4,36 +4,18 @@
 package pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables;
 
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
-import org.jooq.Condition;
-import org.jooq.Field;
-import org.jooq.Identity;
-import org.jooq.Index;
-import org.jooq.Name;
-import org.jooq.PlainSQL;
-import org.jooq.QueryPart;
-import org.jooq.SQL;
-import org.jooq.Schema;
-import org.jooq.Stringly;
-import org.jooq.Table;
-import org.jooq.TableField;
-import org.jooq.TableLike;
-import org.jooq.TableOptions;
-import org.jooq.UniqueKey;
-import org.jooq.impl.DSL;
-import org.jooq.impl.DefaultDataType;
+import org.jooq.*;
+import org.jooq.impl.*;
 import org.jooq.impl.Internal;
-import org.jooq.impl.SQLDataType;
-import org.jooq.impl.TableImpl;
-
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.Indexes;
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.Keys;
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.Public;
 import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records.SetCardsRecord;
+
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 
 /**
@@ -118,11 +100,6 @@ public class SetCards extends TableImpl<SetCardsRecord> {
     public final TableField<SetCardsRecord, Integer> COUNTER_AMOUNT = createField(DSL.name("counter_amount"), SQLDataType.INTEGER, this, "");
 
     /**
-     * The column <code>public.set_cards.date_scraped</code>.
-     */
-    public final TableField<SetCardsRecord, String> DATE_SCRAPED = createField(DSL.name("date_scraped"), SQLDataType.VARCHAR(255), this, "");
-
-    /**
      * The column <code>public.set_cards.inventory_price</code>.
      */
     public final TableField<SetCardsRecord, Double> INVENTORY_PRICE = createField(DSL.name("inventory_price"), SQLDataType.DOUBLE, this, "");
@@ -141,11 +118,6 @@ public class SetCards extends TableImpl<SetCardsRecord> {
      * The column <code>public.set_cards.market_price</code>.
      */
     public final TableField<SetCardsRecord, Double> MARKET_PRICE = createField(DSL.name("market_price"), SQLDataType.DOUBLE, this, "");
-
-    /**
-     * The column <code>public.set_cards.is_promo</code>.
-     */
-    public final TableField<SetCardsRecord, Boolean> IS_PROMO = createField(DSL.name("is_promo"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
      * The column <code>public.set_cards.rarity</code>.
@@ -178,11 +150,6 @@ public class SetCards extends TableImpl<SetCardsRecord> {
     public final TableField<SetCardsRecord, String> FLAT_RARITY = createField(DSL.name("flat_rarity"), SQLDataType.VARCHAR(255), this, "");
 
     /**
-     * The column <code>public.set_cards.is_representative</code>.
-     */
-    public final TableField<SetCardsRecord, Boolean> IS_REPRESENTATIVE = createField(DSL.name("is_representative"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
-
-    /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
      * it may have been excluded from code generation. If this is a built-in
      * type, you can define an explicit {@link org.jooq.Binding} to specify how
@@ -196,7 +163,7 @@ public class SetCards extends TableImpl<SetCardsRecord> {
     /**
      * The column <code>public.set_cards.variant_index</code>.
      */
-    public final TableField<SetCardsRecord, Integer> VARIANT_INDEX = createField(DSL.name("variant_index"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
+    public final TableField<SetCardsRecord, String> VARIANT_INDEX = createField(DSL.name("variant_index"), SQLDataType.VARCHAR(16).nullable(false).defaultValue(DSL.field(DSL.raw("'0'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     private SetCards(Name alias, Table<SetCardsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

@@ -15,7 +15,7 @@ public interface CardCatalogUseCase {
 
     List<String> getAllCardCodes();
 
-    SetCard getVariantByCardCode(String cardCode, Integer variant);
+    SetCard getVariantByCardCode(String cardCode, String variant);
 
     List<SetCard> getRepresentativeCardsByCardCodes(List<String> cardCodes);
 

@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 @SpringBootTest(classes = OnePieceTcgApplication.class)
 @Testcontainers
-class SetCardSearchVectorSchemaInitializerIT {
+class SetCardSchemaInitializerIT {
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
@@ -34,7 +34,7 @@ class SetCardSearchVectorSchemaInitializerIT {
     @MockitoBean
     private CardmarketPriceSyncUseCase cardmarketPriceSyncUseCase;
     @Autowired
-    private SetCardSearchVectorSchemaInitializer initializer;
+    private SetCardSchemaInitializer initializer;
     @Autowired
     private DSLContext dsl;
 
@@ -66,6 +66,47 @@ class SetCardSearchVectorSchemaInitializerIT {
 
         assertThat(indexDefinition).isNotNull();
         assertThat(indexDefinition.toString()).contains("gin");
+    }
+
+    @Test
+    void apply_removesObsoleteSetCardColumns() throws Exception {
+        dsl.execute("ALTER TABLE set_cards ADD COLUMN IF NOT EXISTS is_representative boolean NOT NULL DEFAULT false");
+        dsl.execute("ALTER TABLE set_cards ADD COLUMN IF NOT EXISTS date_scraped varchar(255)");
+        dsl.execute("ALTER TABLE set_cards ADD COLUMN IF NOT EXISTS is_promo boolean NOT NULL DEFAULT false");
+
+        initializer.apply();
+
+        var columnCount = dsl.fetchValue("""
+                select count(*) from information_schema.columns
+                 where table_name = 'set_cards'
+                   and column_name in ('is_representative', 'date_scraped', 'is_promo')
+                """);
+        assertThat(columnCount).hasToString("0");
+    }
+
+    @Test
+    void apply_migratesIntegerVariantIndexAndBackfillsSourceDerivedCodes() throws Exception {
+        dsl.execute("DELETE FROM set_cards");
+        dsl.execute("ALTER TABLE set_cards DROP COLUMN variant_index");
+        dsl.execute("ALTER TABLE set_cards ADD COLUMN variant_index integer NOT NULL DEFAULT 0");
+        dsl.execute("""
+                INSERT INTO set_cards (card_image_id, variant_index)
+                VALUES ('OP16-079', 0),
+                       ('OP16-079_p1', 1),
+                       ('OP16-079_r1', 2)
+                """);
+
+        initializer.apply();
+
+        var dataType = dsl.fetchValue("""
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name = 'set_cards' AND column_name = 'variant_index'
+                """);
+        var indexes = dsl.fetch("""
+                SELECT variant_index FROM set_cards ORDER BY card_image_id
+                """).getValues("variant_index", String.class);
+        assertThat(dataType).isEqualTo("character varying");
+        assertThat(indexes).containsExactly("0", "p1", "r1");
     }
 
     @Test

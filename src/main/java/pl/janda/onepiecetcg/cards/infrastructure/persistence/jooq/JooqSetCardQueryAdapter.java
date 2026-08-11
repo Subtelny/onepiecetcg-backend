@@ -1,12 +1,10 @@
 package pl.janda.onepiecetcg.cards.infrastructure.persistence.jooq;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.jooq.*;
 import org.jooq.Record;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.cards.application.model.*;
-import pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.records.SetCardsRecord;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,7 +18,6 @@ import static pl.janda.onepiecetcg.infrastructure.persistence.jooq.tables.SetCar
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class JooqSetCardQueryAdapter {
 
     private final DSLContext dsl;
@@ -53,39 +50,6 @@ public class JooqSetCardQueryAdapter {
         }
         return step.else_(Integer.MAX_VALUE);
     }
-
-    private static Field<Integer> nameLength(Field<String> column) {
-        return when(column.isNull(), Integer.MAX_VALUE).else_(length(column));
-    }
-
-    public void recomputeRepresentative() {
-        var groupKey = coalesce(SET_CARDS.CARD_SET_ID, concat(inline("id:"), SET_CARDS.ID.cast(String.class)));
-
-        var rowNum = rowNumber().over()
-                .partitionBy(groupKey)
-                .orderBy(
-                        field(SET_CARDS.CARD_IMAGE.isNull()).asc(),
-                        rarityRank(SET_CARDS.FLAT_RARITY).asc(),
-                        nameLength(SET_CARDS.CARD_NAME).asc(),
-                        SET_CARDS.ID.desc()
-                );
-
-        var ranked = dsl.select(SET_CARDS.ID, rowNum.as("rn"))
-                .from(SET_CARDS)
-                .asTable("ranked");
-
-        var rnField = ranked.field("rn", Integer.class);
-
-        var updated = dsl.update(SET_CARDS)
-                .set(SET_CARDS.IS_REPRESENTATIVE, field(rnField.eq(1)))
-                .set(SET_CARDS.VARIANT_INDEX, rnField.minus(1))
-                .from(ranked)
-                .where(SET_CARDS.ID.eq(ranked.field(SET_CARDS.ID)))
-                .execute();
-
-        log.info("Recomputed representative flag and variant index for {} set cards", updated);
-    }
-
 
     private static Field<Integer> safeIntCast(Field<String> column) {
         return field("CASE WHEN {0} ~ '^-?[0-9]+$' THEN {0}::int ELSE NULL END", Integer.class, column);
@@ -179,7 +143,7 @@ public class JooqSetCardQueryAdapter {
     ) {
         var conditions = new ArrayList<Condition>();
         if (!showAllVariants) {
-            conditions.add(SET_CARDS.IS_REPRESENTATIVE.isTrue());
+            conditions.add(SET_CARDS.VARIANT_INDEX.eq(SetCard.DEFAULT_VARIANT_INDEX));
         }
         if (errataOnly) {
             conditions.add(hasErrata());
@@ -349,36 +313,6 @@ public class JooqSetCardQueryAdapter {
                 "(SELECT string_agg(t, ' & ' ORDER BY t) FROM regexp_split_to_table({0}, '[\\s/]+') AS t "
                         + "WHERE t <> '' AND lower(t) <> 'null')",
                 String.class, column);
-    }
-
-    private static SetCard toSetCard(SetCardsRecord r) {
-        return SetCard.builder()
-                .id(r.getId())
-                .cardSetId(r.getCardSetId())
-                .cardPrefix(r.getCardPrefix())
-                .cardName(r.getCardName())
-                .setId(r.getSetId())
-                .setName(r.getSetName())
-                .cardText(r.getCardText())
-                .rarity(r.getRarity())
-                .flatRarity(r.getFlatRarity())
-                .cardColor(r.getCardColor())
-                .cardType(r.getCardType())
-                .life(r.getLife())
-                .cardCost(r.getCardCost())
-                .cardPower(r.getCardPower())
-                .subTypes(r.getSubTypes())
-                .counterAmount(r.getCounterAmount())
-                .attribute(r.getAttribute())
-                .dateScraped(r.getDateScraped())
-                .cardImageId(r.getCardImageId())
-                .cardImage(r.getCardImage())
-                .inventoryPrice(r.getInventoryPrice())
-                .marketPrice(r.getMarketPrice())
-                .lastSyncedAt(r.getLastSyncedAt())
-                .promo(Boolean.TRUE.equals(r.getIsPromo()))
-                .representative(Boolean.TRUE.equals(r.getIsRepresentative()))
-                .build();
     }
 
     private static CardSummary toCardSummary(Record r) {

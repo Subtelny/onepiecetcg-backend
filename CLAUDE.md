@@ -14,7 +14,12 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - Immutable shared deck snapshots → PostgreSQL via Spring Data JPA. They store stable card numbers rather than
     `set_cards` identity IDs because catalog sync replaces that table.
   - Browsable community decks and shops → not yet migrated to persistent storage.
-- **Card catalog sync:** independent scheduled jobs read the scraper-populated `onepiece_card_sets` and `onepiece_cards` tables and write the application-facing `card_sets` and `set_cards` tables. `SetCardSyncService` maps every printed variant from the source table, replaces `set_cards` transactionally, recomputes representative variants, and refreshes filter options on every run.
+- **Card catalog sync:** independent scheduled jobs read the scraper-populated `onepiece_card_sets` and `onepiece_cards`
+  tables and write the application-facing `card_sets` and `set_cards` tables. `SetCardSyncService` maps every printed
+  variant from the source table, derives its text `variant_index` directly from `onepiece_cards.id` (`0` for the
+  unsuffixed default print, `pN` for a parallel, `rN` for a reprint), replaces `set_cards` transactionally, and
+  refreshes filter options on every run. A representative card is always the row with `variant_index = '0'`; there is no
+  separate representative flag or post-insert index recomputation.
   - A second group of sync jobs scrapes the official rules site (errata notices as HTML, FAQ as per-set PDFs). Their adapters use Jsoup/PDFBox and follow the same service/scheduler pattern as everything else (§4).
   - **Every sync that does delete+insert uses the orchestrator + replacement split described in §4 step 3** — there are no remaining syncs where the fetch happens inside the transaction. Don't reintroduce one.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
@@ -142,7 +147,12 @@ extracting a shared DTO/mapper.
    This split is a transaction boundary, not a reuse abstraction — so it applies even with a single caller, and the §8 "no premature abstraction" rule does not override it.
 4. Scheduler: create a class in `infrastructure/scheduler/` extending the existing abstract base class for schedulers — reuse its shared safe-run helper, add only the startup-event and cron-trigger one-liners. Stagger the cron time from existing jobs if writing to the same table.
 5. Cron property: add a new hyphenated `<entity>.sync.cron` property to config, matching the naming pattern of its siblings.
-6. If the sync writes to the `set_cards` table, recompute the `representative` flag (`CardRepresentativeService.recompute()`) before refreshing the filter-options cache, then refresh the filter-options cache (`CardFilterOptionService.refresh()`) — both at the end of the transactional replace method described in step 3, in that order (filter options must be derived from the already-recomputed flag). Follow the pattern of the existing sync jobs that already do this. Don't add a live/on-demand recompute path instead; the `representative` flag and the filter-options cache table are the single source of truth for, respectively, variant deduplication and the filters endpoint.
+6. If the sync writes to the `set_cards` table, derive `variant_index` while mapping each source row, before entering
+   the replacement transaction, then refresh the filter-options cache (`CardFilterOptionService.refresh()`) after the
+   insert at the end of the transactional replacement method described in step 3. Follow the pattern of the existing
+   sync job. Don't add a post-insert recompute path: the source-derived `variant_index = '0'` rows and the
+   filter-options cache table are the single sources of truth for, respectively, variant deduplication and the filters
+   endpoint.
 
 **Adding a new controller/endpoint:** follow `cards.rest.controller.CardController` as the reference — thin controller,
 full OpenAPI annotations (`@Tag`/`@Operation`/`@Parameter`/`@ApiResponses`) on every public method, delegate to an

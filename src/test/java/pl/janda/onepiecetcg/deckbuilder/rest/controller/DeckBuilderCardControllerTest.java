@@ -113,6 +113,23 @@ class DeckBuilderCardControllerTest extends PostgresSpringBootTest {
     }
 
     @Test
+    void getCardByCode_forwardsTextVariantIndex() throws Exception {
+        var card = SetCard.builder()
+                .id(2L)
+                .cardSetId("OP16-079")
+                .variantIndex("p1")
+                .build();
+        when(cardCatalogUseCase.getVariantByCardCode("OP16-079", "p1")).thenReturn(card);
+
+        mockMvc.perform(get("/api/deckbuilder/cards/by-code")
+                        .param("cardCode", "OP16-079")
+                        .param("variant", "p1"))
+                .andExpect(status().isOk());
+
+        verify(cardCatalogUseCase).getVariantByCardCode("OP16-079", "p1");
+    }
+
+    @Test
     void getCardById_returnsMappedCardWithoutErrataOrFaq() throws Exception {
         var card = SetCard.builder()
                 .id(1L)

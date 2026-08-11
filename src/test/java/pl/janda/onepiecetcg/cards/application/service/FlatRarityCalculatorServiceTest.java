@@ -21,7 +21,6 @@ class FlatRarityCalculatorServiceTest {
                 .cardPrefix("OP01")
                 .rarity("PR")
                 .flatRarity("SP")
-                .promo(true)
                 .build();
         var service = new FlatRarityCalculatorService(new FlatRarityOverrideProperties());
 

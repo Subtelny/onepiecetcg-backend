@@ -71,7 +71,7 @@ class JooqSetCardQueryAdapterIT {
                         .cardSetId("OP01-001")
                         .cardText("If you have a [Straw Hat] type Character: draw 1 card.")
                         .cardCost("1")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Roronoa Zoro")
@@ -79,14 +79,14 @@ class JooqSetCardQueryAdapterIT {
                         .cardText("[On Play] Give up to 1 of your Leader or Character cards +1000 power for this turn.")
                         .cardCost("3")
                         .attribute("Slash")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Nami")
                         .cardSetId("OP01-003")
                         .cardText("[DON!!x1] This Character gains [Blocker].")
                         .cardCost("5")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Usopp")
@@ -94,7 +94,7 @@ class JooqSetCardQueryAdapterIT {
                         .cardText("[On Play] Look at 3 cards from the top of your deck.")
                         .cardCost("2")
                         .subTypes("Hat / Straw")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Nico Robin")
@@ -102,7 +102,7 @@ class JooqSetCardQueryAdapterIT {
                         .cardText("[On Play] Reveal the top card of your deck.")
                         .cardCost("4")
                         .attribute("?")
-                        .representative(true)
+                        .variantIndex("0")
                         .build()
         ));
     }
@@ -125,19 +125,41 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
-    void representativeLookup_returnsOnlyRequestedRepresentativePrints() {
+    void representativeLookup_returnsOnlyRequestedZeroIndexVariants() {
         jpaRepository.saveAndFlush(SetCard.builder()
                 .cardName("Alternate Luffy")
                 .cardSetId("OP01-001")
-                .representative(false)
+                .variantIndex("p1")
                 .build());
 
-        var results = jpaRepository.findByCardSetIdInAndRepresentativeTrue(List.of("OP01-001", "OP01-003"));
+        var results = jpaRepository.findByCardSetIdInAndVariantIndex(List.of("OP01-001", "OP01-003"), "0");
 
         assertThat(results)
                 .extracting(SetCard::getCardSetId)
                 .containsExactlyInAnyOrder("OP01-001", "OP01-003");
         assertThat(results).allMatch(SetCard::isRepresentative);
+    }
+
+    @Test
+    void variantLookup_distinguishesParallelAndReprintWithTheSameNumber() {
+        jpaRepository.saveAllAndFlush(List.of(
+                SetCard.builder()
+                        .cardName("Parallel Luffy")
+                        .cardSetId("OP01-001")
+                        .variantIndex("p1")
+                        .build(),
+                SetCard.builder()
+                        .cardName("Reprint Luffy")
+                        .cardSetId("OP01-001")
+                        .variantIndex("r1")
+                        .build()
+        ));
+
+        var parallel = jpaRepository.findByCardSetIdAndVariantIndex("OP01-001", "p1");
+        var reprint = jpaRepository.findByCardSetIdAndVariantIndex("OP01-001", "r1");
+
+        assertThat(parallel).get().extracting(SetCard::getCardName).isEqualTo("Parallel Luffy");
+        assertThat(reprint).get().extracting(SetCard::getCardName).isEqualTo("Reprint Luffy");
     }
 
     @Test
@@ -392,7 +414,7 @@ class JooqSetCardQueryAdapterIT {
                         .cardName("Extra Card")
                         .cardSetId("OP01-000")
                         .cardText("Filler")
-                        .representative(true)
+                        .variantIndex("0")
                         .build());
 
         var results = adapter.search(
@@ -412,13 +434,13 @@ class JooqSetCardQueryAdapterIT {
                         .cardName("Arlong")
                         .cardSetId("OP01-006")
                         .cardText("A fierce fish-man captain.")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Nami's Ally")
                         .cardSetId("OP01-007")
                         .cardText("If you have an [Arlong Pirates] type Character, this card gains +1000 power.")
-                        .representative(true)
+                        .variantIndex("0")
                         .build()
         ));
 
@@ -440,7 +462,7 @@ class JooqSetCardQueryAdapterIT {
                         .cardType("LEADER")
                         .cardText("A fierce captain.")
                         .cardCost("9")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("History Scholar")
@@ -448,21 +470,21 @@ class JooqSetCardQueryAdapterIT {
                         .cardType("CHARACTER")
                         .cardText("Give up to 1 of your Leader cards +1000 power.")
                         .cardCost("1")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Surprise Maneuver")
                         .cardSetId("OP01-008")
                         .cardType("EVENT")
                         .cardText("Draw 1 card.")
-                        .representative(true)
+                        .variantIndex("0")
                         .build(),
                 SetCard.builder()
                         .cardName("Tactical Analyst")
                         .cardSetId("OP01-009")
                         .cardType("CHARACTER")
                         .cardText("Return up to 1 Event card to its owner's hand.")
-                        .representative(true)
+                        .variantIndex("0")
                         .build()
         ));
 
@@ -497,4 +519,5 @@ class JooqSetCardQueryAdapterIT {
         assertThat(results).extracting(CardSummary::getCardName)
                 .containsExactly("Usopp", "Monkey D. Luffy");
     }
+
 }

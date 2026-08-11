@@ -98,16 +98,16 @@ public class DeckBuilderCardController {
 
     @GetMapping("/by-code")
     @Operation(summary = "Get a card variant by card code",
-            description = "Returns a single card variant matching the given card code (e.g. OP10-009), selected by a 0-based index into the canonically sorted variant list (same order as /{id}/variants; defaults to 0 = representative variant)")
+            description = "Returns a single card variant matching the given card code (e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, pN for a parallel, or rN for a reprint")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card variant found",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = DeckBuilderCardDto.class))),
-            @ApiResponse(responseCode = "404", description = "Card not found or variant index out of range")
+            @ApiResponse(responseCode = "404", description = "Card or variant index not found")
     })
     public ResponseEntity<DeckBuilderCardDto> getCardByCode(
             @Parameter(description = "Card code / card number, e.g. OP10-009") @RequestParam String cardCode,
-            @Parameter(description = "0-based variant index; defaults to 0 (representative variant)") @RequestParam(required = false) Integer variant
+            @Parameter(description = "Source-derived variant index: 0 (default), pN (parallel), or rN (reprint); defaults to 0") @RequestParam(required = false) String variant
     ) {
         SetCard card = cardCatalogUseCase.getVariantByCardCode(cardCode, variant);
         return ResponseEntity.ok(deckBuilderCardMapper.toDto(card));

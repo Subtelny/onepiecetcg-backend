@@ -9,14 +9,11 @@ import pl.janda.onepiecetcg.cards.application.model.OnePieceCard;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardRepository;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SetCardSyncServiceTest {
@@ -49,7 +46,6 @@ class SetCardSyncServiceTest {
                 .types("Supernovas,Straw Hat Crew")
                 .effect("[Activate: Main] Do something.")
                 .trigger("Draw 1 card.")
-                .scrapedAt(OffsetDateTime.parse("2026-08-03T00:05:36+02:00"))
                 .build();
         when(onePieceCardRepository.findAll()).thenReturn(List.of(source));
         var service = new SetCardSyncService(
@@ -73,9 +69,8 @@ class SetCardSyncServiceTest {
         assertThat(mapped.getSubTypes()).isEqualTo("Supernovas Straw Hat Crew");
         assertThat(mapped.getCardText()).isEqualTo("[Activate: Main] Do something.\n[Trigger] Draw 1 card.");
         assertThat(mapped.getCardImageId()).isEqualTo("OP01-001_p1");
-        assertThat(mapped.getDateScraped()).isEqualTo("2026-08-03T00:05:36+02:00");
         assertThat(mapped.getLastSyncedAt()).isNotNull();
-        assertThat(mapped.isPromo()).isFalse();
+        assertThat(mapped.getVariantIndex()).isEqualTo("p1");
         verify(setCardReplacementService).replaceAll(captor.getValue());
     }
 
@@ -100,11 +95,37 @@ class SetCardSyncServiceTest {
         var captor = ArgumentCaptor.forClass(List.class);
         verify(setCardReplacementService).replaceAll(captor.capture());
         var mapped = ((List<SetCard>) captor.getValue()).getFirst();
-        assertThat(mapped.isPromo()).isTrue();
         assertThat(mapped.getRarity()).isEqualTo("PR");
         assertThat(mapped.getFlatRarity()).isEqualTo("SP");
         assertThat(mapped.getCardCost()).isEqualTo("3");
         assertThat(mapped.getLife()).isNull();
+        assertThat(mapped.getVariantIndex()).isEqualTo("p9");
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void syncSetCards_derivesDefaultAndReprintIndexesFromSourceIds() {
+        when(onePieceCardRepository.findAll()).thenReturn(List.of(
+                OnePieceCard.builder()
+                        .id("OP16-079")
+                        .setId("OP-16")
+                        .build(),
+                OnePieceCard.builder()
+                        .id("OP16-079_r1")
+                        .baseId("OP16-079")
+                        .setId("OP-16")
+                        .build()
+        ));
+        var service = new SetCardSyncService(
+                onePieceCardRepository, flatRarityCalculatorService, setCardReplacementService);
+
+        service.syncSetCards();
+
+        var captor = ArgumentCaptor.forClass(List.class);
+        verify(setCardReplacementService).replaceAll(captor.capture());
+        assertThat((List<SetCard>) captor.getValue())
+                .extracting(SetCard::getVariantIndex)
+                .containsExactly("0", "r1");
     }
 
     @Test

@@ -9,6 +9,4 @@ public interface SetCardCommandRepository {
     void deleteAll();
 
     void saveAll(List<SetCard> setCards);
-
-    void recomputeRepresentative();
 }

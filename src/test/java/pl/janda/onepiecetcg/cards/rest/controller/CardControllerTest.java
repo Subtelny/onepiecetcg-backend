@@ -82,6 +82,35 @@ class CardControllerTest extends PostgresSpringBootTest {
     }
 
     @Test
+    void searchCards_returnsSourceDerivedVariantIndexAsString() throws Exception {
+        var summary = CardSummary.builder()
+                .id(1L)
+                .cardSetId("OP16-079")
+                .variantIndex("r1")
+                .build();
+        when(cardCatalogUseCase.searchCards(any(CardSearchQuery.class)))
+                .thenReturn(new PagedCards(List.of(summary), 1, 0, 50));
+
+        mockMvc.perform(get("/api/cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards[0].variantIndex").value("r1"));
+    }
+
+    @Test
+    void getCardByCode_forwardsTextVariantIndex() throws Exception {
+        var card = SetCard.builder().id(1L).cardSetId("OP16-079").variantIndex("r1").build();
+        when(cardDetailsUseCase.getCardByCode("OP16-079", "r1"))
+                .thenReturn(new CardDetails(card, List.of(), List.of()));
+
+        mockMvc.perform(get("/api/cards/by-code")
+                        .param("cardCode", "OP16-079")
+                        .param("variant", "r1"))
+                .andExpect(status().isOk());
+
+        verify(cardDetailsUseCase).getCardByCode("OP16-079", "r1");
+    }
+
+    @Test
     void getAllErrata_returnsErrataHistoryShapedForFrontend() throws Exception {
         var errata = CardErrata.builder()
                 .cardCode("OP13-119")

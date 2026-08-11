@@ -27,7 +27,7 @@ public class CardDetailsService implements CardDetailsUseCase {
     }
 
     @Override
-    public CardDetails getCardByCode(String cardCode, Integer variant) {
+    public CardDetails getCardByCode(String cardCode, String variant) {
         return resolve(cardCatalogUseCase.getVariantByCardCode(cardCode, variant));
     }
 

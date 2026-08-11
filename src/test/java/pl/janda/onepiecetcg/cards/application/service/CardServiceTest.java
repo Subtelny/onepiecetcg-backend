@@ -14,6 +14,7 @@ import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -131,7 +132,7 @@ class CardServiceTest {
     @Test
     void getRepresentativeCardsByCardCodes_usesSingleBulkRepositoryLookup() {
         cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
-        var cards = List.of(SetCard.builder().cardSetId("OP01-001").representative(true).build());
+        var cards = List.of(SetCard.builder().cardSetId("OP01-001").variantIndex("0").build());
         when(setCardRepository.findRepresentativesByCardSetIds(List.of("OP01-001", "OP01-006")))
                 .thenReturn(cards);
 
@@ -139,6 +140,46 @@ class CardServiceTest {
 
         assertThat(result).isSameAs(cards);
         verify(setCardRepository).findRepresentativesByCardSetIds(List.of("OP01-001", "OP01-006"));
+    }
+
+    @Test
+    void getVariantsByCardId_ordersByPersistedVariantIndex() {
+        cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
+        var selected = SetCard.builder().id(12L).cardSetId("OP01-001").variantIndex("r1").build();
+        when(setCardRepository.findById(12L)).thenReturn(java.util.Optional.of(selected));
+        when(setCardRepository.findByCardSetId("OP01-001")).thenReturn(List.of(
+                selected,
+                SetCard.builder().id(10L).cardSetId("OP01-001").variantIndex("p10").build(),
+                SetCard.builder().id(11L).cardSetId("OP01-001").variantIndex("0").build(),
+                SetCard.builder().id(13L).cardSetId("OP01-001").variantIndex("p2").build(),
+                SetCard.builder().id(14L).cardSetId("OP01-001").variantIndex("p1").build()
+        ));
+
+        var result = cardService.getVariantsByCardId("12");
+
+        assertThat(result).extracting(SetCard::getVariantIndex).containsExactly("0", "p1", "p2", "p10", "r1");
+    }
+
+    @Test
+    void getVariantByCardCode_usesExactSourceDerivedVariantIndex() {
+        cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
+        var reprint = SetCard.builder().cardSetId("OP01-001").variantIndex("r1").build();
+        when(setCardRepository.findByCardSetIdAndVariantIndex("OP01-001", "r1"))
+                .thenReturn(java.util.Optional.of(reprint));
+
+        var result = cardService.getVariantByCardCode("OP01-001", "R1");
+
+        assertThat(result).isSameAs(reprint);
+        verify(setCardRepository).findByCardSetIdAndVariantIndex("OP01-001", "r1");
+    }
+
+    @Test
+    void getVariantByCardCode_rejectsUnsupportedVariantIndex() {
+        cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
+
+        assertThatThrownBy(() -> cardService.getVariantByCardCode("OP01-001", "1"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid variant index");
     }
 
     private void stubRepository() {
