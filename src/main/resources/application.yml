@@ -53,7 +53,7 @@ cardmarket:
 
 matchups:
   sync:
-    cron: "0 30 4 * * *"
+    cron: "0 20 14-21 * * *"
 
 internal:
   api-key: ${INTERNAL_API_KEY:dev-only-change-me}

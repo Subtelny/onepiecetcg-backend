@@ -97,7 +97,7 @@ public class OnePieceCardGameErrataClient implements CardErrataApiClient {
 
         return document.select("div.contentsWrap div.detailCol").stream()
                 .map(detailCol -> toCardErrataFromTopic(detailCol, noticeDate, pageUrl))
-                .filter(errata -> errata != null)
+                .filter(Objects::nonNull)
                 .toList();
     }
 
