@@ -1,11 +1,6 @@
 package pl.janda.onepiecetcg.matchups.application.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,6 +20,9 @@ public class MatchupSnapshotInfo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "source_snapshot_id")
+    private Long sourceSnapshotId;
 
     @Column(name = "dataset", nullable = false)
     private String dataset;

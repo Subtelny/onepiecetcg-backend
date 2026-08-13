@@ -29,6 +29,7 @@ public class MatchupsController {
     @Operation(summary = "Get the current matchups overview",
             description = "Returns the most recently synced snapshot metadata, every leader's popularity/win-rate " +
                     "stats (enriched with card name/colors/image), every leader-vs-opponent pairing (matchups), " +
+                    "each leader's expectedCards and possibleTechs derived from game-weighted decklist usage, " +
                     "and the subset of those pairings restricted to the 10 most popular leaders (topMatchups), " +
                     "intended for a lightweight popularity matrix. " +
                     "Data is refreshed by a daily sync job, not computed on request.")

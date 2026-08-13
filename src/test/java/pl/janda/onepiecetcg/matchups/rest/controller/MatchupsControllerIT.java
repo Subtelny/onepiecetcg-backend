@@ -96,6 +96,15 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                     second_games BIGINT NOT NULL
                 )
                 """);
+        dsl.execute("""
+                CREATE TABLE IF NOT EXISTS tcgmatchmaking_decklists (
+                    snapshot_id BIGINT NOT NULL,
+                    leader TEXT NOT NULL,
+                    deck TEXT[] NOT NULL,
+                    games BIGINT NOT NULL
+                )
+                """);
+        dsl.execute("DELETE FROM tcgmatchmaking_decklists");
         dsl.execute("DELETE FROM tcgmatchmaking_matchups");
         dsl.execute("DELETE FROM tcgmatchmaking_leader_stats");
         dsl.execute("DELETE FROM tcgmatchmaking_matchup_snapshots");
@@ -112,7 +121,14 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                         .cardColor("RED").cardImage("https://cdn.example/op13-079.png")
                         .cardType("Leader").variantIndex("0").build(),
                 SetCard.builder().cardSetId("ST34-003").cardName("Imu")
-                        .cardColor("PURPLE").cardType("Character").variantIndex("0").build()));
+                        .cardColor("PURPLE").cardType("Character").variantIndex("0").build(),
+                SetCard.builder().cardSetId("OP01-001").cardName("Expected Character")
+                        .cardType("Character").cardCost("4").cardPower("5000").counterAmount(1000)
+                        .cardText("[On Play] Draw 1 card.").cardImage("https://cdn.example/op01-001.png")
+                        .variantIndex("0").build(),
+                SetCard.builder().cardSetId("OP01-002").cardName("Possible Tech")
+                        .cardType("Event").cardCost("2").cardText("[Counter] Up to 1 Leader gains +3000 power.")
+                        .cardImage("https://cdn.example/op01-002.png").variantIndex("0").build()));
 
         dsl.execute("INSERT INTO tcgmatchmaking_matchup_snapshots (id, dataset, total_matches, scraped_at) " +
                         "VALUES (?, ?, ?, ?::timestamptz)",
@@ -152,6 +168,13 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 1L, "1xOP14-020", "4xST34-003", 1L, 0L, 1L, new BigDecimal("100.00"),
                 null, null, 1L, 0L);
 
+        dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games) " +
+                        "VALUES (?, ?, ARRAY['1xOP14-020', '4xOP01-001']::text[], ?)",
+                1L, "1xOP14-020", 80L);
+        dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games) " +
+                        "VALUES (?, ?, ARRAY['1xOP14-020', '4xOP01-001', '2xOP01-002']::text[], ?)",
+                1L, "1xOP14-020", 20L);
+
         var synced = matchupSyncUseCase.syncMatchups();
         assertThat(synced).isTrue();
 
@@ -183,5 +206,23 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
         assertThat(groupedLeader).hasSize(1);
         assertThat(groupedLeader.get(0).get("matches")).isEqualTo(200);
         assertThat(((Number) groupedLeader.get(0).get("winRate")).doubleValue()).isEqualTo(50.0);
+
+        @SuppressWarnings("unchecked")
+        var expectedCards = (List<Map<String, Object>>) groupedLeader.get(0).get("expectedCards");
+        assertThat(expectedCards).singleElement().satisfies(card -> {
+            assertThat(card.get("cardCode")).isEqualTo("OP01-001");
+            assertThat(card.get("type")).isEqualTo("CHARACTER");
+            assertThat(((Number) card.get("inclusionRate")).doubleValue()).isEqualTo(100.0);
+            assertThat(((Number) card.get("typicalCopies")).doubleValue()).isEqualTo(4.0);
+        });
+
+        @SuppressWarnings("unchecked")
+        var possibleTechs = (List<Map<String, Object>>) groupedLeader.get(0).get("possibleTechs");
+        assertThat(possibleTechs).singleElement().satisfies(card -> {
+            assertThat(card.get("cardCode")).isEqualTo("OP01-002");
+            assertThat(card.get("type")).isEqualTo("EVENT");
+            assertThat(((Number) card.get("inclusionRate")).doubleValue()).isEqualTo(20.0);
+            assertThat(((Number) card.get("typicalCopies")).doubleValue()).isEqualTo(2.0);
+        });
     }
 }

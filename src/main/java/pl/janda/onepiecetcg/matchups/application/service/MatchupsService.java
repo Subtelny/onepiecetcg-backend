@@ -6,6 +6,7 @@ import pl.janda.onepiecetcg.matchups.application.model.MatchupLeader;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupPair;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupsOverview;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupsQueryUseCase;
+import pl.janda.onepiecetcg.matchups.application.repository.MatchupLeaderCardRepository;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupLeaderRepository;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupPairRepository;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupSnapshotInfoRepository;
@@ -24,15 +25,18 @@ public class MatchupsService implements MatchupsQueryUseCase {
 
     private final MatchupLeaderRepository leaderRepository;
 
+    private final MatchupLeaderCardRepository leaderCardRepository;
+
     private final MatchupPairRepository pairRepository;
 
     @Override
     public MatchupsOverview getMatchups() {
         var snapshot = snapshotInfoRepository.findCurrent().orElse(null);
         var leaders = leaderRepository.findAllOrderByPopularityDesc();
+        var leaderCards = leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate();
         var pairs = pairRepository.findAll();
         var topMatchups = filterToTopLeaders(leaders, pairs);
-        return new MatchupsOverview(snapshot, leaders, pairs, topMatchups);
+        return new MatchupsOverview(snapshot, leaders, leaderCards, pairs, topMatchups);
     }
 
     // The matrix on the matchups page only ever shows the most popular leaders, so

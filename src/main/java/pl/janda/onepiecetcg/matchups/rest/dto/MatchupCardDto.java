@@ -6,20 +6,30 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LeaderStatDto {
-    private String code;
+public class MatchupCardDto {
+
+    private String cardCode;
+
     private String name;
-    private List<String> colors;
+
     private String imageUrl;
-    private BigDecimal popularity;
-    private Long matches;
-    private BigDecimal winRate;
-    private List<MatchupCardDto> expectedCards;
-    private List<MatchupCardDto> possibleTechs;
+
+    private String type;
+
+    private Integer cost;
+
+    private Integer power;
+
+    private Integer counter;
+
+    private String effect;
+
+    private BigDecimal inclusionRate;
+
+    private BigDecimal typicalCopies;
 }

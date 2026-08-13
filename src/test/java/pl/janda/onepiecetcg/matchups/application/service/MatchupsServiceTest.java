@@ -7,6 +7,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupLeader;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupPair;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupSnapshotInfo;
+import pl.janda.onepiecetcg.matchups.application.repository.MatchupLeaderCardRepository;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupLeaderRepository;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupPairRepository;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupSnapshotInfoRepository;
@@ -29,6 +30,9 @@ class MatchupsServiceTest {
     private MatchupLeaderRepository leaderRepository;
 
     @Mock
+    private MatchupLeaderCardRepository leaderCardRepository;
+
+    @Mock
     private MatchupPairRepository pairRepository;
 
     @Test
@@ -38,13 +42,15 @@ class MatchupsServiceTest {
         var pair = MatchupPair.builder().leaderCode("OP14-020").opponentCode("OP13-079").build();
         when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.of(snapshot));
         when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(List.of(leader));
+        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate()).thenReturn(List.of());
         when(pairRepository.findAll()).thenReturn(List.of(pair));
-        var service = new MatchupsService(snapshotInfoRepository, leaderRepository, pairRepository);
+        var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
         var overview = service.getMatchups();
 
         assertThat(overview.snapshot()).isEqualTo(snapshot);
         assertThat(overview.leaders()).containsExactly(leader);
+        assertThat(overview.leaderCards()).isEmpty();
         assertThat(overview.matchups()).containsExactly(pair);
         // "OP13-079" isn't itself a known leader here, so the pair can't be a top-leaders pairing.
         assertThat(overview.topMatchups()).isEmpty();
@@ -54,13 +60,15 @@ class MatchupsServiceTest {
     void getMatchups_toleratesMissingSnapshotByReturningNull() {
         when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.empty());
         when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(List.of());
+        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate()).thenReturn(List.of());
         when(pairRepository.findAll()).thenReturn(List.of());
-        var service = new MatchupsService(snapshotInfoRepository, leaderRepository, pairRepository);
+        var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
         var overview = service.getMatchups();
 
         assertThat(overview.snapshot()).isNull();
         assertThat(overview.leaders()).isEmpty();
+        assertThat(overview.leaderCards()).isEmpty();
         assertThat(overview.matchups()).isEmpty();
         assertThat(overview.topMatchups()).isEmpty();
     }
@@ -80,8 +88,9 @@ class MatchupsServiceTest {
         var pairInvolvingAnEleventhRankedLeader = MatchupPair.builder().leaderCode("L0").opponentCode("L10").build();
         when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.empty());
         when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(leaders);
+        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate()).thenReturn(List.of());
         when(pairRepository.findAll()).thenReturn(List.of(topPair, pairInvolvingAnEleventhRankedLeader));
-        var service = new MatchupsService(snapshotInfoRepository, leaderRepository, pairRepository);
+        var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
         var overview = service.getMatchups();
 

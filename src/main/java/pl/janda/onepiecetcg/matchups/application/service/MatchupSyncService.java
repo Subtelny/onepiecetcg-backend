@@ -5,18 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.port.in.CardCatalogUseCase;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupLeader;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupPair;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupSnapshotInfo;
-import pl.janda.onepiecetcg.matchups.application.model.NormalizedLeaderStat;
-import pl.janda.onepiecetcg.matchups.application.model.NormalizedMatchup;
+import pl.janda.onepiecetcg.matchups.application.model.*;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
-import pl.janda.onepiecetcg.matchups.application.repository.MatchupSnapshotInfoRepository;
-import pl.janda.onepiecetcg.matchups.application.repository.RawLeaderStatRepository;
-import pl.janda.onepiecetcg.matchups.application.repository.RawMatchupRepository;
-import pl.janda.onepiecetcg.matchups.application.repository.RawMatchupSnapshotRepository;
+import pl.janda.onepiecetcg.matchups.application.repository.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -33,7 +27,11 @@ public class MatchupSyncService implements MatchupSyncUseCase {
 
     private final RawMatchupRepository rawMatchupRepository;
 
+    private final RawDecklistRepository rawDecklistRepository;
+
     private final MatchupNormalizationService normalizationService;
+
+    private final MatchupCardProfileService cardProfileService;
 
     private final CardCatalogUseCase cardCatalogUseCase;
 
@@ -53,6 +51,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
         }
 
         var alreadySynced = matchupSnapshotInfoRepository.findCurrent()
+                .filter(current -> Objects.equals(current.getSourceSnapshotId(), rawSnapshot.getId()))
                 .filter(current -> current.getDataset().equals(rawSnapshot.getDataset()))
                 .filter(current -> current.getScrapedAt().isEqual(rawSnapshot.getScrapedAt()))
                 .isPresent();
@@ -84,18 +83,23 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .map(this::toMatchupPair)
                 .toList();
 
+        var rawDecklists = rawDecklistRepository.findBySnapshotId(rawSnapshot.getId());
+        var normalizedLeaderCards = cardProfileService.calculateProfiles(rawDecklists, validLeaderCodes);
+        var leaderCards = enrichLeaderCards(normalizedLeaderCards);
+
         var snapshotInfo = MatchupSnapshotInfo.builder()
+                .sourceSnapshotId(rawSnapshot.getId())
                 .dataset(rawSnapshot.getDataset())
                 .totalMatches(rawSnapshot.getTotalMatches())
                 .scrapedAt(rawSnapshot.getScrapedAt())
                 .syncedAt(LocalDateTime.now())
                 .build();
 
-        matchupReplacementService.replaceAll(snapshotInfo, leaders, pairs);
+        matchupReplacementService.replaceAll(snapshotInfo, leaders, pairs, leaderCards);
 
         var totalDuration = System.currentTimeMillis() - startTime;
-        log.info("Matchups sync completed successfully - {} leaders, {} pairs, total time: {}ms",
-                leaders.size(), pairs.size(), totalDuration);
+        log.info("Matchups sync completed successfully - {} leaders, {} pairs, {} leader cards, total time: {}ms",
+                leaders.size(), pairs.size(), leaderCards.size(), totalDuration);
         return true;
     }
 
@@ -132,5 +136,53 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .firstGames(matchup.firstGames())
                 .secondGames(matchup.secondGames())
                 .build();
+    }
+
+    private List<MatchupLeaderCard> enrichLeaderCards(List<NormalizedLeaderCard> normalizedCards) {
+        if (normalizedCards.isEmpty()) {
+            return List.of();
+        }
+        var cardCodes = normalizedCards.stream().map(NormalizedLeaderCard::cardCode).distinct().toList();
+        var cardsByCode = cardCatalogUseCase.getRepresentativeCardsByCardCodes(cardCodes).stream()
+                .collect(Collectors.toMap(SetCard::getCardSetId, Function.identity()));
+        return normalizedCards.stream()
+                .map(card -> toMatchupLeaderCard(card, cardsByCode))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private MatchupLeaderCard toMatchupLeaderCard(NormalizedLeaderCard normalizedCard,
+                                                  Map<String, SetCard> cardsByCode) {
+        var card = cardsByCode.get(normalizedCard.cardCode());
+        if (card == null) {
+            log.warn("Dropping matchup card '{}' for leader '{}' - no matching card found in set_cards",
+                    normalizedCard.cardCode(), normalizedCard.leaderCode());
+            return null;
+        }
+        return MatchupLeaderCard.builder()
+                .leaderCode(normalizedCard.leaderCode())
+                .cardCode(normalizedCard.cardCode())
+                .category(normalizedCard.category())
+                .name(card.getCardName())
+                .imageUrl(card.getCardImage())
+                .cardType(card.getCardType())
+                .cost(parseIntSafe(card.getCardCost()))
+                .power(parseIntSafe(card.getCardPower()))
+                .counter(card.getCounterAmount())
+                .effect(card.getCardText())
+                .inclusionRate(normalizedCard.inclusionRate())
+                .typicalCopies(normalizedCard.typicalCopies())
+                .build();
+    }
+
+    private Integer parseIntSafe(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

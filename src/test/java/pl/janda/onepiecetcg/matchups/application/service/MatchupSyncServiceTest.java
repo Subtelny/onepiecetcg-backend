@@ -7,17 +7,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.port.in.CardCatalogUseCase;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupLeader;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupPair;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupSnapshotInfo;
-import pl.janda.onepiecetcg.matchups.application.model.NormalizedLeaderStat;
-import pl.janda.onepiecetcg.matchups.application.model.RawLeaderStat;
-import pl.janda.onepiecetcg.matchups.application.model.RawMatchup;
-import pl.janda.onepiecetcg.matchups.application.model.RawMatchupSnapshot;
-import pl.janda.onepiecetcg.matchups.application.repository.MatchupSnapshotInfoRepository;
-import pl.janda.onepiecetcg.matchups.application.repository.RawLeaderStatRepository;
-import pl.janda.onepiecetcg.matchups.application.repository.RawMatchupRepository;
-import pl.janda.onepiecetcg.matchups.application.repository.RawMatchupSnapshotRepository;
+import pl.janda.onepiecetcg.matchups.application.model.*;
+import pl.janda.onepiecetcg.matchups.application.repository.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -28,9 +19,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MatchupSyncServiceTest {
@@ -45,7 +34,13 @@ class MatchupSyncServiceTest {
     private RawMatchupRepository rawMatchupRepository;
 
     @Mock
+    private RawDecklistRepository rawDecklistRepository;
+
+    @Mock
     private MatchupNormalizationService normalizationService;
+
+    @Mock
+    private MatchupCardProfileService cardProfileService;
 
     @Mock
     private CardCatalogUseCase cardCatalogUseCase;
@@ -58,7 +53,8 @@ class MatchupSyncServiceTest {
 
     private MatchupSyncService service() {
         return new MatchupSyncService(rawSnapshotRepository, rawLeaderStatRepository, rawMatchupRepository,
-                normalizationService, cardCatalogUseCase, matchupReplacementService, matchupSnapshotInfoRepository);
+                rawDecklistRepository, normalizationService, cardProfileService, cardCatalogUseCase,
+                matchupReplacementService, matchupSnapshotInfoRepository);
     }
 
     @Test
@@ -68,7 +64,7 @@ class MatchupSyncServiceTest {
         var result = service().syncMatchups();
 
         assertThat(result).isFalse();
-        verify(matchupReplacementService, never()).replaceAll(any(), any(), any());
+        verify(matchupReplacementService, never()).replaceAll(any(), any(), any(), any());
     }
 
     @Test
@@ -79,13 +75,14 @@ class MatchupSyncServiceTest {
                 .build();
         when(rawSnapshotRepository.findLatest()).thenReturn(Optional.of(snapshot));
         when(matchupSnapshotInfoRepository.findCurrent()).thenReturn(Optional.of(
-                MatchupSnapshotInfo.builder().dataset("lw").totalMatches(100L).scrapedAt(scrapedAt).build()));
+                MatchupSnapshotInfo.builder().sourceSnapshotId(1L).dataset("lw")
+                        .totalMatches(100L).scrapedAt(scrapedAt).build()));
 
         var result = service().syncMatchups();
 
         assertThat(result).isFalse();
         verify(rawLeaderStatRepository, never()).findBySnapshotId(any());
-        verify(matchupReplacementService, never()).replaceAll(any(), any(), any());
+        verify(matchupReplacementService, never()).replaceAll(any(), any(), any(), any());
     }
 
     @Test
@@ -113,6 +110,8 @@ class MatchupSyncServiceTest {
                 .thenReturn(List.of(leaderCard, characterCard));
 
         when(normalizationService.normalizeAndMergeMatchups(anyList(), any())).thenReturn(List.of());
+        when(rawDecklistRepository.findBySnapshotId(1L)).thenReturn(List.of());
+        when(cardProfileService.calculateProfiles(anyList(), any())).thenReturn(List.of());
 
         service().syncMatchups();
 
@@ -120,9 +119,13 @@ class MatchupSyncServiceTest {
         verify(normalizationService).normalizeAndMergeMatchups(anyList(), validLeaderCodesCaptor.capture());
         assertThat(validLeaderCodesCaptor.getValue()).containsExactly("OP14-020");
 
+        var snapshotCaptor = ArgumentCaptor.forClass(MatchupSnapshotInfo.class);
         var leadersCaptor = ArgumentCaptor.forClass(List.class);
         var pairsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(matchupReplacementService).replaceAll(any(), leadersCaptor.capture(), pairsCaptor.capture());
+        verify(matchupReplacementService).replaceAll(snapshotCaptor.capture(), leadersCaptor.capture(),
+                pairsCaptor.capture(), anyList());
+
+        assertThat(snapshotCaptor.getValue().getSourceSnapshotId()).isEqualTo(1L);
 
         @SuppressWarnings("unchecked")
         var savedLeaders = (List<MatchupLeader>) leadersCaptor.getValue();

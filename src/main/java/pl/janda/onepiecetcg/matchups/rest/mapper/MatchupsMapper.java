@@ -1,25 +1,25 @@
 package pl.janda.onepiecetcg.matchups.rest.mapper;
 
 import org.springframework.stereotype.Component;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupLeader;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupPair;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupSnapshotInfo;
-import pl.janda.onepiecetcg.matchups.application.model.MatchupsOverview;
-import pl.janda.onepiecetcg.matchups.rest.dto.LeaderStatDto;
-import pl.janda.onepiecetcg.matchups.rest.dto.MatchupDto;
-import pl.janda.onepiecetcg.matchups.rest.dto.MatchupsResponseDto;
-import pl.janda.onepiecetcg.matchups.rest.dto.SnapshotDto;
+import pl.janda.onepiecetcg.matchups.application.model.*;
+import pl.janda.onepiecetcg.matchups.rest.dto.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Component
 public class MatchupsMapper {
 
     public MatchupsResponseDto toDto(MatchupsOverview overview) {
+        var cardsByLeader = overview.leaderCards().stream()
+                .collect(Collectors.groupingBy(MatchupLeaderCard::getLeaderCode));
         return MatchupsResponseDto.builder()
                 .snapshot(toSnapshotDto(overview.snapshot()))
-                .leaders(overview.leaders().stream().map(this::toLeaderStatDto).toList())
+                .leaders(overview.leaders().stream()
+                        .map(leader -> toLeaderStatDto(leader, cardsByLeader.getOrDefault(leader.getCardCode(), List.of())))
+                        .toList())
                 .matchups(overview.matchups().stream().map(this::toMatchupDto).toList())
                 .topMatchups(overview.topMatchups().stream().map(this::toMatchupDto).toList())
                 .build();
@@ -36,7 +36,7 @@ public class MatchupsMapper {
                 .build();
     }
 
-    private LeaderStatDto toLeaderStatDto(MatchupLeader leader) {
+    private LeaderStatDto toLeaderStatDto(MatchupLeader leader, List<MatchupLeaderCard> cards) {
         return LeaderStatDto.builder()
                 .code(leader.getCardCode())
                 .name(leader.getName())
@@ -45,6 +45,31 @@ public class MatchupsMapper {
                 .popularity(leader.getPopularity())
                 .matches(leader.getMatches())
                 .winRate(leader.getWinRate())
+                .expectedCards(toCardDtos(cards, MatchupLeaderCardCategory.EXPECTED))
+                .possibleTechs(toCardDtos(cards, MatchupLeaderCardCategory.POSSIBLE_TECH))
+                .build();
+    }
+
+    private List<MatchupCardDto> toCardDtos(List<MatchupLeaderCard> cards,
+                                            MatchupLeaderCardCategory category) {
+        return cards.stream()
+                .filter(card -> card.getCategory() == category)
+                .map(this::toCardDto)
+                .toList();
+    }
+
+    private MatchupCardDto toCardDto(MatchupLeaderCard card) {
+        return MatchupCardDto.builder()
+                .cardCode(card.getCardCode())
+                .name(card.getName())
+                .imageUrl(card.getImageUrl())
+                .type(card.getCardType() != null ? card.getCardType().toUpperCase(Locale.ROOT) : null)
+                .cost(card.getCost())
+                .power(card.getPower())
+                .counter(card.getCounter())
+                .effect(card.getEffect())
+                .inclusionRate(card.getInclusionRate())
+                .typicalCopies(card.getTypicalCopies())
                 .build();
     }
 

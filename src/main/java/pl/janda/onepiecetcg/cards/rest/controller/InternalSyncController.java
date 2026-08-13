@@ -101,8 +101,9 @@ public class InternalSyncController {
     @PostMapping("/matchups")
     @Operation(summary = "Manually sync matchups",
             description = "Loads the latest snapshot from tcgmatchmaking_matchup_snapshots/tcgmatchmaking_leader_stats/" +
-                    "tcgmatchmaking_matchups, normalizes and merges dirty leader/opponent codes, enriches with card data, " +
-                    "and fully replaces the matchup_snapshot_info/matchup_leaders/matchup_pairs tables.")
+                    "tcgmatchmaking_matchups/tcgmatchmaking_decklists, normalizes and merges dirty leader/opponent " +
+                    "codes, derives game-weighted expected cards and possible techs, enriches with card data, and fully " +
+                    "replaces the matchup_snapshot_info/matchup_leaders/matchup_pairs/matchup_leader_cards tables.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync completed"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
