@@ -101,7 +101,8 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                     snapshot_id BIGINT NOT NULL,
                     leader TEXT NOT NULL,
                     deck TEXT[] NOT NULL,
-                    games BIGINT NOT NULL
+                    games BIGINT NOT NULL,
+                    win_rate NUMERIC(5,2) NOT NULL
                 )
                 """);
         dsl.execute("DELETE FROM tcgmatchmaking_decklists");
@@ -168,12 +169,19 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 1L, "1xOP14-020", "4xST34-003", 1L, 0L, 1L, new BigDecimal("100.00"),
                 null, null, 1L, 0L);
 
-        dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games) " +
-                        "VALUES (?, ?, ARRAY['1xOP14-020', '4xOP01-001']::text[], ?)",
-                1L, "1xOP14-020", 80L);
-        dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games) " +
-                        "VALUES (?, ?, ARRAY['1xOP14-020', '4xOP01-001', '2xOP01-002']::text[], ?)",
-                1L, "1xOP14-020", 20L);
+        for (var index = 0; index < 5; index++) {
+            var deck = index == 0
+                    ? "ARRAY['1xOP14-020', '4xOP01-001', '2xOP01-002']::text[]"
+                    : "ARRAY['1xOP14-020', '4xOP01-001']::text[]";
+            dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games, win_rate) " +
+                            "VALUES (?, ?, " + deck + ", ?, ?)",
+                    1L, "1xOP14-020", 20L, BigDecimal.valueOf(70 - index));
+        }
+        for (var index = 0; index < 15; index++) {
+            dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games, win_rate) " +
+                            "VALUES (?, ?, ARRAY['1xOP14-020', '4xOP01-099']::text[], ?, ?)",
+                    1L, "1xOP14-020", 100L, BigDecimal.valueOf(55 - index));
+        }
 
         var synced = matchupSyncUseCase.syncMatchups();
         assertThat(synced).isTrue();

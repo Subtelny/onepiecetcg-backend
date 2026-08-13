@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.matchups.application.model.RawDecklist;
 import pl.janda.onepiecetcg.matchups.application.repository.RawDecklistRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
@@ -17,7 +18,7 @@ public class JooqRawDecklistRepository implements RawDecklistRepository {
     @Override
     public List<RawDecklist> findBySnapshotId(Long snapshotId) {
         return dsl.fetch("""
-                        SELECT snapshot_id, leader, deck::text AS deck, games
+                        SELECT snapshot_id, leader, deck::text AS deck, games, win_rate
                         FROM tcgmatchmaking_decklists
                         WHERE snapshot_id = ?
                           AND games > 0
@@ -27,6 +28,7 @@ public class JooqRawDecklistRepository implements RawDecklistRepository {
                         .leader(record.get("leader", String.class))
                         .deck(record.get("deck", String.class))
                         .games(record.get("games", Long.class))
+                        .winRate(record.get("win_rate", BigDecimal.class))
                         .build());
     }
 }

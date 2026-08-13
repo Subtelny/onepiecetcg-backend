@@ -21,9 +21,11 @@ public class MatchupCardProfileService {
 
     private static final BigDecimal POSSIBLE_TECH_MIN_INCLUSION_RATE = new BigDecimal("10.00");
 
-    private static final int EXPECTED_CARDS_LIMIT = 8;
+    private static final int EXPECTED_CARDS_LIMIT = 20;
 
-    private static final int POSSIBLE_TECHS_LIMIT = 5;
+    private static final int POSSIBLE_TECHS_LIMIT = 20;
+
+    private static final int MIN_HIGH_PERFORMING_DECKLISTS = 5;
 
     private static final Pattern DECK_CARD_PATTERN = Pattern.compile("(\\d+)x([A-Z]+(?:\\d+)?-\\d+)");
 
@@ -36,33 +38,58 @@ public class MatchupCardProfileService {
 
     public List<NormalizedLeaderCard> calculateProfiles(List<RawDecklist> rawDecklists,
                                                         Set<String> validLeaderCodes) {
-        var leaders = new HashMap<String, LeaderAccumulator>();
+        var decklistsByLeader = new HashMap<String, List<RawDecklist>>();
         for (var rawDecklist : rawDecklists) {
             var leaderCode = leaderCodeNormalizer.extractCardCode(rawDecklist.getLeader()).orElse(null);
             if (leaderCode == null) {
                 log.warn("Dropping decklist with unparseable leader '{}'", rawDecklist.getLeader());
                 continue;
             }
-            if (!validLeaderCodes.contains(leaderCode) || rawDecklist.getGames() == null || rawDecklist.getGames() <= 0) {
+            if (!validLeaderCodes.contains(leaderCode)
+                    || rawDecklist.getGames() == null
+                    || rawDecklist.getGames() <= 0
+                    || rawDecklist.getWinRate() == null) {
                 continue;
             }
-
-            var leader = leaders.computeIfAbsent(leaderCode, ignored -> new LeaderAccumulator());
-            leader.totalGames += rawDecklist.getGames();
-            for (var entry : parseDeck(rawDecklist.getDeck()).entrySet()) {
-                if (leaderCode.equals(entry.getKey())) {
-                    continue;
-                }
-                var card = leader.cards.computeIfAbsent(entry.getKey(), ignored -> new CardAccumulator());
-                card.includedGames += rawDecklist.getGames();
-                card.weightedCopies = card.weightedCopies.add(
-                        BigDecimal.valueOf(rawDecklist.getGames()).multiply(BigDecimal.valueOf(entry.getValue())));
-            }
+            decklistsByLeader.computeIfAbsent(leaderCode, ignored -> new ArrayList<>()).add(rawDecklist);
         }
 
         var profiles = new ArrayList<NormalizedLeaderCard>();
-        leaders.forEach((leaderCode, accumulator) -> profiles.addAll(toProfile(leaderCode, accumulator)));
+        decklistsByLeader.forEach((leaderCode, leaderDecklists) -> {
+            var selectedDecklists = selectRepresentativeDecklists(leaderCode, leaderDecklists);
+            var accumulator = new LeaderAccumulator();
+            for (var rawDecklist : selectedDecklists) {
+                accumulator.totalGames += rawDecklist.getGames();
+                for (var entry : parseDeck(rawDecklist.getDeck()).entrySet()) {
+                    if (leaderCode.equals(entry.getKey())) {
+                        continue;
+                    }
+                    var card = accumulator.cards.computeIfAbsent(entry.getKey(), ignored -> new CardAccumulator());
+                    card.includedGames += rawDecklist.getGames();
+                    card.weightedCopies = card.weightedCopies.add(
+                            BigDecimal.valueOf(rawDecklist.getGames()).multiply(BigDecimal.valueOf(entry.getValue())));
+                }
+            }
+            profiles.addAll(toProfile(leaderCode, accumulator));
+        });
         return profiles;
+    }
+
+    private List<RawDecklist> selectRepresentativeDecklists(String leaderCode, List<RawDecklist> decklists) {
+        var orderedByWinRate = decklists.stream()
+                .sorted(Comparator.comparing(RawDecklist::getWinRate).reversed())
+                .toList();
+        var upperQuartileSize = (orderedByWinRate.size() + 3) / 4;
+        var upperQuartileCutoff = orderedByWinRate.get(upperQuartileSize - 1).getWinRate();
+        var highPerforming = orderedByWinRate.stream()
+                .filter(decklist -> decklist.getWinRate().compareTo(upperQuartileCutoff) >= 0)
+                .toList();
+        if (highPerforming.size() < MIN_HIGH_PERFORMING_DECKLISTS) {
+            return decklists;
+        }
+        log.debug("Using {} of {} high-performing decklists for leader '{}' (dynamic cutoff: {}%)",
+                highPerforming.size(), decklists.size(), leaderCode, upperQuartileCutoff);
+        return highPerforming;
     }
 
     private List<NormalizedLeaderCard> toProfile(String leaderCode, LeaderAccumulator accumulator) {
