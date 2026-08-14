@@ -20,7 +20,9 @@ public class LeaderStatDto {
     private BigDecimal popularity;
     private Long matches;
     private BigDecimal winRate;
+    private Integer profileDecklists;
     private TopDeckDto topDeck;
     private List<MatchupCardDto> expectedCards;
     private List<MatchupCardDto> possibleTechs;
+    private List<MatchupCardDto> observedCards;
 }

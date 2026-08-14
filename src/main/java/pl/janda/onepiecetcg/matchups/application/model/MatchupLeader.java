@@ -41,6 +41,9 @@ public class MatchupLeader {
     @Column(name = "win_rate", nullable = false)
     private BigDecimal winRate;
 
+    @Column(name = "profile_decklists")
+    private Integer profileDecklists;
+
     @Column(name = "top_deck_games")
     private Long topDeckGames;
 

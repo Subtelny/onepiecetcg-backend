@@ -46,9 +46,11 @@ public class MatchupsMapper {
                 .popularity(leader.getPopularity())
                 .matches(leader.getMatches())
                 .winRate(leader.getWinRate())
+                .profileDecklists(leader.getProfileDecklists())
                 .topDeck(toTopDeckDto(leader, cards))
                 .expectedCards(toCardDtos(cards, MatchupLeaderCardCategory.EXPECTED))
                 .possibleTechs(toCardDtos(cards, MatchupLeaderCardCategory.POSSIBLE_TECH))
+                .observedCards(toCardDtos(cards, MatchupLeaderCardCategory.OBSERVED))
                 .build();
     }
 

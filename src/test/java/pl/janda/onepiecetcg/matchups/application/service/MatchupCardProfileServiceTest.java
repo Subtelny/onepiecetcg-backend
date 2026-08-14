@@ -23,8 +23,14 @@ class MatchupCardProfileServiceTest {
                 RawDecklist.builder()
                         .leader("1xOP14-020")
                         .deck("{1xOP14-020,4xOP01-001,2xP-001,9xOP16-042,1xOP16-042}")
-                        .games(80L)
+                        .games(40L)
                         .winRate(new BigDecimal("52.00"))
+                        .build(),
+                RawDecklist.builder()
+                        .leader("1xOP14-020")
+                        .deck("{1xOP14-020,1xOP16-042,2xP-001,4xOP01-001,9xOP16-042}")
+                        .games(40L)
+                        .winRate(new BigDecimal("51.00"))
                         .build(),
                 RawDecklist.builder()
                         .leader("1xOP14-020")
@@ -45,6 +51,7 @@ class MatchupCardProfileServiceTest {
                     assertThat(card.category()).isEqualTo(MatchupLeaderCardCategory.EXPECTED);
                     assertThat(card.inclusionRate()).isEqualByComparingTo(new BigDecimal("100.00"));
                     assertThat(card.typicalCopies()).isEqualByComparingTo(new BigDecimal("4.0"));
+                    assertThat(card.sampleSize()).isEqualTo(3);
                 });
         assertThat(result).filteredOn(card -> card.cardCode().equals("OP16-042"))
                 .singleElement()
@@ -66,7 +73,10 @@ class MatchupCardProfileServiceTest {
     void calculateProfiles_ignoresUnknownLeadersAndCardsBelowTenPercent() {
         var rawDecklists = List.of(
                 RawDecklist.builder().leader("1xOP14-020")
-                        .deck("{1xOP14-020,4xOP01-001}").games(95L)
+                        .deck("{1xOP14-020,4xOP01-001}").games(50L)
+                        .winRate(new BigDecimal("50.00")).build(),
+                RawDecklist.builder().leader("1xOP14-020")
+                        .deck("{4xOP01-001,1xOP14-020}").games(45L)
                         .winRate(new BigDecimal("50.00")).build(),
                 RawDecklist.builder().leader("1xOP14-020")
                         .deck("{1xOP14-020,1xOP01-099}").games(5L)
@@ -82,22 +92,49 @@ class MatchupCardProfileServiceTest {
 
     @Test
     void calculateProfiles_capsBothGroupsToKeepTheMatchupsPayloadFocused() {
-        var expectedCards = "4xOP01-001,4xOP01-002,4xOP01-003,4xOP01-004,4xOP01-005," +
-                "4xOP01-006,4xOP01-007,4xOP01-008,4xOP01-009,4xOP01-010";
-        var possibleTechs = "1xOP02-001,1xOP02-002,1xOP02-003,1xOP02-004,1xOP02-005," +
-                "1xOP02-006,1xOP02-007";
+        var expectedCards = IntStream.rangeClosed(1, 25)
+                .mapToObj(index -> "4xOP01-" + String.format("%03d", index))
+                .toList();
+        var possibleTechs = IntStream.rangeClosed(1, 25)
+                .mapToObj(index -> "1xOP02-" + String.format("%03d", index))
+                .toList();
+        var expectedDeck = String.join(",", expectedCards);
+        var techDeck = String.join(",", possibleTechs);
         var rawDecklists = List.of(
                 RawDecklist.builder().leader("1xOP14-020")
-                        .deck("{" + expectedCards + "," + possibleTechs + "}").games(50L)
+                        .deck("{" + expectedDeck + "," + techDeck + "}").games(25L)
                         .winRate(new BigDecimal("50.00")).build(),
                 RawDecklist.builder().leader("1xOP14-020")
-                        .deck("{" + expectedCards + "}").games(50L)
+                        .deck("{" + techDeck + "," + expectedDeck + "}").games(25L)
+                        .winRate(new BigDecimal("50.00")).build(),
+                RawDecklist.builder().leader("1xOP14-020")
+                        .deck("{" + expectedDeck + "}").games(25L)
+                        .winRate(new BigDecimal("50.00")).build(),
+                RawDecklist.builder().leader("1xOP14-020")
+                        .deck("{1xOP14-020," + expectedDeck + "}").games(25L)
                         .winRate(new BigDecimal("50.00")).build());
 
         var result = service.calculateProfiles(rawDecklists, Set.of("OP14-020"));
 
-        assertThat(result).filteredOn(card -> card.category() == MatchupLeaderCardCategory.EXPECTED).hasSize(8);
-        assertThat(result).filteredOn(card -> card.category() == MatchupLeaderCardCategory.POSSIBLE_TECH).hasSize(5);
+        assertThat(result).filteredOn(card -> card.category() == MatchupLeaderCardCategory.EXPECTED).hasSize(20);
+        assertThat(result).filteredOn(card -> card.category() == MatchupLeaderCardCategory.POSSIBLE_TECH).hasSize(20);
+    }
+
+    @Test
+    void calculateProfiles_marksCardsAsObservedWhenFewerThanThreeDecklistsAreAvailable() {
+        var rawDecklists = List.of(
+                RawDecklist.builder().leader("1xOP14-060")
+                        .deck("{1xOP14-060,4xOP10-065,3xST18-001}").games(74L)
+                        .winRate(new BigDecimal("36.50")).build());
+
+        var result = service.calculateProfiles(rawDecklists, Set.of("OP14-060"));
+
+        assertThat(result).extracting(card -> card.cardCode())
+                .containsExactly("OP10-065", "ST18-001");
+        assertThat(result).allSatisfy(card -> {
+            assertThat(card.category()).isEqualTo(MatchupLeaderCardCategory.OBSERVED);
+            assertThat(card.sampleSize()).isEqualTo(1);
+        });
     }
 
     @Test

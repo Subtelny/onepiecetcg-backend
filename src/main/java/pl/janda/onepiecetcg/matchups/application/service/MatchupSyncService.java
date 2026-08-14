@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MatchupSyncService implements MatchupSyncUseCase {
 
-    private static final int CARD_PROFILE_VERSION = 2;
+    private static final int CARD_PROFILE_VERSION = 4;
 
     private final RawMatchupSnapshotRepository rawSnapshotRepository;
 
@@ -92,6 +92,10 @@ public class MatchupSyncService implements MatchupSyncUseCase {
 
         var rawDecklists = rawDecklistRepository.findBySnapshotId(rawSnapshot.getId());
         var normalizedLeaderCards = cardProfileService.calculateProfiles(rawDecklists, validLeaderCodes);
+        var profileDecklistsByLeader = normalizedLeaderCards.stream()
+                .collect(Collectors.toMap(NormalizedLeaderCard::leaderCode, NormalizedLeaderCard::sampleSize, Math::max));
+        leaders.forEach(leader -> leader.setProfileDecklists(
+                profileDecklistsByLeader.getOrDefault(leader.getCardCode(), 0)));
         var representativeDecks = cardProfileService.calculateRepresentativeDecks(rawDecklists, validLeaderCodes);
         var representativeDecksByLeader = representativeDecks.stream()
                 .collect(Collectors.toMap(RepresentativeDeck::leaderCode, Function.identity()));

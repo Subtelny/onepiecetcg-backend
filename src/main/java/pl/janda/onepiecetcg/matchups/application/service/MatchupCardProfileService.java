@@ -26,6 +26,10 @@ public class MatchupCardProfileService {
 
     private static final int POSSIBLE_TECHS_LIMIT = 20;
 
+    private static final int OBSERVED_CARDS_LIMIT = EXPECTED_CARDS_LIMIT + POSSIBLE_TECHS_LIMIT;
+
+    private static final int MIN_RELIABLE_DECKLISTS = 3;
+
     private static final int MIN_HIGH_PERFORMING_DECKLISTS = 5;
 
     private static final Pattern DECK_CARD_PATTERN = Pattern.compile("(\\d+)x([A-Z]+(?:\\d+)?-\\d+)");
@@ -45,6 +49,7 @@ public class MatchupCardProfileService {
         decklistsByLeader.forEach((leaderCode, leaderDecklists) -> {
             var selectedDecklists = selectRepresentativeDecklists(leaderCode, leaderDecklists);
             var accumulator = new LeaderAccumulator();
+            accumulator.decklistCount = selectedDecklists.size();
             for (var rawDecklist : selectedDecklists) {
                 accumulator.totalGames += rawDecklist.getGames();
                 for (var entry : parseDeck(rawDecklist.getDeck()).entrySet()) {
@@ -145,11 +150,20 @@ public class MatchupCardProfileService {
                 .map(entry -> toCandidate(leaderCode, entry.getKey(), entry.getValue(), accumulator.totalGames))
                 .toList();
 
+        if (accumulator.decklistCount < MIN_RELIABLE_DECKLISTS) {
+            return candidates.stream()
+                    .filter(card -> card.inclusionRate().compareTo(POSSIBLE_TECH_MIN_INCLUSION_RATE) >= 0)
+                    .sorted(MOST_COMMON_FIRST)
+                    .limit(OBSERVED_CARDS_LIMIT)
+                    .map(card -> withCategory(card, MatchupLeaderCardCategory.OBSERVED, accumulator.decklistCount))
+                    .toList();
+        }
+
         var expectedCards = candidates.stream()
                 .filter(card -> card.inclusionRate().compareTo(EXPECTED_MIN_INCLUSION_RATE) >= 0)
                 .sorted(MOST_COMMON_FIRST)
                 .limit(EXPECTED_CARDS_LIMIT)
-                .map(card -> withCategory(card, MatchupLeaderCardCategory.EXPECTED))
+                .map(card -> withCategory(card, MatchupLeaderCardCategory.EXPECTED, accumulator.decklistCount))
                 .toList();
 
         var possibleTechs = candidates.stream()
@@ -157,7 +171,7 @@ public class MatchupCardProfileService {
                 .filter(card -> card.inclusionRate().compareTo(EXPECTED_MIN_INCLUSION_RATE) < 0)
                 .sorted(MOST_COMMON_FIRST)
                 .limit(POSSIBLE_TECHS_LIMIT)
-                .map(card -> withCategory(card, MatchupLeaderCardCategory.POSSIBLE_TECH))
+                .map(card -> withCategory(card, MatchupLeaderCardCategory.POSSIBLE_TECH, accumulator.decklistCount))
                 .toList();
 
         var profile = new ArrayList<NormalizedLeaderCard>(expectedCards.size() + possibleTechs.size());
@@ -176,9 +190,9 @@ public class MatchupCardProfileService {
         return new CardCandidate(leaderCode, cardCode, inclusionRate, typicalCopies);
     }
 
-    private NormalizedLeaderCard withCategory(CardCandidate card, MatchupLeaderCardCategory category) {
+    private NormalizedLeaderCard withCategory(CardCandidate card, MatchupLeaderCardCategory category, int sampleSize) {
         return new NormalizedLeaderCard(card.leaderCode(), card.cardCode(), category,
-                card.inclusionRate(), card.typicalCopies());
+                card.inclusionRate(), card.typicalCopies(), sampleSize);
     }
 
     private Map<String, Integer> parseDeck(String rawDeck) {
@@ -203,6 +217,7 @@ public class MatchupCardProfileService {
     private static class LeaderAccumulator {
         private final Map<String, CardAccumulator> cards = new HashMap<>();
         private long totalGames;
+        private int decklistCount;
     }
 
     private static class CardAccumulator {

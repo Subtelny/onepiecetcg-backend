@@ -75,10 +75,32 @@ class MatchupCardRoleClassifierTest {
         assertThat(result).isEqualTo(MatchupLeaderCardCategory.POSSIBLE_TECH);
     }
 
+    @Test
+    void classify_keepsConfidentTechButDoesNotConfirmCoreForAnInsufficientSample() {
+        var observed = profile(MatchupLeaderCardCategory.OBSERVED, "100.00", "3.0");
+        var usoHachi = SetCard.builder()
+                .cardType("Character")
+                .cardCost("3")
+                .subTypes("Straw Hat Crew")
+                .counterAmount(2000)
+                .build();
+        var archetypeCard = SetCard.builder()
+                .cardType("Character")
+                .cardCost("5")
+                .subTypes("Donquixote Pirates")
+                .counterAmount(1000)
+                .build();
+
+        assertThat(classifier.classify(observed, leader(), usoHachi))
+                .isEqualTo(MatchupLeaderCardCategory.POSSIBLE_TECH);
+        assertThat(classifier.classify(observed, leader(), archetypeCard))
+                .isEqualTo(MatchupLeaderCardCategory.OBSERVED);
+    }
+
     private NormalizedLeaderCard profile(MatchupLeaderCardCategory category, String inclusionRate,
                                          String typicalCopies) {
         return new NormalizedLeaderCard("OP14-060", "ST18-001", category,
-                new BigDecimal(inclusionRate), new BigDecimal(typicalCopies));
+                new BigDecimal(inclusionRate), new BigDecimal(typicalCopies), 3);
     }
 
     private SetCard leader() {

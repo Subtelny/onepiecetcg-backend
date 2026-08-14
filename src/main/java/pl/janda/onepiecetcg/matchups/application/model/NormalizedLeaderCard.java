@@ -7,6 +7,7 @@ public record NormalizedLeaderCard(
         String cardCode,
         MatchupLeaderCardCategory category,
         BigDecimal inclusionRate,
-        BigDecimal typicalCopies
+        BigDecimal typicalCopies,
+        int sampleSize
 ) {
 }

@@ -14,6 +14,7 @@ import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.port.in.*;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jpa.SetCardJpaRepository;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
+import pl.janda.onepiecetcg.matchups.infrastructure.persistence.initializer.MatchupSchemaInitializer;
 import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
 
 import java.math.BigDecimal;
@@ -44,6 +45,9 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
 
     @Autowired
     private MatchupSyncUseCase matchupSyncUseCase;
+
+    @Autowired
+    private MatchupSchemaInitializer matchupSchemaInitializer;
 
     @MockitoBean
     private CardSetSyncUseCase cardSetSyncUseCase;
@@ -131,7 +135,8 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                         .cardText("[On Play] Draw 1 card.").cardImage("https://cdn.example/op01-001.png")
                         .variantIndex("0").build(),
                 SetCard.builder().cardSetId("OP01-002").cardName("Possible Tech")
-                        .cardType("Event").cardCost("2").cardText("[Counter] Up to 1 Leader gains +3000 power.")
+                        .cardType("Event").cardCost("2").counterAmount(2000)
+                        .cardText("[Counter] Up to 1 Leader gains +3000 power.")
                         .cardImage("https://cdn.example/op01-002.png").variantIndex("0").build()));
         IntStream.rangeClosed(1, 11).forEach(index -> catalogCards.add(SetCard.builder()
                 .cardSetId("OP02-" + String.format("%03d", index))
@@ -198,6 +203,20 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                             "VALUES (?, ?, ARRAY['1xOP14-020', '4xOP01-099']::text[], ?, ?)",
                     1L, "1xOP14-020", 100L, BigDecimal.valueOf(55 - index));
         }
+        dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games, win_rate) " +
+                        "VALUES (?, ?, ARRAY['1xOP13-079', '4xOP01-001', '1xOP01-002']::text[], ?, ?)",
+                1L, "1xOP13-079", 10L, new BigDecimal("50.00"));
+
+        // Reproduce an upgraded installation whose Hibernate-generated check predates OBSERVED.
+        dsl.execute("DELETE FROM matchup_leader_cards");
+        dsl.execute("ALTER TABLE matchup_leader_cards " +
+                "DROP CONSTRAINT IF EXISTS matchup_leader_cards_category_check");
+        dsl.execute("""
+                ALTER TABLE matchup_leader_cards
+                ADD CONSTRAINT matchup_leader_cards_category_check
+                CHECK (category IN ('EXPECTED', 'POSSIBLE_TECH', 'TOP_DECK_ONLY'))
+                """);
+        matchupSchemaInitializer.apply();
 
         var synced = matchupSyncUseCase.syncMatchups();
         assertThat(synced).isTrue();
@@ -224,12 +243,24 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
         assertThat(mergedLeader).hasSize(1);
         assertThat(mergedLeader.get(0).get("matches")).isEqualTo(110);
         assertThat(((Number) mergedLeader.get(0).get("winRate")).doubleValue()).isEqualTo(54.55);
+        assertThat(mergedLeader.get(0).get("profileDecklists")).isEqualTo(1);
+        assertThat((List<?>) mergedLeader.get(0).get("expectedCards")).isEmpty();
+        @SuppressWarnings("unchecked")
+        var smallSampleTechs = (List<Map<String, Object>>) mergedLeader.get(0).get("possibleTechs");
+        assertThat(smallSampleTechs).singleElement()
+                .satisfies(card -> assertThat(card.get("cardCode")).isEqualTo("OP01-002"));
+        @SuppressWarnings("unchecked")
+        var observedCards = (List<Map<String, Object>>) mergedLeader.get(0).get("observedCards");
+        assertThat(observedCards).singleElement()
+                .satisfies(card -> assertThat(card.get("cardCode")).isEqualTo("OP01-001"));
 
         var groupedLeader = JsonPath.<List<Map<String, Object>>>read(result.getResponse().getContentAsString(),
                 "$.leaders[?(@.code=='OP14-020')]");
         assertThat(groupedLeader).hasSize(1);
         assertThat(groupedLeader.get(0).get("matches")).isEqualTo(200);
         assertThat(((Number) groupedLeader.get(0).get("winRate")).doubleValue()).isEqualTo(50.0);
+        assertThat(groupedLeader.get(0).get("profileDecklists")).isEqualTo(5);
+        assertThat((List<?>) groupedLeader.get(0).get("observedCards")).isEmpty();
 
         @SuppressWarnings("unchecked")
         var expectedCards = (List<Map<String, Object>>) groupedLeader.get(0).get("expectedCards");

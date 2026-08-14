@@ -23,21 +23,22 @@ public class MatchupCardRoleClassifier {
     private static final Pattern TYPE_REFERENCE_PATTERN = Pattern.compile("\\{([^{}]+)}");
 
     public MatchupLeaderCardCategory classify(NormalizedLeaderCard profile, SetCard leader, SetCard card) {
-        if (profile.category() != MatchupLeaderCardCategory.EXPECTED) {
+        if (profile.category() != MatchupLeaderCardCategory.EXPECTED
+                && profile.category() != MatchupLeaderCardCategory.OBSERVED) {
             return profile.category();
         }
         if (hasArchetypeAffinity(leader, card)) {
-            return MatchupLeaderCardCategory.EXPECTED;
+            return profile.category();
         }
         if (Integer.valueOf(GENERIC_COUNTER_AMOUNT).equals(card.getCounterAmount())) {
             return MatchupLeaderCardCategory.POSSIBLE_TECH;
         }
         if (profile.typicalCopies().compareTo(FULL_PLAYSET_MIN_TYPICAL_COPIES) >= 0) {
-            return MatchupLeaderCardCategory.EXPECTED;
+            return profile.category();
         }
         if (isFinisher(card)
                 && profile.typicalCopies().compareTo(FINISHER_MIN_TYPICAL_COPIES) >= 0) {
-            return MatchupLeaderCardCategory.EXPECTED;
+            return profile.category();
         }
         return MatchupLeaderCardCategory.POSSIBLE_TECH;
     }
