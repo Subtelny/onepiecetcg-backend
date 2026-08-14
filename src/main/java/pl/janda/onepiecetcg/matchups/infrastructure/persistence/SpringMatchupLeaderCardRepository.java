@@ -20,6 +20,11 @@ public class SpringMatchupLeaderCardRepository implements MatchupLeaderCardRepos
     }
 
     @Override
+    public List<MatchupLeaderCard> findByLeaderCode(String leaderCode) {
+        return jpaRepository.findAllByLeaderCodeOrderByCategoryAscInclusionRateDescCardCodeAsc(leaderCode);
+    }
+
+    @Override
     public void deleteAll() {
         jpaRepository.deleteAll();
     }

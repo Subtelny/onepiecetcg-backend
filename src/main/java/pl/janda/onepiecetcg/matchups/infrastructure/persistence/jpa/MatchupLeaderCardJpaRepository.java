@@ -9,4 +9,6 @@ import java.util.List;
 public interface MatchupLeaderCardJpaRepository extends JpaRepository<MatchupLeaderCard, MatchupLeaderCardId> {
 
     List<MatchupLeaderCard> findAllByOrderByLeaderCodeAscCategoryAscInclusionRateDescCardCodeAsc();
+
+    List<MatchupLeaderCard> findAllByLeaderCodeOrderByCategoryAscInclusionRateDescCardCodeAsc(String leaderCode);
 }

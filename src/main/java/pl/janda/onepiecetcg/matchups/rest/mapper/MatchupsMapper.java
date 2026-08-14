@@ -26,6 +26,22 @@ public class MatchupsMapper {
                 .build();
     }
 
+    public MatchupsOverviewResponseDto toOverviewDto(MatchupsSummary overview) {
+        return MatchupsOverviewResponseDto.builder()
+                .snapshot(toSnapshotDto(overview.snapshot()))
+                .leaders(overview.leaders().stream().map(this::toLeaderSummaryDto).toList())
+                .topMatchups(overview.topMatchups().stream().map(this::toMatchupDto).toList())
+                .build();
+    }
+
+    public LeaderMatchupsResponseDto toLeaderDto(LeaderMatchups leaderMatchups) {
+        return LeaderMatchupsResponseDto.builder()
+                .snapshot(toSnapshotDto(leaderMatchups.snapshot()))
+                .leader(toLeaderStatDto(leaderMatchups.leader(), leaderMatchups.leaderCards()))
+                .matchups(leaderMatchups.matchups().stream().map(this::toMatchupDto).toList())
+                .build();
+    }
+
     private SnapshotDto toSnapshotDto(MatchupSnapshotInfo snapshot) {
         if (snapshot == null) {
             return null;
@@ -51,6 +67,18 @@ public class MatchupsMapper {
                 .expectedCards(toCardDtos(cards, MatchupLeaderCardCategory.EXPECTED))
                 .possibleTechs(toCardDtos(cards, MatchupLeaderCardCategory.POSSIBLE_TECH))
                 .observedCards(toCardDtos(cards, MatchupLeaderCardCategory.OBSERVED))
+                .build();
+    }
+
+    private LeaderSummaryDto toLeaderSummaryDto(MatchupLeader leader) {
+        return LeaderSummaryDto.builder()
+                .code(leader.getCardCode())
+                .name(leader.getName())
+                .colors(parseColors(leader.getColors()))
+                .imageUrl(leader.getImageUrl())
+                .popularity(leader.getPopularity())
+                .matches(leader.getMatches())
+                .winRate(leader.getWinRate())
                 .build();
     }
 

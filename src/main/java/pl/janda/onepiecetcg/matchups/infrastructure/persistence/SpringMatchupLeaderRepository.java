@@ -7,6 +7,7 @@ import pl.janda.onepiecetcg.matchups.application.repository.MatchupLeaderReposit
 import pl.janda.onepiecetcg.matchups.infrastructure.persistence.jpa.MatchupLeaderJpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -17,6 +18,11 @@ public class SpringMatchupLeaderRepository implements MatchupLeaderRepository {
     @Override
     public List<MatchupLeader> findAllOrderByPopularityDesc() {
         return jpaRepository.findAllByOrderByPopularityDesc();
+    }
+
+    @Override
+    public Optional<MatchupLeader> findByCode(String code) {
+        return jpaRepository.findById(code);
     }
 
     @Override

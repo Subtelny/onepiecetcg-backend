@@ -7,6 +7,7 @@ import pl.janda.onepiecetcg.matchups.application.repository.MatchupPairRepositor
 import pl.janda.onepiecetcg.matchups.infrastructure.persistence.jpa.MatchupPairJpaRepository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -17,6 +18,16 @@ public class SpringMatchupPairRepository implements MatchupPairRepository {
     @Override
     public List<MatchupPair> findAll() {
         return jpaRepository.findAll();
+    }
+
+    @Override
+    public List<MatchupPair> findByLeaderCode(String leaderCode) {
+        return jpaRepository.findAllByLeaderCode(leaderCode);
+    }
+
+    @Override
+    public List<MatchupPair> findByLeaderCodes(Set<String> leaderCodes) {
+        return jpaRepository.findAllByLeaderCodeInAndOpponentCodeIn(leaderCodes, leaderCodes);
     }
 
     @Override

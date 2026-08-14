@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
@@ -27,8 +28,7 @@ import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(classes = OnePieceTcgApplication.class)
 @AutoConfigureMockMvc
@@ -220,6 +220,34 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
 
         var synced = matchupSyncUseCase.syncMatchups();
         assertThat(synced).isTrue();
+
+        var overviewResult = mockMvc.perform(get("/api/matchups/overview"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=300, public"))
+                .andExpect(header().exists(HttpHeaders.ETAG))
+                .andExpect(jsonPath("$.snapshot.dataset").value("lw"))
+                .andExpect(jsonPath("$.leaders[?(@.code=='OP14-020')]").isNotEmpty())
+                .andExpect(jsonPath("$.leaders[0].expectedCards").doesNotExist())
+                .andExpect(jsonPath("$.matchups").doesNotExist())
+                .andExpect(jsonPath("$.topMatchups[?(@.leaderCode=='OP14-020' && @.opponentCode=='OP13-079')]")
+                        .isNotEmpty())
+                .andReturn();
+
+        mockMvc.perform(get("/api/matchups/overview")
+                        .header(HttpHeaders.IF_NONE_MATCH, overviewResult.getResponse().getHeader(HttpHeaders.ETAG)))
+                .andExpect(status().isNotModified());
+
+        mockMvc.perform(get("/api/matchups/leaders/op14-020"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=300, public"))
+                .andExpect(header().exists(HttpHeaders.ETAG))
+                .andExpect(jsonPath("$.leader.code").value("OP14-020"))
+                .andExpect(jsonPath("$.leader.expectedCards").isNotEmpty())
+                .andExpect(jsonPath("$.matchups[?(@.leaderCode=='OP14-020' && @.opponentCode=='OP13-079')]")
+                        .isNotEmpty());
+
+        mockMvc.perform(get("/api/matchups/leaders/UNKNOWN"))
+                .andExpect(status().isNotFound());
 
         var result = mockMvc.perform(get("/api/matchups"))
                 .andExpect(status().isOk())

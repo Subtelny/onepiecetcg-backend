@@ -8,6 +8,8 @@ public interface MatchupLeaderCardRepository {
 
     List<MatchupLeaderCard> findAllOrderByLeaderAndCategoryAndInclusionRate();
 
+    List<MatchupLeaderCard> findByLeaderCode(String leaderCode);
+
     void deleteAll();
 
     void saveAll(List<MatchupLeaderCard> cards);
