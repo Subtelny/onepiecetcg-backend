@@ -43,6 +43,9 @@ class MatchupSyncServiceTest {
     private MatchupCardProfileService cardProfileService;
 
     @Mock
+    private MatchupCardRoleClassifier cardRoleClassifier;
+
+    @Mock
     private CardCatalogUseCase cardCatalogUseCase;
 
     @Mock
@@ -56,7 +59,7 @@ class MatchupSyncServiceTest {
 
     private MatchupSyncService service() {
         return new MatchupSyncService(rawSnapshotRepository, rawLeaderStatRepository, rawMatchupRepository,
-                rawDecklistRepository, normalizationService, cardProfileService, cardCatalogUseCase,
+                rawDecklistRepository, normalizationService, cardProfileService, cardRoleClassifier, cardCatalogUseCase,
                 matchupReplacementService, matchupSnapshotInfoRepository, leaderRepository);
     }
 
@@ -79,7 +82,7 @@ class MatchupSyncServiceTest {
         when(rawSnapshotRepository.findLatest()).thenReturn(Optional.of(snapshot));
         when(matchupSnapshotInfoRepository.findCurrent()).thenReturn(Optional.of(
                 MatchupSnapshotInfo.builder().sourceSnapshotId(1L).dataset("lw")
-                        .totalMatches(100L).scrapedAt(scrapedAt).build()));
+                        .totalMatches(100L).scrapedAt(scrapedAt).cardProfileVersion(2).build()));
         when(leaderRepository.hasAnyRepresentativeDeck()).thenReturn(true);
 
         var result = service().syncMatchups();
@@ -130,6 +133,7 @@ class MatchupSyncServiceTest {
                 pairsCaptor.capture(), anyList());
 
         assertThat(snapshotCaptor.getValue().getSourceSnapshotId()).isEqualTo(1L);
+        assertThat(snapshotCaptor.getValue().getCardProfileVersion()).isEqualTo(2);
 
         @SuppressWarnings("unchecked")
         var savedLeaders = (List<MatchupLeader>) leadersCaptor.getValue();
@@ -139,5 +143,42 @@ class MatchupSyncServiceTest {
         @SuppressWarnings("unchecked")
         var savedPairs = (List<MatchupPair>) pairsCaptor.getValue();
         assertThat(savedPairs).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void syncMatchups_persistsTheRoleRefinedByTheCardClassifier() {
+        var snapshot = RawMatchupSnapshot.builder()
+                .id(1L).dataset("lw").totalMatches(100L).scrapedAt(OffsetDateTime.now())
+                .build();
+        var leaderStat = new NormalizedLeaderStat("OP14-060", 100L, BigDecimal.valueOf(50), BigDecimal.valueOf(20));
+        var profile = new NormalizedLeaderCard("OP14-060", "ST18-001", MatchupLeaderCardCategory.EXPECTED,
+                new BigDecimal("100.00"), new BigDecimal("3.0"));
+        var leaderCard = SetCard.builder().cardSetId("OP14-060").cardName("Donquixote Doflamingo")
+                .cardColor("PURPLE").cardImage("https://cdn.example/op14-060.png").cardType("Leader").build();
+        var usoHachi = SetCard.builder().cardSetId("ST18-001").cardName("Uso-Hachi")
+                .cardColor("PURPLE").cardImage("https://cdn.example/st18-001.png").cardType("Character").build();
+
+        when(rawSnapshotRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(rawLeaderStatRepository.findBySnapshotId(1L)).thenReturn(List.of(RawLeaderStat.builder().build()));
+        when(normalizationService.normalizeAndMergeLeaderStats(anyList())).thenReturn(List.of(leaderStat));
+        when(cardCatalogUseCase.getRepresentativeCardsByCardCodes(anyList()))
+                .thenReturn(List.of(leaderCard), List.of(usoHachi));
+        when(normalizationService.normalizeAndMergeMatchups(anyList(), any())).thenReturn(List.of());
+        when(rawDecklistRepository.findBySnapshotId(1L)).thenReturn(List.of());
+        when(cardProfileService.calculateProfiles(anyList(), any())).thenReturn(List.of(profile));
+        when(cardProfileService.calculateRepresentativeDecks(anyList(), any())).thenReturn(List.of());
+        when(cardRoleClassifier.classify(profile, leaderCard, usoHachi))
+                .thenReturn(MatchupLeaderCardCategory.POSSIBLE_TECH);
+
+        service().syncMatchups();
+
+        var cardsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(matchupReplacementService).replaceAll(any(), anyList(), anyList(), cardsCaptor.capture());
+        var savedCards = (List<MatchupLeaderCard>) cardsCaptor.getValue();
+        assertThat(savedCards).singleElement().satisfies(card -> {
+            assertThat(card.getCardCode()).isEqualTo("ST18-001");
+            assertThat(card.getCategory()).isEqualTo(MatchupLeaderCardCategory.POSSIBLE_TECH);
+        });
     }
 }

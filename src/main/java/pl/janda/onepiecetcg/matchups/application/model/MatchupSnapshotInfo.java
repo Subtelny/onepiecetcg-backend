@@ -35,4 +35,7 @@ public class MatchupSnapshotInfo {
 
     @Column(name = "synced_at", nullable = false)
     private LocalDateTime syncedAt;
+
+    @Column(name = "card_profile_version")
+    private Integer cardProfileVersion;
 }

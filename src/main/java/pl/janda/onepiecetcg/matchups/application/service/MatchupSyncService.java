@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MatchupSyncService implements MatchupSyncUseCase {
 
+    private static final int CARD_PROFILE_VERSION = 2;
+
     private final RawMatchupSnapshotRepository rawSnapshotRepository;
 
     private final RawLeaderStatRepository rawLeaderStatRepository;
@@ -31,6 +33,8 @@ public class MatchupSyncService implements MatchupSyncUseCase {
     private final MatchupNormalizationService normalizationService;
 
     private final MatchupCardProfileService cardProfileService;
+
+    private final MatchupCardRoleClassifier cardRoleClassifier;
 
     private final CardCatalogUseCase cardCatalogUseCase;
 
@@ -55,6 +59,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .filter(current -> Objects.equals(current.getSourceSnapshotId(), rawSnapshot.getId()))
                 .filter(current -> current.getDataset().equals(rawSnapshot.getDataset()))
                 .filter(current -> current.getScrapedAt().isEqual(rawSnapshot.getScrapedAt()))
+                .filter(current -> Objects.equals(current.getCardProfileVersion(), CARD_PROFILE_VERSION))
                 .filter(current -> leaderRepository.hasAnyRepresentativeDeck())
                 .isPresent();
         if (alreadySynced) {
@@ -97,7 +102,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 leader.setTopDeckWinRate(representativeDeck.winRate());
             }
         });
-        var leaderCards = enrichLeaderCards(normalizedLeaderCards, representativeDecksByLeader);
+        var leaderCards = enrichLeaderCards(normalizedLeaderCards, representativeDecksByLeader, cardsByCode);
 
         var snapshotInfo = MatchupSnapshotInfo.builder()
                 .sourceSnapshotId(rawSnapshot.getId())
@@ -105,6 +110,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .totalMatches(rawSnapshot.getTotalMatches())
                 .scrapedAt(rawSnapshot.getScrapedAt())
                 .syncedAt(LocalDateTime.now())
+                .cardProfileVersion(CARD_PROFILE_VERSION)
                 .build();
 
         matchupReplacementService.replaceAll(snapshotInfo, leaders, pairs, leaderCards);
@@ -152,7 +158,8 @@ public class MatchupSyncService implements MatchupSyncUseCase {
     }
 
     private List<MatchupLeaderCard> enrichLeaderCards(List<NormalizedLeaderCard> normalizedCards,
-                                                      Map<String, RepresentativeDeck> representativeDecks) {
+                                                      Map<String, RepresentativeDeck> representativeDecks,
+                                                      Map<String, SetCard> leadersByCode) {
         if (normalizedCards.isEmpty() && representativeDecks.isEmpty()) {
             return List.of();
         }
@@ -168,7 +175,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
         var leaderCards = new ArrayList<MatchupLeaderCard>();
         var enrichedKeys = new HashSet<LeaderCardKey>();
         normalizedCards.stream()
-                .map(card -> toMatchupLeaderCard(card, cardsByCode, representativeDecks))
+                .map(card -> toMatchupLeaderCard(card, cardsByCode, representativeDecks, leadersByCode))
                 .filter(Objects::nonNull)
                 .forEach(card -> {
                     leaderCards.add(card);
@@ -191,18 +198,23 @@ public class MatchupSyncService implements MatchupSyncUseCase {
 
     private MatchupLeaderCard toMatchupLeaderCard(NormalizedLeaderCard normalizedCard,
                                                   Map<String, SetCard> cardsByCode,
-                                                  Map<String, RepresentativeDeck> representativeDecks) {
+                                                  Map<String, RepresentativeDeck> representativeDecks,
+                                                  Map<String, SetCard> leadersByCode) {
         var card = cardsByCode.get(normalizedCard.cardCode());
         if (card == null) {
             log.warn("Dropping matchup card '{}' for leader '{}' - no matching card found in set_cards",
                     normalizedCard.cardCode(), normalizedCard.leaderCode());
             return null;
         }
+        var leader = leadersByCode.get(normalizedCard.leaderCode());
+        var category = leader == null
+                ? normalizedCard.category()
+                : cardRoleClassifier.classify(normalizedCard, leader, card);
         var representativeDeck = representativeDecks.get(normalizedCard.leaderCode());
         return MatchupLeaderCard.builder()
                 .leaderCode(normalizedCard.leaderCode())
                 .cardCode(normalizedCard.cardCode())
-                .category(normalizedCard.category())
+                .category(category)
                 .name(card.getCardName())
                 .imageUrl(card.getCardImage())
                 .cardType(card.getCardType())
