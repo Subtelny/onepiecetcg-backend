@@ -8,4 +8,6 @@ import java.util.List;
 public interface MatchupLeaderJpaRepository extends JpaRepository<MatchupLeader, String> {
 
     List<MatchupLeader> findAllByOrderByPopularityDesc();
+
+    boolean existsByTopDeckGamesIsNotNull();
 }

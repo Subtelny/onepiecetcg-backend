@@ -147,4 +147,37 @@ class MatchupCardProfileServiceTest {
                 .singleElement()
                 .satisfies(card -> assertThat(card.inclusionRate()).isEqualByComparingTo("75.00"));
     }
+
+    @Test
+    void calculateRepresentativeDecks_returnsOneConcreteMostPlayedFiftyCardList() {
+        var rawDecklists = List.of(
+                RawDecklist.builder().leader("1xOP14-020")
+                        .deck(completeDeck("OP01", 2)).games(40L)
+                        .winRate(new BigDecimal("70.00")).build(),
+                RawDecklist.builder().leader("1xOP14-020")
+                        .deck(completeDeck("OP02", 2)).games(100L)
+                        .winRate(new BigDecimal("65.00")).build(),
+                RawDecklist.builder().leader("1xOP14-020")
+                        .deck(completeDeck("OP03", 1)).games(1000L)
+                        .winRate(new BigDecimal("90.00")).build());
+
+        var result = service.calculateRepresentativeDecks(rawDecklists, Set.of("OP14-020"));
+
+        assertThat(result).singleElement().satisfies(deck -> {
+            assertThat(deck.leaderCode()).isEqualTo("OP14-020");
+            assertThat(deck.games()).isEqualTo(100L);
+            assertThat(deck.winRate()).isEqualByComparingTo("65.00");
+            assertThat(deck.cards()).doesNotContainKey("OP14-020");
+            assertThat(deck.cards().values()).allMatch(copies -> copies >= 1 && copies <= 4);
+            assertThat(deck.cards().values().stream().mapToInt(Integer::intValue).sum()).isEqualTo(50);
+            assertThat(deck.cards()).containsEntry("OP02-013", 2);
+        });
+    }
+
+    private String completeDeck(String setCode, int finalCardCopies) {
+        var cards = IntStream.rangeClosed(1, 12)
+                .mapToObj(index -> "4x" + setCode + "-" + String.format("%03d", index))
+                .toList();
+        return "{1xOP14-020," + String.join(",", cards) + "," + finalCardCopies + "x" + setCode + "-013}";
+    }
 }

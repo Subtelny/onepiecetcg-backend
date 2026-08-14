@@ -8,6 +8,8 @@ public interface MatchupLeaderRepository {
 
     List<MatchupLeader> findAllOrderByPopularityDesc();
 
+    boolean hasAnyRepresentativeDeck();
+
     void deleteAll();
 
     void saveAll(List<MatchupLeader> leaders);

@@ -18,8 +18,11 @@ import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -114,7 +117,7 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
 
     @Test
     void getMatchups_afterRealSync_filtersInvalidAndDuplicateLeaderRows() throws Exception {
-        setCardJpaRepository.saveAllAndFlush(List.of(
+        var catalogCards = new ArrayList<>(List.of(
                 SetCard.builder().cardSetId("OP14-020").cardName("Dracule Mihawk")
                         .cardColor("GREEN").cardImage("https://cdn.example/op14-020.png")
                         .cardType("Leader").variantIndex("0").build(),
@@ -130,6 +133,16 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 SetCard.builder().cardSetId("OP01-002").cardName("Possible Tech")
                         .cardType("Event").cardCost("2").cardText("[Counter] Up to 1 Leader gains +3000 power.")
                         .cardImage("https://cdn.example/op01-002.png").variantIndex("0").build()));
+        IntStream.rangeClosed(1, 11).forEach(index -> catalogCards.add(SetCard.builder()
+                .cardSetId("OP02-" + String.format("%03d", index))
+                .cardName("Top Deck Card " + index)
+                .cardType("Character")
+                .cardCost("3")
+                .counterAmount(1000)
+                .cardText(index == 1 ? "[Rush]" : "")
+                .variantIndex("0")
+                .build()));
+        setCardJpaRepository.saveAllAndFlush(catalogCards);
 
         dsl.execute("INSERT INTO tcgmatchmaking_matchup_snapshots (id, dataset, total_matches, scraped_at) " +
                         "VALUES (?, ?, ?, ?::timestamptz)",
@@ -170,8 +183,11 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
                 null, null, 1L, 0L);
 
         for (var index = 0; index < 5; index++) {
+            var remainingTopDeckCards = IntStream.rangeClosed(1, 11)
+                    .mapToObj(cardIndex -> "'4xOP02-" + String.format("%03d", cardIndex) + "'")
+                    .collect(Collectors.joining(", "));
             var deck = index == 0
-                    ? "ARRAY['1xOP14-020', '4xOP01-001', '2xOP01-002']::text[]"
+                    ? "ARRAY['1xOP14-020', '4xOP01-001', '2xOP01-002', " + remainingTopDeckCards + "]::text[]"
                     : "ARRAY['1xOP14-020', '4xOP01-001']::text[]";
             dsl.execute("INSERT INTO tcgmatchmaking_decklists (snapshot_id, leader, deck, games, win_rate) " +
                             "VALUES (?, ?, " + deck + ", ?, ?)",
@@ -226,11 +242,23 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
 
         @SuppressWarnings("unchecked")
         var possibleTechs = (List<Map<String, Object>>) groupedLeader.get(0).get("possibleTechs");
-        assertThat(possibleTechs).singleElement().satisfies(card -> {
+        assertThat(possibleTechs).filteredOn(card -> card.get("cardCode").equals("OP01-002"))
+                .singleElement().satisfies(card -> {
             assertThat(card.get("cardCode")).isEqualTo("OP01-002");
             assertThat(card.get("type")).isEqualTo("EVENT");
             assertThat(((Number) card.get("inclusionRate")).doubleValue()).isEqualTo(20.0);
             assertThat(((Number) card.get("typicalCopies")).doubleValue()).isEqualTo(2.0);
         });
+
+        @SuppressWarnings("unchecked")
+        var topDeck = (Map<String, Object>) groupedLeader.get(0).get("topDeck");
+        assertThat(topDeck.get("totalCards")).isEqualTo(50);
+        assertThat(topDeck.get("games")).isEqualTo(20);
+        assertThat(((Number) topDeck.get("winRate")).doubleValue()).isEqualTo(70.0);
+        @SuppressWarnings("unchecked")
+        var topDeckCards = (List<Map<String, Object>>) topDeck.get("cards");
+        assertThat(topDeckCards).hasSize(13);
+        assertThat(topDeckCards.stream().mapToInt(card -> ((Number) card.get("copies")).intValue()).sum())
+                .isEqualTo(50);
     }
 }

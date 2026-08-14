@@ -51,10 +51,13 @@ class MatchupSyncServiceTest {
     @Mock
     private MatchupSnapshotInfoRepository matchupSnapshotInfoRepository;
 
+    @Mock
+    private MatchupLeaderRepository leaderRepository;
+
     private MatchupSyncService service() {
         return new MatchupSyncService(rawSnapshotRepository, rawLeaderStatRepository, rawMatchupRepository,
                 rawDecklistRepository, normalizationService, cardProfileService, cardCatalogUseCase,
-                matchupReplacementService, matchupSnapshotInfoRepository);
+                matchupReplacementService, matchupSnapshotInfoRepository, leaderRepository);
     }
 
     @Test
@@ -77,6 +80,7 @@ class MatchupSyncServiceTest {
         when(matchupSnapshotInfoRepository.findCurrent()).thenReturn(Optional.of(
                 MatchupSnapshotInfo.builder().sourceSnapshotId(1L).dataset("lw")
                         .totalMatches(100L).scrapedAt(scrapedAt).build()));
+        when(leaderRepository.hasAnyRepresentativeDeck()).thenReturn(true);
 
         var result = service().syncMatchups();
 

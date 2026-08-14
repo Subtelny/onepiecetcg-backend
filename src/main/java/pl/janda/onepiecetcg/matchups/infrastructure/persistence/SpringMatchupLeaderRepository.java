@@ -20,6 +20,11 @@ public class SpringMatchupLeaderRepository implements MatchupLeaderRepository {
     }
 
     @Override
+    public boolean hasAnyRepresentativeDeck() {
+        return jpaRepository.existsByTopDeckGamesIsNotNull();
+    }
+
+    @Override
     public void deleteAll() {
         jpaRepository.deleteAll();
     }

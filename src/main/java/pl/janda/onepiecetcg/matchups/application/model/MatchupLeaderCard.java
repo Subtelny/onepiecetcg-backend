@@ -55,4 +55,7 @@ public class MatchupLeaderCard {
 
     @Column(name = "typical_copies", nullable = false, precision = 3, scale = 1)
     private BigDecimal typicalCopies;
+
+    @Column(name = "top_deck_copies")
+    private Integer topDeckCopies;
 }

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupLeaderCardCategory;
 import pl.janda.onepiecetcg.matchups.application.model.NormalizedLeaderCard;
 import pl.janda.onepiecetcg.matchups.application.model.RawDecklist;
+import pl.janda.onepiecetcg.matchups.application.model.RepresentativeDeck;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,21 +39,7 @@ public class MatchupCardProfileService {
 
     public List<NormalizedLeaderCard> calculateProfiles(List<RawDecklist> rawDecklists,
                                                         Set<String> validLeaderCodes) {
-        var decklistsByLeader = new HashMap<String, List<RawDecklist>>();
-        for (var rawDecklist : rawDecklists) {
-            var leaderCode = leaderCodeNormalizer.extractCardCode(rawDecklist.getLeader()).orElse(null);
-            if (leaderCode == null) {
-                log.warn("Dropping decklist with unparseable leader '{}'", rawDecklist.getLeader());
-                continue;
-            }
-            if (!validLeaderCodes.contains(leaderCode)
-                    || rawDecklist.getGames() == null
-                    || rawDecklist.getGames() <= 0
-                    || rawDecklist.getWinRate() == null) {
-                continue;
-            }
-            decklistsByLeader.computeIfAbsent(leaderCode, ignored -> new ArrayList<>()).add(rawDecklist);
-        }
+        var decklistsByLeader = groupValidDecklistsByLeader(rawDecklists, validLeaderCodes);
 
         var profiles = new ArrayList<NormalizedLeaderCard>();
         decklistsByLeader.forEach((leaderCode, leaderDecklists) -> {
@@ -73,6 +60,63 @@ public class MatchupCardProfileService {
             profiles.addAll(toProfile(leaderCode, accumulator));
         });
         return profiles;
+    }
+
+    public List<RepresentativeDeck> calculateRepresentativeDecks(List<RawDecklist> rawDecklists,
+                                                                 Set<String> validLeaderCodes) {
+        var representativeDecks = new ArrayList<RepresentativeDeck>();
+        groupValidDecklistsByLeader(rawDecklists, validLeaderCodes).forEach((leaderCode, leaderDecklists) -> {
+            var completeDecklists = leaderDecklists.stream()
+                    .filter(decklist -> isCompleteDeck(leaderCode, decklist))
+                    .toList();
+            if (completeDecklists.isEmpty()) {
+                log.warn("No complete 50-card decklist found for leader '{}'", leaderCode);
+                return;
+            }
+
+            selectRepresentativeDecklists(leaderCode, completeDecklists).stream()
+                    .max(Comparator.comparing(RawDecklist::getGames)
+                            .thenComparing(RawDecklist::getWinRate)
+                            .thenComparing(RawDecklist::getDeck))
+                    .map(decklist -> toRepresentativeDeck(leaderCode, decklist))
+                    .ifPresent(representativeDecks::add);
+        });
+        return representativeDecks.stream()
+                .sorted(Comparator.comparing(RepresentativeDeck::leaderCode))
+                .toList();
+    }
+
+    private Map<String, List<RawDecklist>> groupValidDecklistsByLeader(List<RawDecklist> rawDecklists,
+                                                                       Set<String> validLeaderCodes) {
+        var decklistsByLeader = new HashMap<String, List<RawDecklist>>();
+        for (var rawDecklist : rawDecklists) {
+            var leaderCode = leaderCodeNormalizer.extractCardCode(rawDecklist.getLeader()).orElse(null);
+            if (leaderCode == null) {
+                log.warn("Dropping decklist with unparseable leader '{}'", rawDecklist.getLeader());
+                continue;
+            }
+            if (!validLeaderCodes.contains(leaderCode)
+                    || rawDecklist.getGames() == null
+                    || rawDecklist.getGames() <= 0
+                    || rawDecklist.getWinRate() == null) {
+                continue;
+            }
+            decklistsByLeader.computeIfAbsent(leaderCode, ignored -> new ArrayList<>()).add(rawDecklist);
+        }
+        return decklistsByLeader;
+    }
+
+    private boolean isCompleteDeck(String leaderCode, RawDecklist rawDecklist) {
+        var cards = new HashMap<>(parseDeck(rawDecklist.getDeck()));
+        cards.remove(leaderCode);
+        return cards.values().stream().allMatch(copies -> copies >= 1 && copies <= 4)
+                && cards.values().stream().mapToInt(Integer::intValue).sum() == 50;
+    }
+
+    private RepresentativeDeck toRepresentativeDeck(String leaderCode, RawDecklist rawDecklist) {
+        var cards = new TreeMap<>(parseDeck(rawDecklist.getDeck()));
+        cards.remove(leaderCode);
+        return new RepresentativeDeck(leaderCode, Map.copyOf(cards), rawDecklist.getGames(), rawDecklist.getWinRate());
     }
 
     private List<RawDecklist> selectRepresentativeDecklists(String leaderCode, List<RawDecklist> decklists) {

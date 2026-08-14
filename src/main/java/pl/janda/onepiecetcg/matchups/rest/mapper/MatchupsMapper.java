@@ -5,6 +5,7 @@ import pl.janda.onepiecetcg.matchups.application.model.*;
 import pl.janda.onepiecetcg.matchups.rest.dto.*;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ public class MatchupsMapper {
                 .popularity(leader.getPopularity())
                 .matches(leader.getMatches())
                 .winRate(leader.getWinRate())
+                .topDeck(toTopDeckDto(leader, cards))
                 .expectedCards(toCardDtos(cards, MatchupLeaderCardCategory.EXPECTED))
                 .possibleTechs(toCardDtos(cards, MatchupLeaderCardCategory.POSSIBLE_TECH))
                 .build();
@@ -59,6 +61,10 @@ public class MatchupsMapper {
     }
 
     private MatchupCardDto toCardDto(MatchupLeaderCard card) {
+        return toCardDto(card, null);
+    }
+
+    private MatchupCardDto toCardDto(MatchupLeaderCard card, Integer copies) {
         return MatchupCardDto.builder()
                 .cardCode(card.getCardCode())
                 .name(card.getName())
@@ -70,6 +76,28 @@ public class MatchupsMapper {
                 .effect(card.getEffect())
                 .inclusionRate(card.getInclusionRate())
                 .typicalCopies(card.getTypicalCopies())
+                .copies(copies)
+                .build();
+    }
+
+    private TopDeckDto toTopDeckDto(MatchupLeader leader, List<MatchupLeaderCard> cards) {
+        if (leader.getTopDeckGames() == null || leader.getTopDeckWinRate() == null) {
+            return null;
+        }
+        var topDeckCards = cards.stream()
+                .filter(card -> card.getTopDeckCopies() != null)
+                .sorted(Comparator.comparing(MatchupLeaderCard::getCardCode))
+                .map(card -> toCardDto(card, card.getTopDeckCopies()))
+                .toList();
+        var totalCards = topDeckCards.stream().mapToInt(MatchupCardDto::getCopies).sum();
+        if (totalCards != 50) {
+            return null;
+        }
+        return TopDeckDto.builder()
+                .totalCards(totalCards)
+                .games(leader.getTopDeckGames())
+                .winRate(leader.getTopDeckWinRate())
+                .cards(topDeckCards)
                 .build();
     }
 

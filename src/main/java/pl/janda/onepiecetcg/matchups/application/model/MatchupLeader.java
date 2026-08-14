@@ -40,4 +40,10 @@ public class MatchupLeader {
 
     @Column(name = "win_rate", nullable = false)
     private BigDecimal winRate;
+
+    @Column(name = "top_deck_games")
+    private Long topDeckGames;
+
+    @Column(name = "top_deck_win_rate")
+    private BigDecimal topDeckWinRate;
 }

@@ -2,5 +2,6 @@ package pl.janda.onepiecetcg.matchups.application.model;
 
 public enum MatchupLeaderCardCategory {
     EXPECTED,
-    POSSIBLE_TECH
+    POSSIBLE_TECH,
+    TOP_DECK_ONLY
 }

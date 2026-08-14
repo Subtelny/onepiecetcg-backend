@@ -32,4 +32,6 @@ public class MatchupCardDto {
     private BigDecimal inclusionRate;
 
     private BigDecimal typicalCopies;
+
+    private Integer copies;
 }
