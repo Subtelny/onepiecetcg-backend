@@ -92,16 +92,22 @@ class CardmarketPriceSyncServiceTest {
     }
 
     @Test
-    void syncPrices_skipsAnAlreadyStoredGuideBeforeEnrichment() {
+    void syncPrices_reusesAnAlreadyStoredGuideWhileRepairingMappings() {
         var candidate = candidate();
         when(cardmarketPriceApiClient.fetchPriceCandidates()).thenReturn(List.of(candidate));
         when(cardmarketPriceCandidateRepository.existsByPriceGuideCreatedAt(GUIDE_CREATED_AT)).thenReturn(true);
+        when(priceableSingleCatalogClient.fetchPriceableSingles()).thenReturn(List.of());
+        when(cardmarketSingleMappingRepository.findAll()).thenReturn(List.of());
+        when(cardmarketExpansionRepository.findAll()).thenReturn(List.of());
+        when(cardmarketProductPageApiClient.resolveProductPages(any())).thenReturn(List.of());
+        when(cardmarketSingleMatcher.findVersionResolutionRequests(any(), any(), any(), any())).thenReturn(List.of());
+        when(cardmarketSingleMatcher.match(any(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
         service().syncPrices();
 
-        verify(priceableSingleCatalogClient, never()).fetchPriceableSingles();
-        verify(cardmarketProductPageApiClient, never()).resolveProductPages(any());
-        verify(cardmarketPriceImportService, never()).append(any(), any(), any());
+        verify(priceableSingleCatalogClient).fetchPriceableSingles();
+        verify(cardmarketProductPageApiClient, atLeastOnce()).resolveProductPages(any());
+        verify(cardmarketPriceImportService).append(List.of(), List.of(), List.of());
         assertThat(candidate.getLastSyncedAt()).isNull();
     }
 

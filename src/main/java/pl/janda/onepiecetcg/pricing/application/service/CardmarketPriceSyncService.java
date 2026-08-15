@@ -101,10 +101,7 @@ public class CardmarketPriceSyncService implements CardmarketPriceSyncUseCase {
         if (priceGuideCreatedAt == null) {
             throw new IllegalStateException("Cardmarket price guide has no creation timestamp; keeping the existing price history");
         }
-        if (cardmarketPriceCandidateRepository.existsByPriceGuideCreatedAt(priceGuideCreatedAt)) {
-            log.info("Cardmarket price guide created at {} is already stored; skipping duplicate import", priceGuideCreatedAt);
-            return;
-        }
+        var guideAlreadyStored = cardmarketPriceCandidateRepository.existsByPriceGuideCreatedAt(priceGuideCreatedAt);
 
         var now = LocalDateTime.now();
         var singles = priceableSingleCatalogClient.fetchPriceableSingles();
@@ -134,13 +131,14 @@ public class CardmarketPriceSyncService implements CardmarketPriceSyncUseCase {
 
         var newMappings = cardmarketSingleMatcher.match(
                 candidates, singles, expansions, productPages, existingMappings, now);
-        candidates.forEach(candidate -> candidate.setLastSyncedAt(now));
+        var candidatesToAppend = guideAlreadyStored ? List.<CardmarketPriceCandidate>of() : candidates;
+        candidatesToAppend.forEach(candidate -> candidate.setLastSyncedAt(now));
 
-        cardmarketPriceImportService.append(expansions, newMappings, candidates);
-        log.info("Appended Cardmarket price guide created at {} with {} EUR price candidates, {} new single mappings "
+        cardmarketPriceImportService.append(expansions, newMappings, candidatesToAppend);
+        log.info("Processed Cardmarket price guide created at {} with {} appended EUR price candidates, {} new single mappings "
                         + "and {} mapped expansions for {} card codes",
                 priceGuideCreatedAt,
-                candidates.size(),
+                candidatesToAppend.size(),
                 newMappings.size(),
                 expansions.stream().filter(expansion -> expansion.getReleaseId() != null).count(),
                 candidates.stream().map(CardmarketPriceCandidate::getCardCode).distinct().count());

@@ -16,8 +16,12 @@ public class CardmarketSingleMatcher {
     private static final Pattern VERSION_PATTERN = Pattern.compile(
             "(?:^|[\\s(])V\\.?\\s*(\\d+)(?=[\\s)]|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern VARIANT_PATTERN = Pattern.compile("^([pr])(\\d+)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RELEASE_YEAR_PATTERN = Pattern.compile("(?<!\\d)(20\\d{2})(?!\\d)");
+    private static final Pattern DATE_PATTERN = Pattern.compile("^(20\\d{2})-(\\d{2})-(\\d{2})");
     private static final BigDecimal EXACT_CONFIDENCE = new BigDecimal("1.000");
+    private static final BigDecimal UNIQUE_CODE_CONFIDENCE = new BigDecimal("0.950");
     private static final BigDecimal HEURISTIC_CONFIDENCE = new BigDecimal("0.800");
+    private static final BigDecimal DATED_RELEASE_HEURISTIC_CONFIDENCE = new BigDecimal("0.700");
 
     private static Comparator<PriceableSingle> singleComparator() {
         return Comparator
@@ -93,6 +97,24 @@ public class CardmarketSingleMatcher {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
 
+    private static String releaseYear(String releaseName) {
+        if (releaseName == null) {
+            return null;
+        }
+        var matcher = RELEASE_YEAR_PATTERN.matcher(releaseName);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private static ProductDate productDate(String dateAdded) {
+        if (dateAdded == null) {
+            return null;
+        }
+        var matcher = DATE_PATTERN.matcher(dateAdded.trim());
+        return matcher.find()
+                ? new ProductDate(matcher.group(1), matcher.group())
+                : null;
+    }
+
     public List<CardmarketProductPageRequest> findVersionResolutionRequests(
             List<CardmarketPriceCandidate> candidates,
             List<PriceableSingle> singles,
@@ -143,6 +165,14 @@ public class CardmarketSingleMatcher {
                 .collect(Collectors.toSet());
         var matched = new ArrayList<CardmarketSingleMapping>();
 
+        var datedReleaseMappings = matchDatedReleaseGroups(
+                candidates, singles, existingProductIds, usedPriceReferences, matchedAt);
+        datedReleaseMappings.forEach(mapping -> {
+            existingProductIds.add(mapping.getCardmarketProductId());
+            usedPriceReferences.add(mapping.getPriceReference());
+            matched.add(mapping);
+        });
+
         candidateGroups.forEach((key, products) -> {
             var matchingSingles = singleGroups.getOrDefault(key, List.of()).stream()
                     .sorted(singleComparator())
@@ -154,9 +184,118 @@ public class CardmarketSingleMatcher {
                     usedPriceReferences, matchedAt).stream()
                     .filter(mapping -> !existingProductIds.contains(mapping.getCardmarketProductId()))
                     .filter(mapping -> usedPriceReferences.add(mapping.getPriceReference()))
-                    .forEach(matched::add);
+                    .forEach(mapping -> {
+                        existingProductIds.add(mapping.getCardmarketProductId());
+                        matched.add(mapping);
+                    });
+        });
+
+        matchUniqueCardCodeGroups(
+                candidates, singles, existingProductIds, usedPriceReferences, matchedAt).forEach(mapping -> {
+            existingProductIds.add(mapping.getCardmarketProductId());
+            usedPriceReferences.add(mapping.getPriceReference());
+            matched.add(mapping);
         });
         return matched;
+    }
+
+    private List<CardmarketSingleMapping> matchUniqueCardCodeGroups(
+            List<CardmarketPriceCandidate> candidates,
+            List<PriceableSingle> singles,
+            Set<Long> existingProductIds,
+            Set<String> usedPriceReferences,
+            LocalDateTime matchedAt
+    ) {
+        var singlesByCode = singles.stream()
+                .filter(single -> single.getPriceReference() != null)
+                .filter(single -> !usedPriceReferences.contains(single.getPriceReference()))
+                .collect(Collectors.groupingBy(
+                        single -> normalizeCardCode(single.getCardCode()),
+                        TreeMap::new,
+                        Collectors.toMap(
+                                PriceableSingle::getPriceReference,
+                                Function.identity(),
+                                (first, second) -> first,
+                                LinkedHashMap::new)));
+        var productsByCode = candidates.stream()
+                .filter(product -> product.getProductId() != null && product.getExpansionId() != null)
+                .filter(product -> !existingProductIds.contains(product.getProductId()))
+                .collect(Collectors.groupingBy(
+                        product -> normalizeCardCode(product.getCardCode()),
+                        Collectors.toMap(
+                                CardmarketPriceCandidate::getProductId,
+                                Function.identity(),
+                                (first, second) -> first,
+                                LinkedHashMap::new)));
+
+        var result = new ArrayList<CardmarketSingleMapping>();
+        singlesByCode.forEach((cardCode, singlesByReference) -> {
+            var productsById = productsByCode.get(cardCode);
+            if (singlesByReference.size() != 1 || productsById == null || productsById.size() != 1) {
+                return;
+            }
+            result.add(toMapping(
+                    productsById.values().iterator().next(),
+                    singlesByReference.values().iterator().next(),
+                    1,
+                    CardmarketSingleMatchType.CODE_SINGLE_MATCH,
+                    UNIQUE_CODE_CONFIDENCE,
+                    matchedAt));
+        });
+        return result;
+    }
+
+    private List<CardmarketSingleMapping> matchDatedReleaseGroups(
+            List<CardmarketPriceCandidate> candidates,
+            List<PriceableSingle> singles,
+            Set<Long> existingProductIds,
+            Set<String> usedPriceReferences,
+            LocalDateTime matchedAt
+    ) {
+        var singlesByCardAndYear = singles.stream()
+                .filter(single -> !usedPriceReferences.contains(single.getPriceReference()))
+                .filter(single -> releaseYear(single.getReleaseName()) != null)
+                .collect(Collectors.groupingBy(single -> new DatedSingleKey(
+                        normalizeCardCode(single.getCardCode()),
+                        releaseYear(single.getReleaseName()))));
+
+        var productsByCardAndDate = candidates.stream()
+                .filter(product -> product.getProductId() != null && product.getExpansionId() != null)
+                .filter(product -> !existingProductIds.contains(product.getProductId()))
+                .filter(product -> productDate(product.getDateAdded()) != null)
+                .collect(Collectors.groupingBy(product -> {
+                    var date = productDate(product.getDateAdded());
+                    return new DatedProductKey(
+                            normalizeCardCode(product.getCardCode()),
+                            date.year(),
+                            date.date());
+                }));
+
+        var result = new ArrayList<CardmarketSingleMapping>();
+        singlesByCardAndYear.forEach((singleKey, matchingSingles) -> {
+            var candidateDays = productsByCardAndDate.entrySet().stream()
+                    .filter(entry -> entry.getKey().cardCode().equals(singleKey.cardCode()))
+                    .filter(entry -> entry.getKey().year().equals(singleKey.year()))
+                    .map(Map.Entry::getValue)
+                    .filter(products -> products.size() == matchingSingles.size())
+                    .toList();
+            if (candidateDays.size() != 1) {
+                return;
+            }
+
+            var orderedSingles = matchingSingles.stream().sorted(singleComparator()).toList();
+            var orderedProducts = candidateDays.getFirst().stream().sorted(productComparator()).toList();
+            for (var i = 0; i < orderedSingles.size(); i++) {
+                result.add(toMapping(
+                        orderedProducts.get(i),
+                        orderedSingles.get(i),
+                        i + 1,
+                        CardmarketSingleMatchType.CODE_EXPANSION_ORDER_HEURISTIC,
+                        DATED_RELEASE_HEURISTIC_CONFIDENCE,
+                        matchedAt));
+            }
+        });
+        return result;
     }
 
     private List<CardmarketSingleMapping> matchGroup(
@@ -252,5 +391,14 @@ public class CardmarketSingleMatcher {
     }
 
     private record GroupKey(String cardCode, Long expansionId) {
+    }
+
+    private record DatedSingleKey(String cardCode, String year) {
+    }
+
+    private record DatedProductKey(String cardCode, String year, String date) {
+    }
+
+    private record ProductDate(String year, String date) {
     }
 }

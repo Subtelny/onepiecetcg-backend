@@ -68,13 +68,20 @@ public class CardmarketProductPageClient implements CardmarketProductPageApiClie
     @Override
     public List<CardmarketProductPage> resolveProductPages(List<CardmarketProductPageRequest> requests) {
         var resolved = new ArrayList<CardmarketProductPage>();
-        for (var request : requests) {
-            resolveProductPage(request).ifPresent(resolved::add);
+        for (var i = 0; i < requests.size(); i++) {
+            var request = requests.get(i);
+            var resolution = resolveProductPage(request);
+            resolution.page().ifPresent(resolved::add);
+            if (resolution.accessBlocked()) {
+                log.warn("Cardmarket product-page enrichment is blocked; skipping the remaining {} requests",
+                        requests.size() - i - 1);
+                break;
+            }
         }
         return resolved;
     }
 
-    private Optional<CardmarketProductPage> resolveProductPage(CardmarketProductPageRequest product) {
+    private ProductPageResolution resolveProductPage(CardmarketProductPageRequest product) {
         try {
             var uri = URI.create(productPageUrlTemplate.replace("{productId}", product.getProductId().toString()));
             var request = HttpRequest.newBuilder()
@@ -86,13 +93,17 @@ public class CardmarketProductPageClient implements CardmarketProductPageApiClie
             var response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
             if (response.statusCode() < 200 || response.statusCode() >= 400) {
                 log.warn("Cardmarket product {} resolved with HTTP {}", product.getProductId(), response.statusCode());
-                return Optional.empty();
+                return new ProductPageResolution(Optional.empty(),
+                        response.statusCode() == 403 || response.statusCode() == 429);
             }
-            return parseProductPage(product, response.uri());
+            return new ProductPageResolution(parseProductPage(product, response.uri()), false);
         } catch (Exception e) {
             log.warn("Could not resolve canonical Cardmarket URL for product {}: {}",
                     product.getProductId(), e.getMessage());
-            return Optional.empty();
+            return new ProductPageResolution(Optional.empty(), false);
         }
+    }
+
+    private record ProductPageResolution(Optional<CardmarketProductPage> page, boolean accessBlocked) {
     }
 }
