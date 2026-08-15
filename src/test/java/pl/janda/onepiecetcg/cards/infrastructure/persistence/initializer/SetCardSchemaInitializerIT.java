@@ -13,8 +13,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
-import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardCommandRepository;
+import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;

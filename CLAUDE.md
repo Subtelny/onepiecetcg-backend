@@ -13,15 +13,25 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - Filter option values → PostgreSQL via Spring Data JPA, one row per distinct filterable value — a precomputed cache, not user-facing data.
   - Immutable shared deck snapshots → PostgreSQL via Spring Data JPA. They store stable card numbers rather than
     `set_cards` identity IDs because catalog sync replaces that table.
+  - Pricing history, Cardmarket expansion mappings, and Cardmarket single mappings → PostgreSQL via Spring Data JPA in
+    the `pricing` bounded context. Price mappings reference catalog items by deterministic text keys, never by
+    replaceable `set_cards` identity IDs.
   - Browsable community decks and shops → not yet migrated to persistent storage.
 - **Card catalog sync:** independent scheduled jobs read the scraper-populated `onepiece_card_sets` and `onepiece_cards`
   tables and write the application-facing `card_sets` and `set_cards` tables. `SetCardSyncService` maps every printed
   variant from the source table, derives its text `variant_index` directly from `onepiece_cards.id` (`0` for the
   unsuffixed default print, `pN` for a parallel, `rN` for a reprint), replaces `set_cards` transactionally, and
   refreshes filter options on every run. A representative card is always the row with `variant_index = '0'`; there is no
-  separate representative flag or post-insert index recomputation.
+  separate representative flag or post-insert index recomputation. Each print also receives a stable, namespaced
+  `price_reference` in the form `single:<onepiece_cards.id>` so pricing associations survive table replacement.
   - A second group of sync jobs scrapes the official rules site (errata notices as HTML, FAQ as per-set PDFs). Their adapters use Jsoup/PDFBox and follow the same service/scheduler pattern as everything else (§4).
   - **Every sync that does delete+insert uses the orchestrator + replacement split described in §4 step 3** — there are no remaining syncs where the fetch happens inside the transaction. Don't reintroduce one.
+- **Pricing sync:** the `pricing` bounded context owns Cardmarket clients, scheduling, price history, enrichment, and
+  matching. It resolves and caches canonical Cardmarket expansion slugs, maps them to catalog releases by normalized
+  release name, then matches singles by `card code + release + local variant`. Canonical `V1`/`V2` metadata is
+  preferred; product date/ID ordering is persisted as an explicitly lower-confidence heuristic when version metadata is
+  unavailable. The context stores durable Cardmarket-product-to-`price_reference` mappings separately from append-only
+  price snapshots.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
 - Reference key endpoints: `GET /` and `GET /health` (liveness), `GET /api/cards`, `GET /api/cards/{id}`,
@@ -59,6 +69,18 @@ pl.janda.onepiecetcg/
 │       ├── controller/              # CardController, InternalSyncController
 │       ├── dto/
 │       └── mapper/
+├── pricing/                         # Bounded context: price collection and source/catalog mapping
+│   ├── application/
+│   │   ├── model/                   # Price snapshots, expansion mappings, single mappings
+│   │   ├── port/in/                 # Pricing sync use cases
+│   │   ├── repository/              # Pricing persistence ports
+│   │   ├── client/                  # Cardmarket and catalog client ports
+│   │   └── service/                 # Enrichment, matching, import orchestration
+│   ├── infrastructure/
+│   │   ├── persistence/             # Spring Data adapters owned by pricing
+│   │   ├── client/                  # Cardmarket HTTP and card-catalog adapters
+│   │   └── scheduler/               # Pricing-only scheduled entrypoints
+│   └── rest/                        # Pricing-owned internal sync endpoint
 └── deckbuilder/                     # Bounded context: deck building and immutable shared snapshots
     ├── application/
     │   ├── model/                   # Shared-deck commands, persisted snapshot, hydrated details
@@ -87,6 +109,11 @@ infrastructure ──X──► rest         (forbidden)
 the shared search/filter/lookup behavior directly, while `SharedDeckService` uses the bulk representative-card lookup to
 validate and hydrate stable card-number references. Shared-deck persistence deliberately has no foreign key to
 `set_cards`: catalog sync replaces that table and its generated identity IDs are not durable references.
+
+`pricing.infrastructure.client` similarly adapts the narrow card-owned priceable-catalog inbound port into pricing's own
+application model. The `pricing.application` layer therefore has no dependency on `cards`, and `cards` has no dependency
+on pricing. Their durable association is the opaque namespaced `price_reference`; do not add a database foreign key or
+share JPA entities across these contexts.
 
 **DTO/mapper duplication (accepted, deliberate exception to the dedup rule in §8):** `cards.rest.dto`/
 `cards.rest.mapper` and `deckbuilder.rest.dto`/`deckbuilder.rest.mapper` intentionally define separate, near-identical
@@ -191,7 +218,7 @@ unless ≥3 bounded contexts would need it (see §8) — a single consumer shoul
   - **Services:** `@ExtendWith(MockitoExtension.class)`, mock repositories/clients, assert business logic in isolation.
   - **Controllers:** `@SpringBootTest` + `MockMvc`, assert HTTP status + JSON shape (enum casing, date format, field names) — this is the actual frontend contract, treat it as such.
   - **Persistence adapters:** `@SpringBootTest` + Testcontainers Postgres wired via `@DynamicPropertySource`, asserting real SQL behavior (the point is the database, so don't mock it away). Append `prepareThreshold=0` to the container JDBC URL — startup DDL adds a column mid-session, and a cached server-side plan otherwise fails with "cached plan must not change result type".
-  - Any `@SpringBootTest` must `@MockitoBean` every sync use-case port, in every bounded context.
+- Any `@SpringBootTest` must `@MockitoBean` every sync use-case port, in every bounded context.
     `ApplicationReadyEvent` fires in tests, so the schedulers would otherwise hit the real external API and replace the
     table contents underneath the fixtures.
   - Never re-create schema that application startup already creates (see §3) — a test that sets up its own copy of the DDL stops proving the shipped schema is correct and silently drifts from it.

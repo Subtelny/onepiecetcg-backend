@@ -6,9 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.cards.application.model.CardSearchCriteria;
 import pl.janda.onepiecetcg.cards.application.model.CardSummary;
+import pl.janda.onepiecetcg.cards.application.model.PriceableCard;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardCommandRepository;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
+import pl.janda.onepiecetcg.cards.infrastructure.persistence.jooq.JooqPriceableCardQueryAdapter;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jooq.JooqSetCardQueryAdapter;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jpa.SetCardJpaRepository;
 
@@ -23,6 +25,8 @@ public class SpringSetCardRepository implements SetCardQueryRepository, SetCardC
     private final SetCardJpaRepository jpaRepository;
 
     private final JooqSetCardQueryAdapter jooqQueryAdapter;
+
+    private final JooqPriceableCardQueryAdapter priceableCardQueryAdapter;
 
     private final EntityManager entityManager;
 
@@ -105,6 +109,11 @@ public class SpringSetCardRepository implements SetCardQueryRepository, SetCardC
     @Override
     public List<String> findAllCardCodes() {
         return jpaRepository.findDistinctCardSetIds();
+    }
+
+    @Override
+    public List<PriceableCard> findAllPriceableCards() {
+        return priceableCardQueryAdapter.findAll();
     }
 
     @Override

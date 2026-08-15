@@ -5,10 +5,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
-import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
 import pl.janda.onepiecetcg.deckbuilder.application.model.SharedDeck;
 import pl.janda.onepiecetcg.deckbuilder.application.model.SharedDeckCard;
 import pl.janda.onepiecetcg.deckbuilder.application.repository.SharedDeckRepository;
+import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
 import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
 
 import java.time.Instant;

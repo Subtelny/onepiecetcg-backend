@@ -51,6 +51,7 @@ card-faq:
 cardmarket:
   product-catalog-url: https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_18.json
   price-guide-url: https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_18.json
+  product-page-url-template: https://www.cardmarket.com/en/OnePiece/Products?idProduct={productId}
   sync:
     cron: "0 0 4 * * *"
 

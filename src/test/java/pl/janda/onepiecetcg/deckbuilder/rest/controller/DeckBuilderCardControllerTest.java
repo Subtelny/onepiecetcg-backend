@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
 import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
 
 import java.util.List;

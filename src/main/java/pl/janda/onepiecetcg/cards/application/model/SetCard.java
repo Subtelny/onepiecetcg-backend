@@ -79,6 +79,9 @@ public class SetCard {
     @Column(name = "card_id")
     private String cardId;
 
+    @Column(name = "price_reference", unique = true)
+    private String priceReference;
+
     @Column(name = "card_image")
     private String cardImage;
 

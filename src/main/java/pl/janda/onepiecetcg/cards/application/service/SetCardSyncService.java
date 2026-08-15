@@ -22,6 +22,8 @@ public class SetCardSyncService implements SetCardSyncUseCase {
 
     private static final String PROMOTION_CARD_SET_ID = "569901";
 
+    private static final String SINGLE_PRICE_REFERENCE_PREFIX = "single:";
+
     private static final Pattern VARIANT_CARD_ID = Pattern.compile("^(.+)_([pr][1-9]\\d*)$", Pattern.CASE_INSENSITIVE);
 
     private static final Map<String, String> RARITY_CODES = Map.ofEntries(
@@ -153,6 +155,18 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 "Unsupported onepiece_cards variant id '" + sourceId + "' for card code '" + cardCode + "'");
     }
 
+    private static String toPriceReference(String sourceCardId) {
+        var normalizedSourceCardId = blankToNull(sourceCardId);
+        if (normalizedSourceCardId == null) {
+            throw new IllegalArgumentException("Cannot create a price reference without onepiece_cards.id");
+        }
+        return SINGLE_PRICE_REFERENCE_PREFIX + normalizedSourceCardId;
+    }
+
+    private static String asString(Integer value) {
+        return value != null ? value.toString() : null;
+    }
+
     private SetCard toSetCard(OnePieceCard source) {
         var cardCode = firstNonBlank(source.getBaseId(), source.getId());
         var leader = "Leader".equalsIgnoreCase(source.getCategory());
@@ -179,12 +193,9 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 .counterAmount(source.getCounter())
                 .attribute(normalizeList(source.getAttributes()))
                 .cardId(source.getId())
+                .priceReference(toPriceReference(source.getId()))
                 .cardImage(source.getImageUrl())
                 .variantIndex(extractVariantIndex(source.getId(), cardCode))
                 .build();
-    }
-
-    private static String asString(Integer value) {
-        return value != null ? value.toString() : null;
     }
 }

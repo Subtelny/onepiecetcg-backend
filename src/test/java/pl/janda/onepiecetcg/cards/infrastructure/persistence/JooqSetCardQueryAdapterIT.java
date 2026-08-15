@@ -13,9 +13,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.*;
-import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jooq.JooqSetCardQueryAdapter;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jpa.SetCardJpaRepository;
+import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
 
 import java.time.LocalDate;
 import java.util.List;

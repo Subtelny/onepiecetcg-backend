@@ -10,7 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
 import pl.janda.onepiecetcg.cards.rest.dto.SyncResultDto;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
 
@@ -28,8 +31,6 @@ public class InternalSyncController {
     private final CardErrataSyncUseCase cardErrataSyncUseCase;
 
     private final CardFaqSyncUseCase cardFaqSyncUseCase;
-
-    private final CardmarketPriceSyncUseCase cardmarketPriceSyncUseCase;
 
     private final MatchupSyncUseCase matchupSyncUseCase;
 
@@ -82,20 +83,6 @@ public class InternalSyncController {
     public ResponseEntity<SyncResultDto> syncCardFaq() {
         cardFaqSyncUseCase.syncFaq();
         return ResponseEntity.ok(new SyncResultDto(true, "Card FAQ sync completed"));
-    }
-
-    @PostMapping("/cardmarket-prices")
-    @Operation(summary = "Manually sync Cardmarket prices",
-            description = "Downloads Cardmarket's public One Piece product catalog and EUR price guide, " +
-                    "then appends a historical snapshot grouped by Bandai card code. An already stored " +
-                    "daily price-guide publication is skipped.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Sync completed"),
-            @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
-    })
-    public ResponseEntity<SyncResultDto> syncCardmarketPrices() {
-        cardmarketPriceSyncUseCase.syncPrices();
-        return ResponseEntity.ok(new SyncResultDto(true, "Cardmarket price sync completed"));
     }
 
     @PostMapping("/matchups")

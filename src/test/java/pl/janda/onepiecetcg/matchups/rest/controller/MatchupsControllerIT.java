@@ -12,10 +12,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
-import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
+import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jpa.SetCardJpaRepository;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
 import pl.janda.onepiecetcg.matchups.infrastructure.persistence.initializer.MatchupSchemaInitializer;
+import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
 import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
 
 import java.math.BigDecimal;
