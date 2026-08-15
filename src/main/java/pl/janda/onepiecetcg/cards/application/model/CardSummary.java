@@ -26,4 +26,6 @@ public class CardSummary {
     private String cardImage;
 
     private String variantIndex;
+
+    private String priceReference;
 }

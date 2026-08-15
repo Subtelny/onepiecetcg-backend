@@ -9,11 +9,19 @@ import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
+import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
+import pl.janda.onepiecetcg.pricing.application.model.PriceSource;
 import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
+import pl.janda.onepiecetcg.pricing.application.port.in.PriceQueryUseCase;
 import pl.janda.onepiecetcg.testsupport.PostgresSpringBootTest;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +51,9 @@ class CardControllerTest extends PostgresSpringBootTest {
     private CardmarketPriceSyncUseCase cardmarketPriceSyncUseCase;
 
     @MockitoBean
+    private PriceQueryUseCase priceQueryUseCase;
+
+    @MockitoBean
     private CardSetSyncUseCase cardSetSyncUseCase;
 
     @MockitoBean
@@ -53,6 +64,9 @@ class CardControllerTest extends PostgresSpringBootTest {
 
     @MockitoBean
     private CardFaqSyncUseCase cardFaqSyncUseCase;
+
+    @MockitoBean
+    private MatchupSyncUseCase matchupSyncUseCase;
 
     @Test
     void searchCards_deserializesSearchInEnumAndForwardsToService() throws Exception {
@@ -101,6 +115,20 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .andExpect(jsonPath("$.cards[0].displayName").value("Nami (Winner)"))
                 .andExpect(jsonPath("$.cards[0].sourceProduct").value("Winner Pack 2026 Vol. 2"))
                 .andExpect(jsonPath("$.cards[0].variantIndex").value("r1"));
+    }
+
+    private static PriceQuote priceQuote(String priceReference) {
+        return PriceQuote.builder()
+                .priceReference(priceReference)
+                .source(PriceSource.CARDMARKET)
+                .currency("EUR")
+                .externalProductId("767954")
+                .productName("Kouzuki Oden (EB01-001)")
+                .averagePrice(new BigDecimal("44.00"))
+                .lowPrice(new BigDecimal("37.99"))
+                .trendPrice(new BigDecimal("45.19"))
+                .observedAt(OffsetDateTime.parse("2026-08-15T04:00:00+02:00"))
+                .build();
     }
 
     @Test
@@ -172,6 +200,31 @@ class CardControllerTest extends PostgresSpringBootTest {
     }
 
     @Test
+    void searchCards_embedsLatestPricesForEveryReturnedPrint() throws Exception {
+        var summary = CardSummary.builder()
+                .id(1L)
+                .cardSetId("EB01-001")
+                .cardName("Kouzuki Oden")
+                .priceReference("single:EB01-001_p1")
+                .build();
+        var price = priceQuote("single:EB01-001_p1");
+        when(cardCatalogUseCase.searchCards(any(CardSearchQuery.class)))
+                .thenReturn(new PagedCards(List.of(summary), 1, 0, 50));
+        when(priceQueryUseCase.getLatestPricesByReferences(List.of("single:EB01-001_p1")))
+                .thenReturn(Map.of("single:EB01-001_p1", List.of(price)));
+
+        mockMvc.perform(get("/api/cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards[0].prices[0].source").value("CARDMARKET"))
+                .andExpect(jsonPath("$.cards[0].prices[0].currency").value("EUR"))
+                .andExpect(jsonPath("$.cards[0].prices[0].productId").value("767954"))
+                .andExpect(jsonPath("$.cards[0].prices[0].lowPrice").value(37.99))
+                .andExpect(jsonPath("$.cards[0].prices[0].trendPrice").value(45.19))
+                .andExpect(jsonPath("$.cards[0].prices[0].observedAt")
+                        .value("2026-08-15T04:00:00+02:00"));
+    }
+
+    @Test
     void getCardById_embedsFullFaqHistoryOrderedOldestToNewest() throws Exception {
         var card = SetCard.builder()
                 .id(1L)
@@ -200,5 +253,54 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .andExpect(jsonPath("$.faq[0].answer").value("No."))
                 .andExpect(jsonPath("$.faq[1].question").value("Does this stack with other effects?"))
                 .andExpect(jsonPath("$.faq[1].answer").value("Yes."));
+    }
+
+    @Test
+    void getCardById_embedsThePriceForTheExactPrintedVariant() throws Exception {
+        var card = SetCard.builder()
+                .id(1L)
+                .cardSetId("EB01-001")
+                .cardName("Kouzuki Oden")
+                .priceReference("single:EB01-001_p2")
+                .build();
+        when(cardDetailsUseCase.getCardById("1"))
+                .thenReturn(new CardDetails(card, List.of(), List.of()));
+        when(priceQueryUseCase.getLatestPricesByReferences(List.of("single:EB01-001_p2")))
+                .thenReturn(Map.of("single:EB01-001_p2", List.of(priceQuote("single:EB01-001_p2"))));
+
+        mockMvc.perform(get("/api/cards/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prices.length()").value(1))
+                .andExpect(jsonPath("$.prices[0].source").value("CARDMARKET"))
+                .andExpect(jsonPath("$.prices[0].trendPrice").value(45.19));
+    }
+
+    @Test
+    void getCardVariants_embedsPriceForEveryExactPrintedVariant() throws Exception {
+        var card = SetCard.builder()
+                .id(2L)
+                .cardSetId("EB01-001")
+                .variantIndex("p1")
+                .priceReference("single:EB01-001_p1")
+                .build();
+        var legacyCardWithoutPriceReference = SetCard.builder()
+                .id(3L)
+                .cardSetId("EB01-001")
+                .variantIndex("r1")
+                .build();
+        when(cardDetailsUseCase.getCardVariants("1"))
+                .thenReturn(List.of(
+                        new CardDetails(card, List.of(), List.of()),
+                        new CardDetails(legacyCardWithoutPriceReference, List.of(), List.of())));
+        when(priceQueryUseCase.getLatestPricesByReferences(
+                Arrays.asList("single:EB01-001_p1", null)))
+                .thenReturn(Map.of("single:EB01-001_p1", List.of(priceQuote("single:EB01-001_p1"))));
+
+        mockMvc.perform(get("/api/cards/1/variants"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].variantIndex").value("p1"))
+                .andExpect(jsonPath("$[0].prices[0].productId").value("767954"))
+                .andExpect(jsonPath("$[1].variantIndex").value("r1"))
+                .andExpect(jsonPath("$[1].prices.length()").value(0));
     }
 }

@@ -2,13 +2,13 @@ package pl.janda.onepiecetcg.deckbuilder.rest.mapper;
 
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.cards.application.model.*;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardDto;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardFilterOptionsDto;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardSetOptionDto;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardSummaryDto;
+import pl.janda.onepiecetcg.deckbuilder.rest.dto.*;
+import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -19,15 +19,26 @@ public class DeckBuilderCardMapper {
     }
 
     public List<DeckBuilderCardDto> toDtoList(List<SetCard> cards) {
+        return toDtoList(cards, Map.of());
+    }
+
+    public List<DeckBuilderCardDto> toDtoList(
+            List<SetCard> cards,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(this::toDto)
+                .map(card -> toDto(card, getPrices(card.getPriceReference(), pricesByReference)))
                 .collect(Collectors.toList());
     }
 
     public DeckBuilderCardDto toDto(SetCard card) {
+        return toDto(card, List.of());
+    }
+
+    public DeckBuilderCardDto toDto(SetCard card, List<PriceQuote> prices) {
         if (card == null) {
             return null;
         }
@@ -51,19 +62,31 @@ public class DeckBuilderCardMapper {
                 .imageUrl(card.getCardImage())
                 .marketPrice(card.getMarketPrice())
                 .inventoryPrice(card.getInventoryPrice())
+                .prices(toPriceDtoList(prices))
                 .build();
     }
 
     public List<DeckBuilderCardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
+        return toSummaryDtoList(cards, Map.of());
+    }
+
+    public List<DeckBuilderCardSummaryDto> toSummaryDtoList(
+            List<CardSummary> cards,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(this::toSummaryDto)
+                .map(card -> toSummaryDto(card, getPrices(card.getPriceReference(), pricesByReference)))
                 .toList();
     }
 
     public DeckBuilderCardSummaryDto toSummaryDto(CardSummary card) {
+        return toSummaryDto(card, List.of());
+    }
+
+    public DeckBuilderCardSummaryDto toSummaryDto(CardSummary card, List<PriceQuote> prices) {
         if (card == null) {
             return null;
         }
@@ -76,7 +99,47 @@ public class DeckBuilderCardMapper {
                 .cardNumber(card.getCardSetId())
                 .flatRarity(card.getFlatRarity())
                 .imageUrl(card.getCardImage())
+                .prices(toPriceDtoList(prices))
                 .build();
+    }
+
+    private List<DeckBuilderCardPriceDto> toPriceDtoList(List<PriceQuote> prices) {
+        if (prices == null) {
+            return List.of();
+        }
+        return prices.stream()
+                .map(price -> DeckBuilderCardPriceDto.builder()
+                        .source(price.getSource() != null ? price.getSource().name() : null)
+                        .currency(price.getCurrency())
+                        .productId(price.getExternalProductId())
+                        .productName(price.getProductName())
+                        .averagePrice(price.getAveragePrice())
+                        .lowPrice(price.getLowPrice())
+                        .trendPrice(price.getTrendPrice())
+                        .averagePrice1Day(price.getAveragePrice1Day())
+                        .averagePrice7Days(price.getAveragePrice7Days())
+                        .averagePrice30Days(price.getAveragePrice30Days())
+                        .foilAveragePrice(price.getFoilAveragePrice())
+                        .foilLowPrice(price.getFoilLowPrice())
+                        .foilTrendPrice(price.getFoilTrendPrice())
+                        .foilAveragePrice1Day(price.getFoilAveragePrice1Day())
+                        .foilAveragePrice7Days(price.getFoilAveragePrice7Days())
+                        .foilAveragePrice30Days(price.getFoilAveragePrice30Days())
+                        .observedAt(price.getObservedAt() != null
+                                ? DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(price.getObservedAt())
+                                : null)
+                        .build())
+                .toList();
+    }
+
+    private List<PriceQuote> getPrices(
+            String priceReference,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
+        if (priceReference == null || pricesByReference == null) {
+            return List.of();
+        }
+        return pricesByReference.getOrDefault(priceReference, List.of());
     }
 
     public DeckBuilderCardFilterOptionsDto toFilterOptionsDto(CardFilterOptions options) {

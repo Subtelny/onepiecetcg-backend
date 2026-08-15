@@ -31,7 +31,8 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   release name, then matches singles by `card code + release + local variant`. Canonical `V1`/`V2` metadata is
   preferred; product date/ID ordering is persisted as an explicitly lower-confidence heuristic when version metadata is
   unavailable. The context stores durable Cardmarket-product-to-`price_reference` mappings separately from append-only
-  price snapshots.
+  price snapshots. Its source-neutral batch query port returns the newest mapped quotes for opaque price references;
+  card search and detail REST adapters use that port to expose prices without one query per card.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
 - Reference key endpoints: `GET /` and `GET /health` (liveness), `GET /api/cards`, `GET /api/cards/{id}`,
@@ -72,7 +73,7 @@ pl.janda.onepiecetcg/
 ├── pricing/                         # Bounded context: price collection and source/catalog mapping
 │   ├── application/
 │   │   ├── model/                   # Price snapshots, expansion mappings, single mappings
-│   │   ├── port/in/                 # Pricing sync use cases
+│   │   ├── port/in/                 # Pricing sync and source-neutral price query use cases
 │   │   ├── repository/              # Pricing persistence ports
 │   │   ├── client/                  # Cardmarket and catalog client ports
 │   │   └── service/                 # Enrichment, matching, import orchestration
@@ -111,9 +112,10 @@ validate and hydrate stable card-number references. Shared-deck persistence deli
 `set_cards`: catalog sync replaces that table and its generated identity IDs are not durable references.
 
 `pricing.infrastructure.client` similarly adapts the narrow card-owned priceable-catalog inbound port into pricing's own
-application model. The `pricing.application` layer therefore has no dependency on `cards`, and `cards` has no dependency
-on pricing. Their durable association is the opaque namespaced `price_reference`; do not add a database foreign key or
-share JPA entities across these contexts.
+application model. The `pricing.application` layer therefore has no dependency on `cards`. The cards and deckbuilder
+REST adapters compose their catalog responses with the source-neutral pricing query port; their application layers
+remain independent of pricing. The durable association is the opaque namespaced `price_reference`; do not add a database
+foreign key or share JPA entities across these contexts.
 
 **DTO/mapper duplication (accepted, deliberate exception to the dedup rule in §8):** `cards.rest.dto`/
 `cards.rest.mapper` and `deckbuilder.rest.dto`/`deckbuilder.rest.mapper` intentionally define separate, near-identical

@@ -22,6 +22,8 @@ public class JooqSetCardQueryAdapter {
 
     private final DSLContext dsl;
 
+    private static final Field<String> PRICE_REFERENCE = field(name("set_cards", "price_reference"), String.class);
+
 
     private static List<SortField<?>> buildOrderBy(CardSortField sortBy, SortDirection sortOrder) {
         var resolvedSortBy = sortBy != null ? sortBy : CardSortField.CARD_NUMBER;
@@ -174,6 +176,7 @@ public class JooqSetCardQueryAdapter {
                 .flatRarity(r.get(SET_CARDS.FLAT_RARITY))
                 .cardImage(r.get(SET_CARDS.CARD_IMAGE))
                 .variantIndex(r.get(SET_CARDS.VARIANT_INDEX))
+                .priceReference(r.get(PRICE_REFERENCE))
                 .build();
     }
 
@@ -320,7 +323,7 @@ public class JooqSetCardQueryAdapter {
 
         var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME,
                         SET_CARDS.DISPLAY_NAME, SET_CARDS.SOURCE_PRODUCT, SET_CARDS.FLAT_RARITY,
-                        SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX)
+                        SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX, PRICE_REFERENCE)
                 .from(SET_CARDS)
                 .where(conditions)
                 .orderBy(orderBy)

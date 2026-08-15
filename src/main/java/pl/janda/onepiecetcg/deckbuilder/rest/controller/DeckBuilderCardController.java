@@ -18,6 +18,8 @@ import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardFilterOptionsDto
 import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardSearchRequest;
 import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardSearchResponse;
 import pl.janda.onepiecetcg.deckbuilder.rest.mapper.DeckBuilderCardMapper;
+import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
+import pl.janda.onepiecetcg.pricing.application.port.in.PriceQueryUseCase;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,13 +32,15 @@ public class DeckBuilderCardController {
 
     private final CardCatalogUseCase cardCatalogUseCase;
 
+    private final PriceQueryUseCase priceQueryUseCase;
+
     private final DeckBuilderCardMapper deckBuilderCardMapper;
 
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
             description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
                     "Each result is a lightweight summary (id, name, displayName, sourceProduct, cardNumber, " +
-                    "flatRarity, imageUrl, variantIndex) - " +
+                    "flatRarity, imageUrl, variantIndex, latest source prices) - " +
                     "fetch /api/deckbuilder/cards/{id} for full card details (effect, stats, prices).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",
@@ -73,8 +77,11 @@ public class DeckBuilderCardController {
                 request.getLimit(),
                 request.getShowAllVariants()));
 
+        var pricesByReference = priceQueryUseCase.getLatestPricesByReferences(pagedCards.cards().stream()
+                .map(CardSummary::getPriceReference)
+                .toList());
         var response = DeckBuilderCardSearchResponse.builder()
-                .cards(deckBuilderCardMapper.toSummaryDtoList(pagedCards.cards()))
+                .cards(deckBuilderCardMapper.toSummaryDtoList(pagedCards.cards(), pricesByReference))
                 .totalCount(pagedCards.totalCount())
                 .page(pagedCards.page())
                 .limit(pagedCards.limit())
@@ -99,7 +106,9 @@ public class DeckBuilderCardController {
 
     @GetMapping("/by-code")
     @Operation(summary = "Get a card variant by card code",
-            description = "Returns a single card variant matching the given card code (e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, pN for a parallel, or rN for a reprint")
+            description = "Returns a single card variant with its latest source prices, matching the given card code " +
+                    "(e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, " +
+                    "pN for a parallel, or rN for a reprint")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card variant found",
                     content = @Content(mediaType = "application/json",
@@ -111,12 +120,12 @@ public class DeckBuilderCardController {
             @Parameter(description = "Source-derived variant index: 0 (default), pN (parallel), or rN (reprint); defaults to 0") @RequestParam(required = false) String variant
     ) {
         SetCard card = cardCatalogUseCase.getVariantByCardCode(cardCode, variant);
-        return ResponseEntity.ok(deckBuilderCardMapper.toDto(card));
+        return ResponseEntity.ok(deckBuilderCardMapper.toDto(card, getPrices(card.getPriceReference())));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get card by ID",
-            description = "Returns a single card by its ID")
+            description = "Returns a single card with its latest source prices by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card found",
                     content = @Content(mediaType = "application/json",
@@ -127,12 +136,13 @@ public class DeckBuilderCardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         SetCard card = cardCatalogUseCase.getCardById(id);
-        return ResponseEntity.ok(deckBuilderCardMapper.toDto(card));
+        return ResponseEntity.ok(deckBuilderCardMapper.toDto(card, getPrices(card.getPriceReference())));
     }
 
     @GetMapping("/{id}/variants")
     @Operation(summary = "Get all variants of a card",
-            description = "Returns every printed variant (different rarity/promo) sharing the same card number as the given card")
+            description = "Returns every printed variant (different rarity/promo), including each variant's latest " +
+                    "source prices, sharing the same card number as the given card")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Variants retrieved successfully",
                     content = @Content(mediaType = "application/json",
@@ -143,6 +153,17 @@ public class DeckBuilderCardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         List<SetCard> variants = cardCatalogUseCase.getVariantsByCardId(id);
-        return ResponseEntity.ok(deckBuilderCardMapper.toDtoList(variants));
+        var pricesByReference = priceQueryUseCase.getLatestPricesByReferences(variants.stream()
+                .map(SetCard::getPriceReference)
+                .toList());
+        return ResponseEntity.ok(deckBuilderCardMapper.toDtoList(variants, pricesByReference));
+    }
+
+    private List<PriceQuote> getPrices(String priceReference) {
+        if (priceReference == null) {
+            return List.of();
+        }
+        var pricesByReference = priceQueryUseCase.getLatestPricesByReferences(List.of(priceReference));
+        return pricesByReference.getOrDefault(priceReference, List.of());
     }
 }

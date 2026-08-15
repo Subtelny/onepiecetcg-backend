@@ -30,6 +30,7 @@ public class CardDto {
     private String imageUrl;
     private Double marketPrice;
     private Double inventoryPrice;
+    private List<CardPriceDto> prices;
     private List<CardErrataEntryDto> errata;
     private List<CardFaqEntryDto> faq;
 }

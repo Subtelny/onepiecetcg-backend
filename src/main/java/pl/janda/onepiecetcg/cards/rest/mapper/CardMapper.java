@@ -3,7 +3,9 @@ package pl.janda.onepiecetcg.cards.rest.mapper;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.rest.dto.*;
+import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +15,7 @@ import java.util.stream.Collectors;
 public class CardMapper {
 
     public CardDto toDto(SetCard card) {
-        return toDto(card, List.of(), List.of());
+        return toDto(card, List.of(), List.of(), List.of());
     }
 
     private static String displayNameOrCardName(String displayName, String cardName) {
@@ -21,20 +23,42 @@ public class CardMapper {
     }
 
     public List<CardDto> toDtoList(List<SetCard> cards) {
-        return toDtoList(cards, Map.of(), Map.of());
+        return toDtoList(cards, Map.of(), Map.of(), Map.of());
     }
 
     public List<CardDto> toDtoList(List<SetCard> cards, Map<String, List<CardErrata>> errataByCardCode,
                                     Map<String, List<CardFaq>> faqByCardCode) {
+        return toDtoList(cards, errataByCardCode, faqByCardCode, Map.of());
+    }
+
+    public List<CardDto> toDtoList(
+            List<SetCard> cards,
+            Map<String, List<CardErrata>> errataByCardCode,
+            Map<String, List<CardFaq>> faqByCardCode,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(card -> toDto(card, errataByCardCode.get(card.getCardSetId()), faqByCardCode.get(card.getCardSetId())))
+                .map(card -> toDto(
+                        card,
+                        errataByCardCode.get(card.getCardSetId()),
+                        faqByCardCode.get(card.getCardSetId()),
+                        getPrices(card.getPriceReference(), pricesByReference)))
                 .collect(Collectors.toList());
     }
 
     public CardDto toDto(SetCard card, List<CardErrata> errataHistory, List<CardFaq> faqHistory) {
+        return toDto(card, errataHistory, faqHistory, List.of());
+    }
+
+    public CardDto toDto(
+            SetCard card,
+            List<CardErrata> errataHistory,
+            List<CardFaq> faqHistory,
+            List<PriceQuote> prices
+    ) {
         if (card == null) {
             return null;
         }
@@ -58,21 +82,33 @@ public class CardMapper {
                 .imageUrl(card.getCardImage())
                 .marketPrice(card.getMarketPrice())
                 .inventoryPrice(card.getInventoryPrice())
+                .prices(toPriceDtoList(prices))
                 .errata(toErrataEntryDtoList(errataHistory))
                 .faq(toFaqEntryDtoList(faqHistory))
                 .build();
     }
 
     public List<CardSummaryDto> toSummaryDtoList(List<CardSummary> cards) {
+        return toSummaryDtoList(cards, Map.of());
+    }
+
+    public List<CardSummaryDto> toSummaryDtoList(
+            List<CardSummary> cards,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
         if (cards == null) {
             return List.of();
         }
         return cards.stream()
-                .map(this::toSummaryDto)
+                .map(card -> toSummaryDto(card, getPrices(card.getPriceReference(), pricesByReference)))
                 .toList();
     }
 
     public CardSummaryDto toSummaryDto(CardSummary card) {
+        return toSummaryDto(card, List.of());
+    }
+
+    public CardSummaryDto toSummaryDto(CardSummary card, List<PriceQuote> prices) {
         if (card == null) {
             return null;
         }
@@ -85,7 +121,47 @@ public class CardMapper {
                 .flatRarity(card.getFlatRarity())
                 .imageUrl(card.getCardImage())
                 .variantIndex(card.getVariantIndex())
+                .prices(toPriceDtoList(prices))
                 .build();
+    }
+
+    private List<CardPriceDto> toPriceDtoList(List<PriceQuote> prices) {
+        if (prices == null) {
+            return List.of();
+        }
+        return prices.stream()
+                .map(price -> CardPriceDto.builder()
+                        .source(price.getSource() != null ? price.getSource().name() : null)
+                        .currency(price.getCurrency())
+                        .productId(price.getExternalProductId())
+                        .productName(price.getProductName())
+                        .averagePrice(price.getAveragePrice())
+                        .lowPrice(price.getLowPrice())
+                        .trendPrice(price.getTrendPrice())
+                        .averagePrice1Day(price.getAveragePrice1Day())
+                        .averagePrice7Days(price.getAveragePrice7Days())
+                        .averagePrice30Days(price.getAveragePrice30Days())
+                        .foilAveragePrice(price.getFoilAveragePrice())
+                        .foilLowPrice(price.getFoilLowPrice())
+                        .foilTrendPrice(price.getFoilTrendPrice())
+                        .foilAveragePrice1Day(price.getFoilAveragePrice1Day())
+                        .foilAveragePrice7Days(price.getFoilAveragePrice7Days())
+                        .foilAveragePrice30Days(price.getFoilAveragePrice30Days())
+                        .observedAt(price.getObservedAt() != null
+                                ? DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(price.getObservedAt())
+                                : null)
+                        .build())
+                .toList();
+    }
+
+    private List<PriceQuote> getPrices(
+            String priceReference,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
+        if (priceReference == null || pricesByReference == null) {
+            return List.of();
+        }
+        return pricesByReference.getOrDefault(priceReference, List.of());
     }
 
     private List<CardErrataEntryDto> toErrataEntryDtoList(List<CardErrata> errataHistory) {

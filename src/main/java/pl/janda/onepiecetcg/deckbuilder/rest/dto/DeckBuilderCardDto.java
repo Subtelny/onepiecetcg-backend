@@ -30,4 +30,5 @@ public class DeckBuilderCardDto {
     private String imageUrl;
     private Double marketPrice;
     private Double inventoryPrice;
+    private List<DeckBuilderCardPriceDto> prices;
 }

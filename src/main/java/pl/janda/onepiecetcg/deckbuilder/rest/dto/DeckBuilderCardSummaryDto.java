@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,4 +20,5 @@ public class DeckBuilderCardSummaryDto {
     private String cardNumber;
     private String flatRarity;
     private String imageUrl;
+    private List<DeckBuilderCardPriceDto> prices;
 }

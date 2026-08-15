@@ -18,8 +18,11 @@ import pl.janda.onepiecetcg.cards.application.port.in.CardErrataQueryUseCase;
 import pl.janda.onepiecetcg.cards.rest.dto.*;
 import pl.janda.onepiecetcg.cards.rest.mapper.CardErrataMapper;
 import pl.janda.onepiecetcg.cards.rest.mapper.CardMapper;
+import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
+import pl.janda.onepiecetcg.pricing.application.port.in.PriceQueryUseCase;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -34,6 +37,8 @@ public class CardController {
 
     private final CardErrataQueryUseCase cardErrataQueryUseCase;
 
+    private final PriceQueryUseCase priceQueryUseCase;
+
     private final CardMapper cardMapper;
 
     private final CardErrataMapper cardErrataMapper;
@@ -42,7 +47,7 @@ public class CardController {
     @Operation(summary = "Get all cards or search with filters",
             description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
                     "Each result is a lightweight summary (id, name, displayName, sourceProduct, cardNumber, " +
-                    "flatRarity, imageUrl, variantIndex) - " +
+                    "flatRarity, imageUrl, variantIndex, latest source prices) - " +
                     "variantIndex comes from the source card ID: 0 for the default print, pN for a parallel, " +
                     "or rN for a reprint (and matches /by-code's variant param) - " +
                     "fetch /api/cards/{id} for full card details (effect, stats, prices, errata).")
@@ -81,8 +86,11 @@ public class CardController {
                 request.getLimit(),
                 request.getShowAllVariants()));
 
+        var pricesByReference = priceQueryUseCase.getLatestPricesByReferences(pagedCards.cards().stream()
+                .map(CardSummary::getPriceReference)
+                .toList());
         var response = CardSearchResponse.builder()
-                .cards(cardMapper.toSummaryDtoList(pagedCards.cards()))
+                .cards(cardMapper.toSummaryDtoList(pagedCards.cards(), pricesByReference))
                 .totalCount(pagedCards.totalCount())
                 .page(pagedCards.page())
                 .limit(pagedCards.limit())
@@ -119,7 +127,9 @@ public class CardController {
 
     @GetMapping("/by-code")
     @Operation(summary = "Get a card variant by card code",
-            description = "Returns a single card variant matching the given card code (e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, pN for a parallel, or rN for a reprint")
+            description = "Returns a single card variant with its latest source prices, matching the given card code " +
+                    "(e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, " +
+                    "pN for a parallel, or rN for a reprint")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card variant found",
                     content = @Content(mediaType = "application/json",
@@ -131,12 +141,13 @@ public class CardController {
             @Parameter(description = "Source-derived variant index: 0 (default), pN (parallel), or rN (reprint); defaults to 0") @RequestParam(required = false) String variant
     ) {
         var details = cardDetailsUseCase.getCardByCode(cardCode, variant);
-        return ResponseEntity.ok(cardMapper.toDto(details.card(), details.errata(), details.faq()));
+        return ResponseEntity.ok(cardMapper.toDto(
+                details.card(), details.errata(), details.faq(), getPrices(details.card().getPriceReference())));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get card by ID",
-            description = "Returns a single card by its ID")
+            description = "Returns a single card with its latest source prices by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card found",
                     content = @Content(mediaType = "application/json",
@@ -147,7 +158,8 @@ public class CardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         var details = cardDetailsUseCase.getCardById(id);
-        return ResponseEntity.ok(cardMapper.toDto(details.card(), details.errata(), details.faq()));
+        return ResponseEntity.ok(cardMapper.toDto(
+                details.card(), details.errata(), details.faq(), getPrices(details.card().getPriceReference())));
     }
 
     @GetMapping("/errata")
@@ -164,7 +176,8 @@ public class CardController {
 
     @GetMapping("/{id}/variants")
     @Operation(summary = "Get all variants of a card",
-            description = "Returns every printed variant (different rarity/promo) sharing the same card number as the given card")
+            description = "Returns every printed variant (different rarity/promo), including each variant's latest " +
+                    "source prices, sharing the same card number as the given card")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Variants retrieved successfully",
                     content = @Content(mediaType = "application/json",
@@ -175,8 +188,34 @@ public class CardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         List<CardDetails> variants = cardDetailsUseCase.getCardVariants(id);
-        return ResponseEntity.ok(variants.stream()
-                .map(details -> cardMapper.toDto(details.card(), details.errata(), details.faq()))
+        var pricesByReference = priceQueryUseCase.getLatestPricesByReferences(variants.stream()
+                .map(CardDetails::card)
+                .map(SetCard::getPriceReference)
                 .toList());
+        return ResponseEntity.ok(variants.stream()
+                .map(details -> cardMapper.toDto(
+                        details.card(),
+                        details.errata(),
+                        details.faq(),
+                        getPrices(details.card().getPriceReference(), pricesByReference)))
+                .toList());
+    }
+
+    private List<PriceQuote> getPrices(String priceReference) {
+        if (priceReference == null) {
+            return List.of();
+        }
+        var pricesByReference = priceQueryUseCase.getLatestPricesByReferences(List.of(priceReference));
+        return getPrices(priceReference, pricesByReference);
+    }
+
+    private List<PriceQuote> getPrices(
+            String priceReference,
+            Map<String, List<PriceQuote>> pricesByReference
+    ) {
+        if (priceReference == null || pricesByReference == null) {
+            return List.of();
+        }
+        return pricesByReference.getOrDefault(priceReference, List.of());
     }
 }
