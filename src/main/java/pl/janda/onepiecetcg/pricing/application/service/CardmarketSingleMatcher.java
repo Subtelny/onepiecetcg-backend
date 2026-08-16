@@ -55,16 +55,6 @@ public class CardmarketSingleMatcher {
                 .thenComparing(CardmarketPriceCandidate::getProductId);
     }
 
-    private static Integer productVersion(
-            CardmarketPriceCandidate product,
-            Map<Long, CardmarketProductPage> pagesByProductId
-    ) {
-        var page = pagesByProductId.get(product.getProductId());
-        return page != null && page.getVersion() != null
-                ? page.getVersion()
-                : parseVersion(product.getProductName());
-    }
-
     static Integer parseVersion(String productName) {
         if (productName == null) {
             return null;
@@ -115,48 +105,15 @@ public class CardmarketSingleMatcher {
                 : null;
     }
 
-    public List<CardmarketProductPageRequest> findVersionResolutionRequests(
-            List<CardmarketPriceCandidate> candidates,
-            List<PriceableSingle> singles,
-            List<CardmarketExpansion> expansions,
-            List<CardmarketSingleMapping> existingMappings
-    ) {
-        var candidateGroups = candidates.stream().collect(Collectors.groupingBy(this::candidateKey));
-        var singleGroups = groupSinglesByMappedExpansion(singles, expansions);
-        var existingProductIds = existingMappings.stream()
-                .map(CardmarketSingleMapping::getCardmarketProductId)
-                .collect(Collectors.toSet());
-        var requests = new ArrayList<CardmarketProductPageRequest>();
-
-        candidateGroups.forEach((key, products) -> {
-            var matchingSingles = singleGroups.getOrDefault(key, List.of());
-            if (products.size() <= 1 || products.size() != matchingSingles.size()) {
-                return;
-            }
-            products.stream()
-                    .filter(product -> !existingProductIds.contains(product.getProductId()))
-                    .filter(product -> parseVersion(product.getProductName()) == null)
-                    .map(product -> CardmarketProductPageRequest.builder()
-                            .productId(product.getProductId())
-                            .expansionId(product.getExpansionId())
-                            .build())
-                    .forEach(requests::add);
-        });
-        return requests;
-    }
-
     public List<CardmarketSingleMapping> match(
             List<CardmarketPriceCandidate> candidates,
             List<PriceableSingle> singles,
             List<CardmarketExpansion> expansions,
-            List<CardmarketProductPage> productPages,
             List<CardmarketSingleMapping> existingMappings,
             LocalDateTime matchedAt
     ) {
         var singleGroups = groupSinglesByMappedExpansion(singles, expansions);
         var candidateGroups = candidates.stream().collect(Collectors.groupingBy(this::candidateKey));
-        var pagesByProductId = productPages.stream().collect(Collectors.toMap(
-                CardmarketProductPage::getProductId, Function.identity(), (first, second) -> second));
         var existingProductIds = existingMappings.stream()
                 .map(CardmarketSingleMapping::getCardmarketProductId)
                 .collect(Collectors.toSet());
@@ -180,8 +137,7 @@ public class CardmarketSingleMatcher {
             if (matchingSingles.isEmpty()) {
                 return;
             }
-            matchGroup(products, matchingSingles, pagesByProductId, existingProductIds,
-                    usedPriceReferences, matchedAt).stream()
+            matchGroup(products, matchingSingles, existingProductIds, usedPriceReferences, matchedAt).stream()
                     .filter(mapping -> !existingProductIds.contains(mapping.getCardmarketProductId()))
                     .filter(mapping -> usedPriceReferences.add(mapping.getPriceReference()))
                     .forEach(mapping -> {
@@ -301,7 +257,6 @@ public class CardmarketSingleMatcher {
     private List<CardmarketSingleMapping> matchGroup(
             List<CardmarketPriceCandidate> products,
             List<PriceableSingle> singles,
-            Map<Long, CardmarketProductPage> pagesByProductId,
             Set<Long> existingProductIds,
             Set<String> usedPriceReferences,
             LocalDateTime matchedAt
@@ -326,7 +281,7 @@ public class CardmarketSingleMatcher {
         var matchedProductIds = new HashSet<Long>();
         var matchedReferences = new HashSet<String>();
         for (var product : availableProducts) {
-            var version = productVersion(product, pagesByProductId);
+            var version = parseVersion(product.getProductName());
             if (version == null || version < 1 || version > singles.size()) {
                 continue;
             }

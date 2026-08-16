@@ -1,4 +1,4 @@
-package pl.janda.onepiecetcg.deckbuilder.rest.dto;
+package pl.janda.onepiecetcg.cards.rest.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,21 +11,15 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DeckBuilderCardPriceDto {
+public class CardPriceHistoryPointDto {
 
     private String source;
 
     private String currency;
 
-    private String productId;
-
-    private String productName;
-
-    private BigDecimal averagePrice;
-
-    private BigDecimal lowPrice;
+    private String observedAt;
 
     private BigDecimal trendPrice;
 
-    private String observedAt;
+    private BigDecimal lowPrice;
 }

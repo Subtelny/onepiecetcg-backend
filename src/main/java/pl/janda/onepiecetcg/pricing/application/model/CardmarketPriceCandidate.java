@@ -13,7 +13,11 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(
         name = "cardmarket_price_candidates",
-        indexes = @Index(name = "idx_cardmarket_price_candidates_card_code", columnList = "card_code"),
+        indexes = {
+                @Index(name = "idx_cardmarket_price_candidates_card_code", columnList = "card_code"),
+                @Index(name = "idx_cardmarket_price_candidates_price_guide_created_at",
+                        columnList = "price_guide_created_at")
+        },
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_cardmarket_price_candidates_product_snapshot",
                 columnNames = {"product_id", "price_guide_created_at"})

@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pl.janda.onepiecetcg.pricing.application.client.CardmarketPriceApiClient;
-import pl.janda.onepiecetcg.pricing.application.client.CardmarketProductPageApiClient;
 import pl.janda.onepiecetcg.pricing.application.client.PriceableSingleCatalogClient;
 import pl.janda.onepiecetcg.pricing.application.model.CardmarketExpansion;
 import pl.janda.onepiecetcg.pricing.application.model.CardmarketPriceCandidate;
@@ -30,8 +29,6 @@ class CardmarketPriceSyncServiceTest {
 
     @Mock
     private CardmarketPriceApiClient cardmarketPriceApiClient;
-    @Mock
-    private CardmarketProductPageApiClient cardmarketProductPageApiClient;
     @Mock
     private PriceableSingleCatalogClient priceableSingleCatalogClient;
     @Mock
@@ -71,9 +68,8 @@ class CardmarketPriceSyncServiceTest {
         when(priceableSingleCatalogClient.fetchPriceableSingles()).thenReturn(List.of());
         when(cardmarketSingleMappingRepository.findAll()).thenReturn(List.of());
         when(cardmarketExpansionRepository.findAll()).thenReturn(List.of(expansion));
-        when(cardmarketProductPageApiClient.resolveProductPages(any())).thenReturn(List.of());
-        when(cardmarketSingleMatcher.findVersionResolutionRequests(any(), any(), any(), any())).thenReturn(List.of());
-        when(cardmarketSingleMatcher.match(any(), any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(cardmarketExpansionMatcher.match(any(), any(), any(), any())).thenReturn(List.of(expansion));
+        when(cardmarketSingleMatcher.match(any(), any(), any(), any(), any())).thenReturn(List.of());
 
         service().syncPrices();
 
@@ -99,14 +95,12 @@ class CardmarketPriceSyncServiceTest {
         when(priceableSingleCatalogClient.fetchPriceableSingles()).thenReturn(List.of());
         when(cardmarketSingleMappingRepository.findAll()).thenReturn(List.of());
         when(cardmarketExpansionRepository.findAll()).thenReturn(List.of());
-        when(cardmarketProductPageApiClient.resolveProductPages(any())).thenReturn(List.of());
-        when(cardmarketSingleMatcher.findVersionResolutionRequests(any(), any(), any(), any())).thenReturn(List.of());
-        when(cardmarketSingleMatcher.match(any(), any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(cardmarketExpansionMatcher.match(any(), any(), any(), any())).thenReturn(List.of());
+        when(cardmarketSingleMatcher.match(any(), any(), any(), any(), any())).thenReturn(List.of());
 
         service().syncPrices();
 
         verify(priceableSingleCatalogClient).fetchPriceableSingles();
-        verify(cardmarketProductPageApiClient, atLeastOnce()).resolveProductPages(any());
         verify(cardmarketPriceImportService).append(List.of(), List.of(), List.of());
         assertThat(candidate.getLastSyncedAt()).isNull();
     }
@@ -114,7 +108,6 @@ class CardmarketPriceSyncServiceTest {
     private CardmarketPriceSyncService service() {
         return new CardmarketPriceSyncService(
                 cardmarketPriceApiClient,
-                cardmarketProductPageApiClient,
                 priceableSingleCatalogClient,
                 cardmarketPriceCandidateRepository,
                 cardmarketExpansionRepository,

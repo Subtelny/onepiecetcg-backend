@@ -31,6 +31,7 @@ public class CardDto {
     private Double marketPrice;
     private Double inventoryPrice;
     private List<CardPriceDto> prices;
+    private List<CardPriceHistoryPointDto> priceHistory;
     private List<CardErrataEntryDto> errata;
     private List<CardFaqEntryDto> faq;
 }

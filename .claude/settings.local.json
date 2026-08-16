@@ -62,7 +62,15 @@
       "Bash(git --no-pager diff --stat -- . ':!.claude')",
       "Bash(git log:*)",
       "Bash(wc:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(npm run lint)",
+      "Bash(git -C /Users/sebastian.janda/WebstormProjects/onepiecetcg-backend status --short)",
+      "Bash(for u in \"https://downloads.s3.cardmarket.com/productCatalog/expansion/expansions_18.json\" \"https://downloads.s3.cardmarket.com/productCatalog/expansions/expansions_18.json\" \"https://downloads.s3.cardmarket.com/productCatalog/expansionList/expansions_18.json\" \"https://downloads.s3.cardmarket.com/productCatalog/productList/products_18.json\" \"https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_18.json\" \"https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_18.json\")",
+      "Bash(__NEW_LINE_9b0a90668353ab73__ echo \"=== ST-11 max achievable containment check \\(is there ANY expansion close to matching\\) ===\")",
+      "Bash(__NEW_LINE_9b0a90668353ab73__ echo \"=== card_set_id counts for the ''catch-all'' source sets ===\")",
+      "Bash(__NEW_LINE_7da2fdeab6b4bc1e__ echo \"=== All distinct card codes under expansion 5303 ===\")",
+      "Bash(__NEW_LINE_7da2fdeab6b4bc1e__ echo \"=== All distinct card codes under expansion 5427 ===\")",
+      "Bash(__NEW_LINE_58a140c6cbb1c20f__ echo \"=== Does expansion 5427''s code set \\(3 codes\\) tie across multiple releases? ===\")"
     ]
   }
 }

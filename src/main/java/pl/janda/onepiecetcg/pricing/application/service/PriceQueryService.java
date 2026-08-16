@@ -2,8 +2,10 @@ package pl.janda.onepiecetcg.pricing.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import pl.janda.onepiecetcg.pricing.application.model.PriceHistoryPoint;
 import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 import pl.janda.onepiecetcg.pricing.application.port.in.PriceQueryUseCase;
+import pl.janda.onepiecetcg.pricing.application.repository.PriceHistoryRepository;
 import pl.janda.onepiecetcg.pricing.application.repository.PriceQuoteRepository;
 
 import java.util.List;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 public class PriceQueryService implements PriceQueryUseCase {
 
     private final PriceQuoteRepository priceQuoteRepository;
+
+    private final PriceHistoryRepository priceHistoryRepository;
 
     @Override
     public Map<String, List<PriceQuote>> getLatestPricesByReferences(List<String> priceReferences) {
@@ -32,5 +36,13 @@ public class PriceQueryService implements PriceQueryUseCase {
         }
         return priceQuoteRepository.findLatestByPriceReferences(distinctReferences).stream()
                 .collect(Collectors.groupingBy(PriceQuote::getPriceReference));
+    }
+
+    @Override
+    public List<PriceHistoryPoint> getPriceHistoryByReference(String priceReference) {
+        if (priceReference == null || priceReference.isBlank()) {
+            return List.of();
+        }
+        return priceHistoryRepository.findHistoryByPriceReference(priceReference);
     }
 }

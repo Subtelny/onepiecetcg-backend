@@ -10,6 +10,7 @@ import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.*;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
+import pl.janda.onepiecetcg.pricing.application.model.PriceHistoryPoint;
 import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 import pl.janda.onepiecetcg.pricing.application.model.PriceSource;
 import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
@@ -25,6 +26,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -302,5 +305,76 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .andExpect(jsonPath("$[0].prices[0].productId").value("767954"))
                 .andExpect(jsonPath("$[1].variantIndex").value("r1"))
                 .andExpect(jsonPath("$[1].prices.length()").value(0));
+    }
+
+    @Test
+    void getCardByCode_embedsTheChangeOnlyPriceHistoryOldestFirst() throws Exception {
+        var card = SetCard.builder()
+                .id(1L)
+                .cardSetId("EB01-001")
+                .cardName("Kouzuki Oden")
+                .priceReference("single:EB01-001_p1")
+                .build();
+        when(cardDetailsUseCase.getCardByCode("EB01-001", "p1"))
+                .thenReturn(new CardDetails(card, List.of(), List.of()));
+        when(priceQueryUseCase.getPriceHistoryByReference("single:EB01-001_p1"))
+                .thenReturn(List.of(
+                        historyPoint("2026-08-13T04:00:00+02:00", "40.00", "35.00"),
+                        historyPoint("2026-08-15T04:00:00+02:00", "45.19", "37.99")));
+
+        mockMvc.perform(get("/api/cards/by-code")
+                        .param("cardCode", "EB01-001")
+                        .param("variant", "p1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.priceHistory.length()").value(2))
+                .andExpect(jsonPath("$.priceHistory[0].source").value("CARDMARKET"))
+                .andExpect(jsonPath("$.priceHistory[0].currency").value("EUR"))
+                .andExpect(jsonPath("$.priceHistory[0].observedAt").value("2026-08-13T04:00:00+02:00"))
+                .andExpect(jsonPath("$.priceHistory[0].trendPrice").value(40.00))
+                .andExpect(jsonPath("$.priceHistory[0].lowPrice").value(35.00))
+                .andExpect(jsonPath("$.priceHistory[1].observedAt").value("2026-08-15T04:00:00+02:00"))
+                .andExpect(jsonPath("$.priceHistory[1].trendPrice").value(45.19));
+    }
+
+    @Test
+    void getCardById_embedsAnEmptyPriceHistoryForACardWithoutPriceReference() throws Exception {
+        var card = SetCard.builder()
+                .id(1L)
+                .cardSetId("EB01-001")
+                .cardName("Kouzuki Oden")
+                .build();
+        when(cardDetailsUseCase.getCardById("1"))
+                .thenReturn(new CardDetails(card, List.of(), List.of()));
+
+        mockMvc.perform(get("/api/cards/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.priceHistory.length()").value(0));
+    }
+
+    @Test
+    void getCardVariants_omitsThePriceHistoryToAvoidAQueryPerVariant() throws Exception {
+        var card = SetCard.builder()
+                .id(1L)
+                .cardSetId("EB01-001")
+                .cardName("Kouzuki Oden")
+                .priceReference("single:EB01-001_p1")
+                .build();
+        when(cardDetailsUseCase.getCardVariants("1"))
+                .thenReturn(List.of(new CardDetails(card, List.of(), List.of())));
+
+        mockMvc.perform(get("/api/cards/1/variants"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].priceHistory.length()").value(0));
+        verify(priceQueryUseCase, never()).getPriceHistoryByReference(anyString());
+    }
+
+    private static PriceHistoryPoint historyPoint(String observedAt, String trendPrice, String lowPrice) {
+        return PriceHistoryPoint.builder()
+                .source(PriceSource.CARDMARKET)
+                .currency("EUR")
+                .observedAt(OffsetDateTime.parse(observedAt))
+                .trendPrice(new BigDecimal(trendPrice))
+                .lowPrice(new BigDecimal(lowPrice))
+                .build();
     }
 }

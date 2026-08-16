@@ -8,27 +8,23 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
+/**
+ * A single point of a price series: one observation whose trend or low price differs from the
+ * previous observation. Days without a point repeat the previous point's prices.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PriceQuote {
-
-    private String priceReference;
+public class PriceHistoryPoint {
 
     private PriceSource source;
 
     private String currency;
 
-    private String externalProductId;
-
-    private String productName;
-
-    private BigDecimal averagePrice;
-
-    private BigDecimal lowPrice;
+    private OffsetDateTime observedAt;
 
     private BigDecimal trendPrice;
 
-    private OffsetDateTime observedAt;
+    private BigDecimal lowPrice;
 }

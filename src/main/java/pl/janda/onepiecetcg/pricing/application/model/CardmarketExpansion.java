@@ -21,9 +21,6 @@ public class CardmarketExpansion {
     @Column(name = "expansion_id")
     private Long expansionId;
 
-    @Column(name = "expansion_slug")
-    private String expansionSlug;
-
     @Column(name = "release_id")
     private String releaseId;
 

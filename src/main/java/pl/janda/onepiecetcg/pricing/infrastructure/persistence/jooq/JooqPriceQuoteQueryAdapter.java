@@ -32,15 +32,6 @@ public class JooqPriceQuoteQueryAdapter implements PriceQuoteRepository {
                        price.average_price,
                        price.low_price,
                        price.trend_price,
-                       price.average_price_1_day,
-                       price.average_price_7_days,
-                       price.average_price_30_days,
-                       price.foil_average_price,
-                       price.foil_low_price,
-                       price.foil_trend_price,
-                       price.foil_average_price_1_day,
-                       price.foil_average_price_7_days,
-                       price.foil_average_price_30_days,
                        price.price_guide_created_at
                 FROM cardmarket_single_mappings mapping
                 JOIN cardmarket_price_candidates price
@@ -60,15 +51,6 @@ public class JooqPriceQuoteQueryAdapter implements PriceQuoteRepository {
                 .averagePrice(record.get("average_price", BigDecimal.class))
                 .lowPrice(record.get("low_price", BigDecimal.class))
                 .trendPrice(record.get("trend_price", BigDecimal.class))
-                .averagePrice1Day(record.get("average_price_1_day", BigDecimal.class))
-                .averagePrice7Days(record.get("average_price_7_days", BigDecimal.class))
-                .averagePrice30Days(record.get("average_price_30_days", BigDecimal.class))
-                .foilAveragePrice(record.get("foil_average_price", BigDecimal.class))
-                .foilLowPrice(record.get("foil_low_price", BigDecimal.class))
-                .foilTrendPrice(record.get("foil_trend_price", BigDecimal.class))
-                .foilAveragePrice1Day(record.get("foil_average_price_1_day", BigDecimal.class))
-                .foilAveragePrice7Days(record.get("foil_average_price_7_days", BigDecimal.class))
-                .foilAveragePrice30Days(record.get("foil_average_price_30_days", BigDecimal.class))
                 .observedAt(record.get("price_guide_created_at", OffsetDateTime.class))
                 .build());
     }

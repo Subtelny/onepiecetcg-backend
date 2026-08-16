@@ -127,9 +127,9 @@ public class CardController {
 
     @GetMapping("/by-code")
     @Operation(summary = "Get a card variant by card code",
-            description = "Returns a single card variant with its latest source prices, matching the given card code " +
-                    "(e.g. OP10-009), selected by its source-derived variant index: 0 for the default print, " +
-                    "pN for a parallel, or rN for a reprint")
+            description = "Returns a single card variant with its latest source prices and its full price history, " +
+                    "matching the given card code (e.g. OP10-009), selected by its source-derived variant index: " +
+                    "0 for the default print, pN for a parallel, or rN for a reprint")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card variant found",
                     content = @Content(mediaType = "application/json",
@@ -141,13 +141,12 @@ public class CardController {
             @Parameter(description = "Source-derived variant index: 0 (default), pN (parallel), or rN (reprint); defaults to 0") @RequestParam(required = false) String variant
     ) {
         var details = cardDetailsUseCase.getCardByCode(cardCode, variant);
-        return ResponseEntity.ok(cardMapper.toDto(
-                details.card(), details.errata(), details.faq(), getPrices(details.card().getPriceReference())));
+        return ResponseEntity.ok(toDetailDto(details));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get card by ID",
-            description = "Returns a single card with its latest source prices by its ID")
+            description = "Returns a single card with its latest source prices and its full price history by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Card found",
                     content = @Content(mediaType = "application/json",
@@ -158,8 +157,7 @@ public class CardController {
             @Parameter(description = "Card ID") @PathVariable String id
     ) {
         var details = cardDetailsUseCase.getCardById(id);
-        return ResponseEntity.ok(cardMapper.toDto(
-                details.card(), details.errata(), details.faq(), getPrices(details.card().getPriceReference())));
+        return ResponseEntity.ok(toDetailDto(details));
     }
 
     @GetMapping("/errata")
@@ -199,6 +197,21 @@ public class CardController {
                         details.faq(),
                         getPrices(details.card().getPriceReference(), pricesByReference)))
                 .toList());
+    }
+
+    /**
+     * Single-card responses carry the price history inline so the prerendered frontend can render the
+     * chart from one build-time request. The variant list deliberately does not: it would cost one
+     * history query per printed variant to fill a series the detail view never shows.
+     */
+    private CardDto toDetailDto(CardDetails details) {
+        var priceReference = details.card().getPriceReference();
+        return cardMapper.toDto(
+                details.card(),
+                details.errata(),
+                details.faq(),
+                getPrices(priceReference),
+                priceQueryUseCase.getPriceHistoryByReference(priceReference));
     }
 
     private List<PriceQuote> getPrices(String priceReference) {

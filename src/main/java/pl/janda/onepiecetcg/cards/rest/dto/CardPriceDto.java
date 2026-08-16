@@ -27,23 +27,5 @@ public class CardPriceDto {
 
     private BigDecimal trendPrice;
 
-    private BigDecimal averagePrice1Day;
-
-    private BigDecimal averagePrice7Days;
-
-    private BigDecimal averagePrice30Days;
-
-    private BigDecimal foilAveragePrice;
-
-    private BigDecimal foilLowPrice;
-
-    private BigDecimal foilTrendPrice;
-
-    private BigDecimal foilAveragePrice1Day;
-
-    private BigDecimal foilAveragePrice7Days;
-
-    private BigDecimal foilAveragePrice30Days;
-
     private String observedAt;
 }

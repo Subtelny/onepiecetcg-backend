@@ -27,12 +27,23 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   - A second group of sync jobs scrapes the official rules site (errata notices as HTML, FAQ as per-set PDFs). Their adapters use Jsoup/PDFBox and follow the same service/scheduler pattern as everything else (§4).
   - **Every sync that does delete+insert uses the orchestrator + replacement split described in §4 step 3** — there are no remaining syncs where the fetch happens inside the transaction. Don't reintroduce one.
 - **Pricing sync:** the `pricing` bounded context owns Cardmarket clients, scheduling, price history, enrichment, and
-  matching. It resolves and caches canonical Cardmarket expansion slugs, maps them to catalog releases by normalized
-  release name, then matches singles by `card code + release + local variant`. Canonical `V1`/`V2` metadata is
-  preferred; product date/ID ordering is persisted as an explicitly lower-confidence heuristic when version metadata is
-  unavailable. The context stores durable Cardmarket-product-to-`price_reference` mappings separately from append-only
-  price snapshots. Its source-neutral batch query port returns the newest mapped quotes for opaque price references;
-  card search and detail REST adapters use that port to expose prices without one query per card.
+  matching. It maps each Cardmarket expansion to a catalog release **offline, by card-code containment** — the share of
+  the expansion's card codes that the release prints, accepted above a threshold and rejected on a tie so an ambiguous
+  expansion stays unmapped rather than mismapping every card in it. Card codes are the only identifier both sides spell
+  identically: catalog release names carry a set code and product-type prefix that Cardmarket's never have, so name
+  matching resolved almost nothing, and the product-page scrape it depended on is 403-blocked. Don't reintroduce an
+  HTTP call here — the matcher is pure and runs against data already fetched. It also creates the expansion rows it
+  scores, and rescores every expansion on each run, since the catalog grows and a previously unplaceable expansion
+  becomes placeable for free. Singles then match by `card code + release + local variant`, preferring `V1`/`V2` parsed
+  from the product name, with product date/ID ordering persisted as an explicitly lower-confidence heuristic when no
+  version metadata exists. The context stores durable Cardmarket-product-to-`price_reference` mappings separately from append-only
+  price snapshots. Its source-neutral query port exposes two reads over opaque price references: a batch lookup of the
+  newest mapped quote per reference, and a single-reference history. Card search and detail REST adapters use the batch
+  lookup to expose prices without one query per card. The history is deduplicated **on read** — snapshots stay stored
+  unfiltered so the sync's "already imported this price guide" guard keeps working, and a window function drops every
+  snapshot whose trend and low both match the previous one. A gap in the resulting series therefore means "price held",
+  so consumers carry the last point forward and never interpolate. Only single-card responses embed that history; the
+  variants endpoint leaves it empty rather than paying one window query per printed variant.
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
 - Reference key endpoints: `GET /` and `GET /health` (liveness), `GET /api/cards`, `GET /api/cards/{id}`,
@@ -78,7 +89,7 @@ pl.janda.onepiecetcg/
 │   │   ├── client/                  # Cardmarket and catalog client ports
 │   │   └── service/                 # Enrichment, matching, import orchestration
 │   ├── infrastructure/
-│   │   ├── persistence/             # Spring Data adapters owned by pricing
+│   │   ├── persistence/             # Spring Data adapters + startup DDL initializer (§3)
 │   │   ├── client/                  # Cardmarket HTTP and card-catalog adapters
 │   │   └── scheduler/               # Pricing-only scheduled entrypoints
 │   └── rest/                        # Pricing-owned internal sync endpoint
@@ -154,6 +165,14 @@ extracting a shared DTO/mapper.
   - The script is the single source of truth for those columns — use `IF NOT EXISTS` throughout so re-running it on a migrated database is a no-op, and never duplicate its DDL into test setup (integration tests get the column from application startup, which is the point).
   - A missing generated column surfaces as `BadSqlGrammarException`, not as an obvious "no such column": Postgres reports SQLState 42703 and Spring maps the whole class-42 range to bad-SQL-grammar. Treat that exception on a search endpoint as a schema-drift suspect first.
   - Postgres has no `ALTER COLUMN` for a `GENERATED` expression, so **changing** an expression means: edit the script, run the matching drop script from `scripts/db/` against the target database, restart. `scripts/db/` therefore holds only teardown/one-off scripts, never the canonical definition. Do the same against local Postgres before `mvn generate-sources` so jOOQ codegen sees the column.
+  - **Renaming or removing an `@Enumerated(STRING)` constant is a schema change, even though nothing in the entity looks
+    like one.** Hibernate writes a `CHECK (col IN (...))` constraint when it first creates the table and never revisits
+    it under `ddl-auto: update`, so a database created before the rename keeps rejecting the new value: the code passes
+    tests and fresh installs, then fails at write time on every migrated environment. Realign the constraint in that
+    context's startup DDL script with a `DROP CONSTRAINT IF EXISTS` + `ADD CONSTRAINT` pair guarded by
+    `pg_advisory_xact_lock` (the pair is what makes it idempotent — Postgres has no `ADD CONSTRAINT IF NOT EXISTS`).
+    Each bounded context owns its own script and `*SchemaInitializer`; follow the existing ones rather than adding a
+    shared initializer.
 
 ---
 

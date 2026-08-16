@@ -3,6 +3,7 @@ package pl.janda.onepiecetcg.cards.rest.mapper;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.rest.dto.*;
+import pl.janda.onepiecetcg.pricing.application.model.PriceHistoryPoint;
 import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 
 import java.time.format.DateTimeFormatter;
@@ -59,6 +60,16 @@ public class CardMapper {
             List<CardFaq> faqHistory,
             List<PriceQuote> prices
     ) {
+        return toDto(card, errataHistory, faqHistory, prices, List.of());
+    }
+
+    public CardDto toDto(
+            SetCard card,
+            List<CardErrata> errataHistory,
+            List<CardFaq> faqHistory,
+            List<PriceQuote> prices,
+            List<PriceHistoryPoint> priceHistory
+    ) {
         if (card == null) {
             return null;
         }
@@ -83,6 +94,7 @@ public class CardMapper {
                 .marketPrice(card.getMarketPrice())
                 .inventoryPrice(card.getInventoryPrice())
                 .prices(toPriceDtoList(prices))
+                .priceHistory(toPriceHistoryDtoList(priceHistory))
                 .errata(toErrataEntryDtoList(errataHistory))
                 .faq(toFaqEntryDtoList(faqHistory))
                 .build();
@@ -138,18 +150,26 @@ public class CardMapper {
                         .averagePrice(price.getAveragePrice())
                         .lowPrice(price.getLowPrice())
                         .trendPrice(price.getTrendPrice())
-                        .averagePrice1Day(price.getAveragePrice1Day())
-                        .averagePrice7Days(price.getAveragePrice7Days())
-                        .averagePrice30Days(price.getAveragePrice30Days())
-                        .foilAveragePrice(price.getFoilAveragePrice())
-                        .foilLowPrice(price.getFoilLowPrice())
-                        .foilTrendPrice(price.getFoilTrendPrice())
-                        .foilAveragePrice1Day(price.getFoilAveragePrice1Day())
-                        .foilAveragePrice7Days(price.getFoilAveragePrice7Days())
-                        .foilAveragePrice30Days(price.getFoilAveragePrice30Days())
                         .observedAt(price.getObservedAt() != null
                                 ? DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(price.getObservedAt())
                                 : null)
+                        .build())
+                .toList();
+    }
+
+    private List<CardPriceHistoryPointDto> toPriceHistoryDtoList(List<PriceHistoryPoint> history) {
+        if (history == null) {
+            return List.of();
+        }
+        return history.stream()
+                .map(point -> CardPriceHistoryPointDto.builder()
+                        .source(point.getSource() != null ? point.getSource().name() : null)
+                        .currency(point.getCurrency())
+                        .observedAt(point.getObservedAt() != null
+                                ? DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(point.getObservedAt())
+                                : null)
+                        .trendPrice(point.getTrendPrice())
+                        .lowPrice(point.getLowPrice())
                         .build())
                 .toList();
     }
