@@ -18,10 +18,15 @@ public class JooqPriceHistoryQueryAdapter implements PriceHistoryRepository {
     private final DSLContext dsl;
 
     /**
-     * Collapses the append-only snapshot table into the observations that actually moved: a row is
-     * emitted only when its trend or low price differs from the chronologically previous snapshot of
-     * the same product. Snapshots carrying neither price are dropped before the comparison so a
-     * temporary gap in the source data cannot fabricate a price movement.
+     * Collapses the append-only snapshot table into the observations that matter for charting: a row
+     * is emitted when its trend or low price differs from the chronologically previous snapshot of the
+     * same product (marking the start of a new price run), and the chronologically last snapshot is
+     * always emitted as well — even when it didn't change anything — so the series always ends at "as
+     * of the most recent sync" instead of at the last actual price movement. Without that trailing
+     * point, a price that has been flat for weeks would render as a line that dead-ends weeks ago,
+     * indistinguishable from a card that simply stopped syncing. Snapshots carrying neither price are
+     * dropped before the comparison so a temporary gap in the source data cannot fabricate a price
+     * movement.
      */
     @Override
     public List<PriceHistoryPoint> findHistoryByPriceReference(String priceReference) {
@@ -34,7 +39,10 @@ public class JooqPriceHistoryQueryAdapter implements PriceHistoryRepository {
                            price.trend_price,
                            price.low_price,
                            LAG(price.trend_price) OVER change_window AS previous_trend_price,
-                           LAG(price.low_price) OVER change_window AS previous_low_price
+                           LAG(price.low_price) OVER change_window AS previous_low_price,
+                           ROW_NUMBER() OVER (
+                               ORDER BY price.price_guide_created_at DESC, price.id DESC
+                           ) AS recency_rank
                     FROM cardmarket_single_mappings mapping
                     JOIN cardmarket_price_candidates price
                       ON price.product_id = mapping.cardmarket_product_id
@@ -48,6 +56,7 @@ public class JooqPriceHistoryQueryAdapter implements PriceHistoryRepository {
                 FROM snapshots
                 WHERE trend_price IS DISTINCT FROM previous_trend_price
                    OR low_price IS DISTINCT FROM previous_low_price
+                   OR recency_rank = 1
                 ORDER BY observed_at
                 """, priceReference);
 

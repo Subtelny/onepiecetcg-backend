@@ -92,6 +92,8 @@ class JooqPriceHistoryQueryAdapterIT extends PostgresSpringBootTest {
         insertSnapshot("2026-08-13T04:00:00+02:00", new BigDecimal("33.50"), new BigDecimal("40.00"));
         // only the trend price moved - still a point
         insertSnapshot("2026-08-14T04:00:00+02:00", new BigDecimal("33.50"), new BigDecimal("45.19"));
+        // unchanged from the previous day, but it's the most recent snapshot, so it's kept as the
+        // "as of" marker that shows the flat run is still ongoing
         insertSnapshot("2026-08-15T04:00:00+02:00", new BigDecimal("33.50"), new BigDecimal("45.19"));
 
         var history = priceHistoryRepository.findHistoryByPriceReference(PRICE_REFERENCE);
@@ -102,7 +104,8 @@ class JooqPriceHistoryQueryAdapterIT extends PostgresSpringBootTest {
                 .containsExactly(
                         tuple(instant("2026-08-11T04:00:00+02:00"), "40.00", "35.00"),
                         tuple(instant("2026-08-13T04:00:00+02:00"), "40.00", "33.50"),
-                        tuple(instant("2026-08-14T04:00:00+02:00"), "45.19", "33.50"));
+                        tuple(instant("2026-08-14T04:00:00+02:00"), "45.19", "33.50"),
+                        tuple(instant("2026-08-15T04:00:00+02:00"), "45.19", "33.50"));
         assertThat(history).allSatisfy(point -> {
             assertThat(point.getSource()).isEqualTo(PriceSource.CARDMARKET);
             assertThat(point.getCurrency()).isEqualTo("EUR");
@@ -110,16 +113,38 @@ class JooqPriceHistoryQueryAdapterIT extends PostgresSpringBootTest {
     }
 
     @Test
+    void findHistoryByPriceReference_extendsAFlatRunToTheMostRecentSnapshot() {
+        insertSnapshot("2026-08-01T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
+        // the price then holds steady for several days in a row
+        insertSnapshot("2026-08-02T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
+        insertSnapshot("2026-08-03T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
+        insertSnapshot("2026-08-04T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
+        insertSnapshot("2026-08-05T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
+
+        var history = priceHistoryRepository.findHistoryByPriceReference(PRICE_REFERENCE);
+
+        // only the start of the flat run and the most recent snapshot are returned, so a chart can
+        // draw a single flat line all the way to "today" instead of stopping on 08-01
+        assertThat(history)
+                .extracting(point -> point.getObservedAt().toInstant())
+                .containsExactly(
+                        instant("2026-08-01T04:00:00+02:00"),
+                        instant("2026-08-05T04:00:00+02:00"));
+    }
+
+    @Test
     void findHistoryByPriceReference_ignoresSnapshotsWithoutAnyTrackedPrice() {
         insertSnapshot("2026-08-11T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
         insertSnapshot("2026-08-12T04:00:00+02:00", null, null);
+        // unchanged from 08-11, but it's the most recent priced snapshot (08-12 had no price at all),
+        // so it's kept as the recency marker
         insertSnapshot("2026-08-13T04:00:00+02:00", new BigDecimal("35.00"), new BigDecimal("40.00"));
 
         var history = priceHistoryRepository.findHistoryByPriceReference(PRICE_REFERENCE);
 
         assertThat(history)
                 .extracting(point -> point.getObservedAt().toInstant())
-                .containsExactly(instant("2026-08-11T04:00:00+02:00"));
+                .containsExactly(instant("2026-08-11T04:00:00+02:00"), instant("2026-08-13T04:00:00+02:00"));
     }
 
     @Test
