@@ -18,9 +18,14 @@ public class SpringCardmarketSingleMappingRepository implements CardmarketSingle
     private final CardmarketSingleMappingJpaRepository jpaRepository;
     private final EntityManager entityManager;
 
+    /**
+     * A bulk delete rather than an entity delete because the rebuild re-inserts the same price references
+     * under different product ids in the same transaction: entity removals only flush after the inserts,
+     * which trips the price-reference unique constraint. It also avoids managing every deleted row.
+     */
     @Override
-    public List<CardmarketSingleMapping> findAll() {
-        return jpaRepository.findAll();
+    public void deleteAll() {
+        jpaRepository.deleteAllInBatch();
     }
 
     @Override

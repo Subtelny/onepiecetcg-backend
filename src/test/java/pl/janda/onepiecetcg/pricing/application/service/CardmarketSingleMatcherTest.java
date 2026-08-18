@@ -85,7 +85,7 @@ class CardmarketSingleMatcherTest {
                 versionedProduct(767954L, 5585L, "Kouzuki Oden (EB01-001) V.2"),
                 product(823420L, 6028L, "2025-07-01 08:00:00"));
 
-        var result = matcher.match(products, singles, expansions, List.of(), LocalDateTime.now());
+        var result = matcher.match(products, singles, expansions, LocalDateTime.now());
 
         assertThat(result).extracting(mapping -> mapping.getCardmarketProductId() + "=" + mapping.getPriceReference())
                 .containsExactlyInAnyOrder(
@@ -116,7 +116,7 @@ class CardmarketSingleMatcherTest {
                 product(767953L, 5585L, "2024-05-02 08:45:36"));
 
         var result = matcher.match(
-                products, singles, List.of(expansion(5585L, "569201")), List.of(), LocalDateTime.now());
+                products, singles, List.of(expansion(5585L, "569201")), LocalDateTime.now());
 
         assertThat(result).allSatisfy(mapping -> {
             assertThat(mapping.getMatchType()).isEqualTo(
@@ -147,7 +147,7 @@ class CardmarketSingleMatcherTest {
                         .cardCode("EB01-003").productName("Kid & Killer (EB01-003)")
                         .dateAdded("2025-08-04 09:51:13").build());
 
-        var result = matcher.match(products, singles, List.of(), List.of(), LocalDateTime.now());
+        var result = matcher.match(products, singles, List.of(), LocalDateTime.now());
 
         assertThat(result).extracting(mapping -> mapping.getCardmarketProductId() + "=" + mapping.getPriceReference())
                 .containsExactly(
@@ -173,8 +173,31 @@ class CardmarketSingleMatcherTest {
                         .cardCode("EB01-003").productName("Kid & Killer (EB01-003)")
                         .dateAdded("2025-02-01 10:00:00").build());
 
-        assertThat(matcher.match(products, singles, List.of(), List.of(), LocalDateTime.now()))
+        assertThat(matcher.match(products, singles, List.of(), LocalDateTime.now()))
                 .isEmpty();
+    }
+
+    @Test
+    void match_givesAContestedReferenceToTheFullestExpansionRegardlessOfInputOrder() {
+        var singles = List.of(single("single:EB01-001", "EB01-001", "569201", "0"));
+        var expansions = List.of(
+                expansion(5364L, "569201"),
+                expansion(5413L, "569201"));
+        var boosterProduct = product(700001L, 5364L, "2024-05-02 08:45:36");
+        var eventPackProduct = product(800001L, 5413L, "2024-11-02 08:45:36");
+        var boosterFiller = CardmarketPriceCandidate.builder()
+                .productId(700002L).expansionId(5364L).cardCode("EB01-002")
+                .productName("Filler (EB01-002)").dateAdded("2024-05-02 08:45:37").build();
+
+        var matchedAt = LocalDateTime.parse("2026-08-15T03:00:00");
+        var forward = matcher.match(
+                List.of(boosterProduct, boosterFiller, eventPackProduct), singles, expansions, matchedAt);
+        var reversed = matcher.match(
+                List.of(eventPackProduct, boosterFiller, boosterProduct), singles, expansions, matchedAt);
+
+        assertThat(forward).extracting(mapping -> mapping.getCardmarketProductId() + "=" + mapping.getPriceReference())
+                .containsExactly("700001=single:EB01-001");
+        assertThat(reversed).isEqualTo(forward);
     }
 
     @Test
@@ -182,7 +205,7 @@ class CardmarketSingleMatcherTest {
         var singles = List.of(single("single:EB01-001", "EB01-001", "EB-01", "0"));
         var products = List.of(product(767953L, 5585L, "2024-05-02 08:45:36"));
 
-        var result = matcher.match(products, singles, List.of(), List.of(), LocalDateTime.now());
+        var result = matcher.match(products, singles, List.of(), LocalDateTime.now());
 
         assertThat(result).singleElement().satisfies(mapping -> {
             assertThat(mapping.getCardmarketProductId()).isEqualTo(767953L);
@@ -199,7 +222,7 @@ class CardmarketSingleMatcherTest {
                 product(767953L, 5585L, "2024-05-02 08:45:36"),
                 product(823420L, 6028L, "2025-07-01 08:00:00"));
 
-        assertThat(matcher.match(products, singles, List.of(), List.of(), LocalDateTime.now()))
+        assertThat(matcher.match(products, singles, List.of(), LocalDateTime.now()))
                 .isEmpty();
     }
 }

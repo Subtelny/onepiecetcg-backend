@@ -97,21 +97,29 @@ public class CardmarketExpansionMatcher {
      * Recomputes every mapping on each run instead of skipping already-resolved expansions: the score
      * depends on the catalog, which grows, so an expansion that could not be placed yesterday (or was
      * placed on a then-incomplete release) is re-evaluated for free against today's card codes.
+     *
+     * <p>Excluded expansions still get a row, only an unmapped one. Scoring them would succeed - a Japanese
+     * print run contains exactly the release's card codes - so the exclusion has to be applied here rather
+     * than left to the containment threshold.
      */
     public List<CardmarketExpansion> match(
             List<CardmarketExpansion> knownExpansions,
             List<CardmarketPriceCandidate> candidates,
             List<PriceableSingle> singles,
+            List<Long> excludedExpansionIds,
             LocalDateTime matchedAt
     ) {
         var expansionsById = knownExpansions.stream().collect(Collectors.toMap(
                 CardmarketExpansion::getExpansionId, Function.identity(), (first, second) -> first, LinkedHashMap::new));
         var codesByRelease = cardCodesByRelease(singles);
+        var excluded = Set.copyOf(excludedExpansionIds);
 
         cardCodesByExpansion(candidates).forEach((expansionId, expansionCodes) -> {
             var expansion = expansionsById.computeIfAbsent(expansionId, id ->
                     CardmarketExpansion.builder().expansionId(id).build());
-            var match = bestRelease(expansionCodes, codesByRelease);
+            var match = excluded.contains(expansionId)
+                    ? Optional.<ReleaseMatch>empty()
+                    : bestRelease(expansionCodes, codesByRelease);
             expansion.setReleaseId(match.map(ReleaseMatch::releaseId).orElse(null));
             expansion.setMatchType(match.isPresent() ? CardmarketExpansionMatchType.CARD_CODE_OVERLAP : null);
             expansion.setConfidence(match.map(ReleaseMatch::confidence).orElse(null));

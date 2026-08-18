@@ -53,6 +53,7 @@ class CardmarketExpansionMatcherTest {
                 List.of(),
                 products(5229L, codes("OP01", 20)),
                 concat(singles("OP-01", codes("OP01", 20)), singles("OP-02", codes("OP02", 20))),
+                List.of(),
                 LocalDateTime.now());
 
         assertThat(result).singleElement().satisfies(expansion -> {
@@ -70,6 +71,7 @@ class CardmarketExpansionMatcherTest {
                 List.of(),
                 products(5229L, codes("OP01", 19)),
                 singles("OP-01", codes("OP01", 20)),
+                List.of(),
                 LocalDateTime.now());
 
         assertThat(result).singleElement()
@@ -82,6 +84,7 @@ class CardmarketExpansionMatcherTest {
                 List.of(),
                 concat(products(5230L, codes("OP01", 10)), products(5230L, codes("OP02", 10))),
                 concat(singles("OP-01", codes("OP01", 10)), singles("OP-02", codes("OP02", 10))),
+                List.of(),
                 LocalDateTime.now());
 
         assertThat(result).singleElement().satisfies(expansion -> {
@@ -97,6 +100,7 @@ class CardmarketExpansionMatcherTest {
                 List.of(),
                 products(5229L, codes("OP01", 10)),
                 concat(singles("OP-01", codes("OP01", 10)), singles("OP-01-REPRINT", codes("OP01", 10))),
+                List.of(),
                 LocalDateTime.now());
 
         assertThat(result).singleElement()
@@ -116,9 +120,30 @@ class CardmarketExpansionMatcherTest {
                 List.of(stored),
                 products(5229L, codes("OP01", 10)),
                 singles("OP-02", codes("OP02", 10)),
+                List.of(),
                 LocalDateTime.now());
 
         assertThat(result).containsExactly(stored);
         assertThat(stored.getReleaseId()).isNull();
+    }
+
+    @Test
+    void match_leavesAnExcludedPrintRunUnmappedEvenThoughItsCodesMatchPerfectly() {
+        var result = matcher.match(
+                List.of(),
+                concat(products(5580L, codes("EB01", 20)), products(5585L, codes("EB01", 20))),
+                singles("EB-01", codes("EB01", 20)),
+                List.of(5580L),
+                LocalDateTime.now());
+
+        assertThat(result).filteredOn(expansion -> expansion.getExpansionId().equals(5580L)).singleElement()
+                .satisfies(expansion -> {
+                    assertThat(expansion.getReleaseId()).isNull();
+                    assertThat(expansion.getMatchType()).isNull();
+                    assertThat(expansion.getConfidence()).isNull();
+                    assertThat(expansion.getLastResolvedAt()).isNotNull();
+                });
+        assertThat(result).filteredOn(expansion -> expansion.getExpansionId().equals(5585L)).singleElement()
+                .satisfies(expansion -> assertThat(expansion.getReleaseId()).isEqualTo("EB-01"));
     }
 }

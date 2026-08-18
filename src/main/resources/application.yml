@@ -50,6 +50,7 @@ card-faq:
 
 cardmarket:
   product-catalog-url: https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_18.json
+  sealed-product-catalog-url: https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_18.json
   price-guide-url: https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_18.json
   sync:
     cron: "0 0 4 * * *"

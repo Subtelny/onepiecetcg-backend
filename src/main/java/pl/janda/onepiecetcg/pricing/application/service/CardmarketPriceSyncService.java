@@ -10,10 +10,10 @@ import pl.janda.onepiecetcg.pricing.application.model.CardmarketPriceCandidate;
 import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
 import pl.janda.onepiecetcg.pricing.application.repository.CardmarketExpansionRepository;
 import pl.janda.onepiecetcg.pricing.application.repository.CardmarketPriceCandidateRepository;
-import pl.janda.onepiecetcg.pricing.application.repository.CardmarketSingleMappingRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +27,6 @@ public class CardmarketPriceSyncService implements CardmarketPriceSyncUseCase {
     private final CardmarketPriceCandidateRepository cardmarketPriceCandidateRepository;
 
     private final CardmarketExpansionRepository cardmarketExpansionRepository;
-
-    private final CardmarketSingleMappingRepository cardmarketSingleMappingRepository;
 
     private final CardmarketExpansionMatcher cardmarketExpansionMatcher;
 
@@ -49,24 +47,40 @@ public class CardmarketPriceSyncService implements CardmarketPriceSyncUseCase {
         }
         var guideAlreadyStored = cardmarketPriceCandidateRepository.existsByPriceGuideCreatedAt(priceGuideCreatedAt);
 
+        var nonEnglishExpansionIds = cardmarketPriceApiClient.fetchNonEnglishExpansionIds();
+        var excluded = Set.copyOf(nonEnglishExpansionIds);
+        var englishCandidates = candidates.stream()
+                .filter(candidate -> !excluded.contains(candidate.getExpansionId()))
+                .toList();
+        if (englishCandidates.isEmpty()) {
+            throw new IllegalStateException("Every Cardmarket product was classified as non-English; keeping the existing snapshot");
+        }
+
         var now = LocalDateTime.now();
         var singles = priceableSingleCatalogClient.fetchPriceableSingles();
-        var existingMappings = cardmarketSingleMappingRepository.findAll();
+        if (singles.isEmpty()) {
+            throw new IllegalStateException("The card catalog exposed no priceable singles; keeping the existing mappings");
+        }
 
+        // The expansion matcher sees every candidate so a newly listed non-English expansion still gets a
+        // row, only an unmapped one; everything downstream sees the English products alone.
         var expansions = cardmarketExpansionMatcher.match(
-                cardmarketExpansionRepository.findAll(), candidates, singles, now);
-        var newMappings = cardmarketSingleMatcher.match(candidates, singles, expansions, existingMappings, now);
+                cardmarketExpansionRepository.findAll(), candidates, singles, nonEnglishExpansionIds, now);
+        var mappings = cardmarketSingleMatcher.match(englishCandidates, singles, expansions, now);
 
-        var candidatesToAppend = guideAlreadyStored ? List.<CardmarketPriceCandidate>of() : candidates;
+        var candidatesToAppend = guideAlreadyStored ? List.<CardmarketPriceCandidate>of() : englishCandidates;
         candidatesToAppend.forEach(candidate -> candidate.setLastSyncedAt(now));
 
-        cardmarketPriceImportService.append(expansions, newMappings, candidatesToAppend);
-        log.info("Processed Cardmarket price guide created at {} with {} appended EUR price candidates, {} new single mappings "
-                        + "and {} mapped expansions for {} card codes",
+        cardmarketPriceImportService.importPricingSnapshot(expansions, mappings, candidatesToAppend);
+        log.info("Processed Cardmarket price guide created at {} with {} appended EUR price candidates, {} rebuilt single "
+                        + "mappings and {} mapped expansions for {} card codes, after excluding {} non-English expansions "
+                        + "covering {} products",
                 priceGuideCreatedAt,
                 candidatesToAppend.size(),
-                newMappings.size(),
+                mappings.size(),
                 expansions.stream().filter(expansion -> expansion.getReleaseId() != null).count(),
-                candidates.stream().map(CardmarketPriceCandidate::getCardCode).distinct().count());
+                englishCandidates.stream().map(CardmarketPriceCandidate::getCardCode).distinct().count(),
+                nonEnglishExpansionIds.size(),
+                candidates.size() - englishCandidates.size());
     }
 }

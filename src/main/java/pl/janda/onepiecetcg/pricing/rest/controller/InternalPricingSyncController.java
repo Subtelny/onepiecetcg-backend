@@ -25,10 +25,10 @@ public class InternalPricingSyncController {
 
     @PostMapping("/cardmarket-prices")
     @Operation(summary = "Manually sync Cardmarket prices",
-            description = "Downloads Cardmarket's public One Piece singles catalog and EUR price guide, resolves "
-                    + "stable catalog price references through expansion and local-variant mappings, then appends "
-                    + "a historical snapshot. An already stored price-guide publication is reused while missing "
-                    + "catalog mappings are repaired without duplicating history.")
+            description = "Downloads Cardmarket's public One Piece singles catalog, sealed product catalog and EUR "
+                    + "price guide, drops every product belonging to a non-English print run, rebuilds the catalog "
+                    + "price-reference mappings from scratch, then appends a historical snapshot. An already stored "
+                    + "price-guide publication is reused, so re-running only rebuilds the mappings.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync completed"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")

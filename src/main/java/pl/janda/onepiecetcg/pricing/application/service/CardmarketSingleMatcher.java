@@ -49,6 +49,29 @@ public class CardmarketSingleMatcher {
         return matcher.matches() ? Integer.parseInt(matcher.group(2)) : Integer.MAX_VALUE;
     }
 
+    private static Map<Long, Long> productCountByExpansion(List<CardmarketPriceCandidate> candidates) {
+        return candidates.stream()
+                .filter(candidate -> candidate.getExpansionId() != null)
+                .collect(Collectors.groupingBy(CardmarketPriceCandidate::getExpansionId, Collectors.counting()));
+    }
+
+    /**
+     * Several expansions map to the same release - a set's booster expansion alongside its much smaller
+     * pre-release and event-pack expansions - and they compete for the same price references. The fullest
+     * expansion wins, since that is the print an English-market card page should link to. Expansion id
+     * breaks the remaining ties so the whole pass is reproducible rather than hash-order dependent.
+     */
+    private static Comparator<Map.Entry<GroupKey, List<CardmarketPriceCandidate>>> groupComparator(
+            Map<Long, Long> productCountByExpansion
+    ) {
+        return Comparator
+                .comparingLong((Map.Entry<GroupKey, List<CardmarketPriceCandidate>> group) ->
+                        productCountByExpansion.getOrDefault(group.getKey().expansionId(), 0L))
+                .reversed()
+                .thenComparing(group -> group.getKey().expansionId(), Comparator.nullsLast(Long::compareTo))
+                .thenComparing(group -> group.getKey().cardCode());
+    }
+
     private static Comparator<CardmarketPriceCandidate> productComparator() {
         return Comparator
                 .comparing(CardmarketPriceCandidate::getDateAdded, Comparator.nullsLast(String::compareTo))
@@ -105,21 +128,21 @@ public class CardmarketSingleMatcher {
                 : null;
     }
 
+    /**
+     * Rebuilds the whole mapping set from scratch on every run, so the result is a pure function of the
+     * catalog and the price feed and comes out identical in every environment. Seeding it with the already
+     * stored mappings would freeze whichever expansion happened to win first and let environments drift.
+     */
     public List<CardmarketSingleMapping> match(
             List<CardmarketPriceCandidate> candidates,
             List<PriceableSingle> singles,
             List<CardmarketExpansion> expansions,
-            List<CardmarketSingleMapping> existingMappings,
             LocalDateTime matchedAt
     ) {
         var singleGroups = groupSinglesByMappedExpansion(singles, expansions);
         var candidateGroups = candidates.stream().collect(Collectors.groupingBy(this::candidateKey));
-        var existingProductIds = existingMappings.stream()
-                .map(CardmarketSingleMapping::getCardmarketProductId)
-                .collect(Collectors.toSet());
-        var usedPriceReferences = existingMappings.stream()
-                .map(CardmarketSingleMapping::getPriceReference)
-                .collect(Collectors.toSet());
+        var existingProductIds = new HashSet<Long>();
+        var usedPriceReferences = new HashSet<String>();
         var matched = new ArrayList<CardmarketSingleMapping>();
 
         var datedReleaseMappings = matchDatedReleaseGroups(
@@ -130,21 +153,24 @@ public class CardmarketSingleMatcher {
             matched.add(mapping);
         });
 
-        candidateGroups.forEach((key, products) -> {
-            var matchingSingles = singleGroups.getOrDefault(key, List.of()).stream()
-                    .sorted(singleComparator())
-                    .toList();
-            if (matchingSingles.isEmpty()) {
-                return;
-            }
-            matchGroup(products, matchingSingles, existingProductIds, usedPriceReferences, matchedAt).stream()
-                    .filter(mapping -> !existingProductIds.contains(mapping.getCardmarketProductId()))
-                    .filter(mapping -> usedPriceReferences.add(mapping.getPriceReference()))
-                    .forEach(mapping -> {
-                        existingProductIds.add(mapping.getCardmarketProductId());
-                        matched.add(mapping);
-                    });
-        });
+        candidateGroups.entrySet().stream()
+                .sorted(groupComparator(productCountByExpansion(candidates)))
+                .forEach(group -> {
+                    var matchingSingles = singleGroups.getOrDefault(group.getKey(), List.of()).stream()
+                            .sorted(singleComparator())
+                            .toList();
+                    if (matchingSingles.isEmpty()) {
+                        return;
+                    }
+                    matchGroup(group.getValue(), matchingSingles, existingProductIds, usedPriceReferences, matchedAt)
+                            .stream()
+                            .filter(mapping -> !existingProductIds.contains(mapping.getCardmarketProductId()))
+                            .filter(mapping -> usedPriceReferences.add(mapping.getPriceReference()))
+                            .forEach(mapping -> {
+                                existingProductIds.add(mapping.getCardmarketProductId());
+                                matched.add(mapping);
+                            });
+                });
 
         matchUniqueCardCodeGroups(
                 candidates, singles, existingProductIds, usedPriceReferences, matchedAt).forEach(mapping -> {

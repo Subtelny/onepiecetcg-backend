@@ -36,7 +36,24 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
   scores, and rescores every expansion on each run, since the catalog grows and a previously unplaceable expansion
   becomes placeable for free. Singles then match by `card code + release + local variant`, preferring `V1`/`V2` parsed
   from the product name, with product date/ID ordering persisted as an explicitly lower-confidence heuristic when no
-  version metadata exists. The context stores durable Cardmarket-product-to-`price_reference` mappings separately from append-only
+  version metadata exists.
+  - **English only.** Cardmarket lists a set's Japanese/Asia print run as a separate expansion carrying the exact same
+    card codes, so both clear the containment threshold and both compete for the same price references. Nothing in the
+    singles feed distinguishes them; the sibling *sealed* product feed does, via language markers in product names, and
+    an expansion counts as non-English when a majority of its sealed products are marked (a bare majority, so
+    cross-set promo grab-bags that mix in a few marked products stay English). Those expansions are excluded before
+    single matching and before price history is appended. The exclusion is applied in the matcher rather than by
+    filtering its input: excluded expansions still get a persisted row, only an unmapped one, because the matcher only
+    rewrites expansions it sees and a filtered-out one would keep a stale mapping forever. If the sealed feed is
+    unreachable or empty the whole sync throws — proceeding unfiltered would silently remap every card.
+  - **Single mappings are rebuilt from scratch on every run**, so the result is a pure function of (candidates,
+    singles, expansions) and comes out identical in every environment instead of freezing whichever expansion happened
+    to be visited first. That requires the grouping pass to iterate in a deterministic order — several English
+    expansions map to one release (a booster set alongside its event packs), and the fullest expansion wins, since
+    that is the print a card page should link to. Confidence can't break that tie: both score ~1.000. Because the
+    rebuild is a delete + re-insert of rows sharing a unique `price_reference`, the delete must be a bulk statement,
+    and it must commit in the same transaction as the insert.
+  - The context stores durable Cardmarket-product-to-`price_reference` mappings separately from append-only
   price snapshots. Its source-neutral query port exposes two reads over opaque price references: a batch lookup of the
   newest mapped quote per reference, and a single-reference history. Card search and detail REST adapters use the batch
   lookup to expose prices without one query per card. The history is deduplicated **on read** — snapshots stay stored

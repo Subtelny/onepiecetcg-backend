@@ -80,6 +80,48 @@ class CardmarketPriceClientTest {
     }
 
     @Test
+    void nonEnglishExpansionIds_excludesAJapanesePrintRunButKeepsItsEnglishTwin() {
+        var sealedProducts = new CardmarketProductCatalogResponse("1", "2026-08-01", List.of(
+                new CardmarketProductResponse(1L, 5580L, null, "Memorial Collection Booster Box (Non-English)", null),
+                new CardmarketProductResponse(2L, 5580L, null, "Memorial Collection Booster Pack (Japanese)", null),
+                new CardmarketProductResponse(3L, 5585L, null, "Memorial Collection Booster Box", null),
+                new CardmarketProductResponse(4L, 5585L, null, "Memorial Collection Booster Pack", null)
+        ));
+
+        assertThat(CardmarketPriceClient.nonEnglishExpansionIds(sealedProducts)).containsExactly(5580L);
+    }
+
+    @Test
+    void nonEnglishExpansionIds_matchesTheAsiaRegionMarkerDespiteItsUpstreamTypo() {
+        var sealedProducts = new CardmarketProductCatalogResponse("1", "2026-08-01", List.of(
+                new CardmarketProductResponse(1L, 6018L, null, "Booster Box (Asia Region Legal)", null),
+                new CardmarketProductResponse(2L, 6018L, null, "Booster Pack (Asia Region Lega)", null)
+        ));
+
+        assertThat(CardmarketPriceClient.nonEnglishExpansionIds(sealedProducts)).containsExactly(6018L);
+    }
+
+    @Test
+    void nonEnglishExpansionIds_keepsAPromoGrabBagThatOnlyMixesInAFewMarkedProducts() {
+        var sealedProducts = new CardmarketProductCatalogResponse("1", "2026-08-01", List.of(
+                new CardmarketProductResponse(1L, 5262L, null, "Championship Pack 2025 (Non-English)", null),
+                new CardmarketProductResponse(2L, 5262L, null, "Championship Pack 2025", null),
+                new CardmarketProductResponse(3L, 5262L, null, "Regional Participation Pack 2025", null)
+        ));
+
+        assertThat(CardmarketPriceClient.nonEnglishExpansionIds(sealedProducts)).isEmpty();
+    }
+
+    @Test
+    void nonEnglishExpansionIds_rejectsAnEmptyFeedInsteadOfSilentlyDroppingTheFilter() {
+        var sealedProducts = new CardmarketProductCatalogResponse("1", "2026-08-01", List.of());
+
+        assertThatThrownBy(() -> CardmarketPriceClient.nonEnglishExpansionIds(sealedProducts))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("sealed product catalog");
+    }
+
+    @Test
     void parseCardmarketTimestamp_acceptsCompactAndColonOffsets() {
         assertThat(CardmarketPriceClient.parseCardmarketTimestamp("2026-08-02T02:44:43+0200"))
                 .isEqualTo(OffsetDateTime.parse("2026-08-02T02:44:43+02:00"));

@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface CardmarketSingleMappingRepository {
 
-    List<CardmarketSingleMapping> findAll();
+    void deleteAll();
 
     void saveAll(List<CardmarketSingleMapping> mappings);
 }
