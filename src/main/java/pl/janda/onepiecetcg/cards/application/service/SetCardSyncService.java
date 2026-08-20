@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import pl.janda.onepiecetcg.cards.application.model.CardDelimitedValues;
+import pl.janda.onepiecetcg.cards.application.model.CardSubTypes;
 import pl.janda.onepiecetcg.cards.application.model.OnePieceCard;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
@@ -127,11 +129,6 @@ public class SetCardSyncService implements SetCardSyncUseCase {
         return normalizedEffect == null ? triggerText : normalizedEffect + "\n" + triggerText;
     }
 
-    private static String normalizeList(String value) {
-        var normalized = blankToNull(value);
-        return normalized == null ? null : normalized.replaceAll("[,/]+", " ").replaceAll("\\s+", " ").trim();
-    }
-
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
@@ -184,14 +181,14 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 .cardText(combineCardText(source.getEffect(), source.getTrigger()))
                 .rarity(promo ? "PR" : sourceRarity)
                 .flatRarity(promo && !"PR".equals(sourceRarity) ? sourceRarity : null)
-                .cardColor(normalizeList(source.getColors()))
+                .cardColor(CardDelimitedValues.normalize(source.getColors()))
                 .cardType(source.getCategory())
                 .life(leader ? asString(source.getCost()) : null)
                 .cardCost(leader ? null : asString(source.getCost()))
                 .cardPower(asString(source.getPower()))
-                .subTypes(normalizeList(source.getTypes()))
+                .subTypes(CardSubTypes.normalize(source.getTypes()))
                 .counterAmount(source.getCounter())
-                .attribute(normalizeList(source.getAttributes()))
+                .attribute(CardDelimitedValues.normalize(source.getAttributes()))
                 .cardId(source.getId())
                 .priceReference(toPriceReference(source.getId()))
                 .cardImage(source.getImageUrl())

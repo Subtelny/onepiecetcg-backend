@@ -163,7 +163,7 @@ public class JooqSetCardQueryAdapter {
 
     private static Condition wordMatch(Field<String> column, String value) {
         var escaped = REGEX_METACHARACTERS.matcher(value).replaceAll("\\\\$0");
-        return condition("{0} ~* ('(^|[\\s/])' || {1} || '($|[\\s/])')", column, escaped);
+        return condition("{0} ~* ('(^|[\\s/,])' || {1} || '($|[\\s/,])')", column, escaped);
     }
 
     private static CardSummary toCardSummary(Record r) {
@@ -286,8 +286,8 @@ public class JooqSetCardQueryAdapter {
 
     private static Field<String> canonicalAttributeCombo(Field<String> column) {
         return field(
-                "(SELECT string_agg(t, ' & ' ORDER BY t) FROM regexp_split_to_table({0}, '[\\s/]+') AS t "
-                        + "WHERE t <> '' AND lower(t) <> 'null')",
+                "(SELECT string_agg(trim(t), ' & ' ORDER BY trim(t)) FROM regexp_split_to_table({0}, '[\\s,/]+') AS t "
+                        + "WHERE trim(t) <> '' AND lower(trim(t)) <> 'null')",
                 String.class, column);
     }
 

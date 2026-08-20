@@ -42,7 +42,7 @@ class SetCardSyncServiceTest {
                 .colors("Red/Green")
                 .cost(5)
                 .power(5000)
-                .attributes("Slash")
+                .attributes("Slash/Special")
                 .types("Supernovas,Straw Hat Crew")
                 .sourceProduct("Winner Pack 2026 Vol. 2")
                 .effect("[Activate: Main] Do something.")
@@ -63,12 +63,13 @@ class SetCardSyncServiceTest {
         assertThat(mapped.getSetId()).isEqualTo("OP-01");
         assertThat(mapped.getSetName()).isEqualTo("BOOSTER PACK -ROMANCE DAWN- [OP-01]");
         assertThat(mapped.getRarity()).isEqualTo("L");
-        assertThat(mapped.getCardColor()).isEqualTo("Red Green");
+        assertThat(mapped.getCardColor()).isEqualTo("Red, Green");
         assertThat(mapped.getCardType()).isEqualTo("Leader");
         assertThat(mapped.getLife()).isEqualTo("5");
         assertThat(mapped.getCardCost()).isNull();
         assertThat(mapped.getCardPower()).isEqualTo("5000");
-        assertThat(mapped.getSubTypes()).isEqualTo("Supernovas Straw Hat Crew");
+        assertThat(mapped.getSubTypes()).isEqualTo("Supernovas, Straw Hat Crew");
+        assertThat(mapped.getAttribute()).isEqualTo("Slash, Special");
         assertThat(mapped.getCardText()).isEqualTo("[Activate: Main] Do something.\n[Trigger] Draw 1 card.");
         assertThat(mapped.getCardId()).isEqualTo("OP01-001_p1");
         assertThat(mapped.getPriceReference()).isEqualTo("single:OP01-001_p1");

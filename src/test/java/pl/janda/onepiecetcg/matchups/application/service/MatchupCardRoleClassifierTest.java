@@ -37,12 +37,31 @@ class MatchupCardRoleClassifierTest {
         var rosinante = SetCard.builder()
                 .cardType("Character")
                 .cardCost("5")
-                .subTypes("Navy Donquixote Pirates")
+                .subTypes("Navy, Donquixote Pirates")
                 .counterAmount(1000)
                 .cardText("[On Play] You may trash 1 Event from your hand: Draw 2 cards.")
                 .build();
 
         var result = classifier.classify(profile, leader, rosinante);
+
+        assertThat(result).isEqualTo(MatchupLeaderCardCategory.EXPECTED);
+    }
+
+    @Test
+    void classify_keepsCardInCoreWhenAnyOneOfMultipleSubTypesMatchesLeader() {
+        var leader = SetCard.builder()
+                .cardType("Leader")
+                .subTypes("Supernovas, Bonney Pirates")
+                .build();
+        var card = SetCard.builder()
+                .cardType("Character")
+                .cardCost("5")
+                .subTypes("Bonney Pirates, Egghead")
+                .counterAmount(1000)
+                .build();
+
+        var result = classifier.classify(
+                profile(MatchupLeaderCardCategory.EXPECTED, "100.00", "2.0"), leader, card);
 
         assertThat(result).isEqualTo(MatchupLeaderCardCategory.EXPECTED);
     }
@@ -106,7 +125,7 @@ class MatchupCardRoleClassifierTest {
     private SetCard leader() {
         return SetCard.builder()
                 .cardType("Leader")
-                .subTypes("The Seven Warlords of the Sea Donquixote Pirates")
+                .subTypes("The Seven Warlords of the Sea, Donquixote Pirates")
                 .cardText("Select your Leader or 1 of your {Donquixote Pirates} type Characters.")
                 .build();
     }

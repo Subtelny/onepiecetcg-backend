@@ -27,9 +27,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -175,6 +173,8 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .id(1L)
                 .cardSetId("OP13-119")
                 .cardName("Charlotte Katakuri")
+                .cardColor("Red, Green")
+                .attribute("Slash, Special")
                 .build();
         var older = CardErrata.builder()
                 .cardCode("OP13-119")
@@ -199,7 +199,11 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .andExpect(jsonPath("$.errata[0].after").value("Middle text"))
                 .andExpect(jsonPath("$.errata[0].note").value("Also applies to parallel card version."))
                 .andExpect(jsonPath("$.errata[1].date").value("2024-03-03"))
-                .andExpect(jsonPath("$.errata[1].after").value("New text"));
+                .andExpect(jsonPath("$.errata[1].after").value("New text"))
+                .andExpect(jsonPath("$.color[0]").value("RED"))
+                .andExpect(jsonPath("$.color[1]").value("GREEN"))
+                .andExpect(jsonPath("$.attribute[0]").value("Slash"))
+                .andExpect(jsonPath("$.attribute[1]").value("Special"));
     }
 
     @Test

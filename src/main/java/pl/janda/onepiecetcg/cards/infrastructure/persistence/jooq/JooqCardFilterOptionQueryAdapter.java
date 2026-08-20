@@ -31,8 +31,8 @@ public class JooqCardFilterOptionQueryAdapter {
             count++;
         }
         for (var value : distinctValues("""
-                SELECT DISTINCT upper(t) AS v FROM set_cards, regexp_split_to_table(card_color, '\\s+') AS t
-                WHERE variant_index = '0' AND card_color IS NOT NULL AND t <> ''
+                SELECT DISTINCT upper(trim(t)) AS v FROM set_cards, regexp_split_to_table(card_color, '[\\s,/]+') AS t
+                WHERE variant_index = '0' AND card_color IS NOT NULL AND trim(t) <> ''
                 """)) {
             insert.values(CardFilterOptionCategory.COLOR.name(), value, null);
             count++;
@@ -59,18 +59,18 @@ public class JooqCardFilterOptionQueryAdapter {
             count++;
         }
         for (var value : distinctValues("""
-                SELECT DISTINCT t AS v FROM set_cards, regexp_split_to_table(attribute, '[\\s/]+') AS t
+                SELECT DISTINCT trim(t) AS v FROM set_cards, regexp_split_to_table(attribute, '[\\s,/]+') AS t
                 WHERE variant_index = '0' AND attribute IS NOT NULL AND trim(attribute) <> ''
-                  AND t <> '' AND lower(t) <> 'null'
+                  AND trim(t) <> '' AND lower(trim(t)) <> 'null'
                 """)) {
             insert.values(CardFilterOptionCategory.ATTRIBUTE.name(), value, null);
             count++;
         }
         for (var value : distinctValues("""
                 SELECT DISTINCT combo AS v FROM (
-                    SELECT (SELECT string_agg(tok, ' & ' ORDER BY tok)
-                            FROM regexp_split_to_table(attribute, '[\\s/]+') AS tok
-                            WHERE tok <> '' AND lower(tok) <> 'null') AS combo
+                    SELECT (SELECT string_agg(trim(tok), ' & ' ORDER BY trim(tok))
+                            FROM regexp_split_to_table(attribute, '[\\s,/]+') AS tok
+                            WHERE trim(tok) <> '' AND lower(trim(tok)) <> 'null') AS combo
                     FROM set_cards
                     WHERE variant_index = '0' AND attribute IS NOT NULL AND trim(attribute) <> ''
                 ) sub
@@ -80,8 +80,8 @@ public class JooqCardFilterOptionQueryAdapter {
             count++;
         }
         for (var value : distinctValues("""
-                SELECT DISTINCT t AS v FROM set_cards, regexp_split_to_table(sub_types, '\\s+') AS t
-                WHERE variant_index = '0' AND sub_types IS NOT NULL AND t <> ''
+                SELECT DISTINCT trim(t) AS v FROM set_cards, regexp_split_to_table(sub_types, '\\s*[,/]\\s*') AS t
+                WHERE variant_index = '0' AND sub_types IS NOT NULL AND trim(t) <> ''
                 """)) {
             insert.values(CardFilterOptionCategory.SUB_TYPE.name(), value, null);
             count++;

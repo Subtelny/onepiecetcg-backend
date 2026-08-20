@@ -1,10 +1,10 @@
 package pl.janda.onepiecetcg.matchups.rest.mapper;
 
 import org.springframework.stereotype.Component;
+import pl.janda.onepiecetcg.cards.application.model.CardDelimitedValues;
 import pl.janda.onepiecetcg.matchups.application.model.*;
 import pl.janda.onepiecetcg.matchups.rest.dto.*;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -145,10 +145,7 @@ public class MatchupsMapper {
     }
 
     private List<String> parseColors(String colors) {
-        if (colors == null || colors.isBlank()) {
-            return List.of();
-        }
-        return Arrays.stream(colors.split("\\s+"))
+        return CardDelimitedValues.tokens(colors).stream()
                 .map(String::toUpperCase)
                 .toList();
     }

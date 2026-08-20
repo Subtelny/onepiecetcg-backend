@@ -17,6 +17,7 @@ import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.port.in.CardSetSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.port.in.SetCardSyncUseCase;
+import pl.janda.onepiecetcg.cards.infrastructure.persistence.jooq.JooqCardFilterOptionQueryAdapter;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jooq.JooqSetCardQueryAdapter;
 import pl.janda.onepiecetcg.cards.infrastructure.persistence.jpa.SetCardJpaRepository;
 import pl.janda.onepiecetcg.pricing.application.port.in.CardmarketPriceSyncUseCase;
@@ -58,6 +59,9 @@ class JooqSetCardQueryAdapterIT {
     private JooqSetCardQueryAdapter adapter;
 
     @Autowired
+    private JooqCardFilterOptionQueryAdapter filterOptionAdapter;
+
+    @Autowired
     private SetCardJpaRepository jpaRepository;
 
     @Autowired
@@ -75,6 +79,8 @@ class JooqSetCardQueryAdapterIT {
                         .cardSetId("OP01-001")
                         .cardText("If you have a [Straw Hat] type Character: draw 1 card.")
                         .cardCost("1")
+                        .cardColor("Red, Green")
+                        .subTypes("Supernovas, Bonney Pirates")
                         .variantIndex("0")
                         .build(),
                 SetCard.builder()
@@ -82,7 +88,7 @@ class JooqSetCardQueryAdapterIT {
                         .cardSetId("OP01-002")
                         .cardText("[On Play] Give up to 1 of your Leader or Character cards +1000 power for this turn.")
                         .cardCost("3")
-                        .attribute("Slash")
+                        .attribute("Slash, Special")
                         .variantIndex("0")
                         .build(),
                 SetCard.builder()
@@ -109,6 +115,52 @@ class JooqSetCardQueryAdapterIT {
                         .variantIndex("0")
                         .build()
         ));
+    }
+
+    @Test
+    void subTypeFilter_matchesEachCommaSeparatedMultiWordValue() {
+        var byFirstSubType = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, "Supernovas", null,
+                null, null, 0, 50, false, false);
+        var bySecondSubType = adapter.search(
+                null, CardSearchField.NAME,
+                null, null, null, null, null, null, null, null, null, "Bonney Pirates", null,
+                null, null, 0, 50, false, false);
+
+        assertThat(byFirstSubType).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
+        assertThat(bySecondSubType).extracting(CardSummary::getCardName).containsExactly("Monkey D. Luffy");
+    }
+
+    @Test
+    void filterOptions_keepCommaSeparatedValuesIntact() {
+        filterOptionAdapter.refresh();
+
+        var colors = dsl.fetch("""
+                SELECT value FROM card_filter_options
+                WHERE category = 'COLOR'
+                ORDER BY value
+                """).getValues("value", String.class);
+        var attributes = dsl.fetch("""
+                SELECT value FROM card_filter_options
+                WHERE category = 'ATTRIBUTE'
+                ORDER BY value
+                """).getValues("value", String.class);
+        var attributeCombos = dsl.fetch("""
+                SELECT value FROM card_filter_options
+                WHERE category = 'ATTRIBUTE_COMBO'
+                ORDER BY value
+                """).getValues("value", String.class);
+        var subTypes = dsl.fetch("""
+                SELECT value FROM card_filter_options
+                WHERE category = 'SUB_TYPE'
+                ORDER BY value
+                """).getValues("value", String.class);
+
+        assertThat(colors).containsExactly("GREEN", "RED");
+        assertThat(attributes).containsExactly("?", "Slash", "Special");
+        assertThat(attributeCombos).containsExactly("Slash & Special");
+        assertThat(subTypes).containsExactly("Bonney Pirates", "Hat", "Straw", "Supernovas");
     }
 
     @Test

@@ -1,12 +1,13 @@
 package pl.janda.onepiecetcg.matchups.application.service;
 
 import org.springframework.stereotype.Service;
+import pl.janda.onepiecetcg.cards.application.model.CardSubTypes;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupLeaderCardCategory;
 import pl.janda.onepiecetcg.matchups.application.model.NormalizedLeaderCard;
 
 import java.math.BigDecimal;
-import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
@@ -44,36 +45,35 @@ public class MatchupCardRoleClassifier {
     }
 
     private boolean hasArchetypeAffinity(SetCard leader, SetCard card) {
-        var leaderSubTypes = normalize(leader.getSubTypes());
-        var cardSubTypes = normalize(card.getSubTypes());
-        if (leaderSubTypes.isBlank()) {
+        var leaderSubTypes = CardSubTypes.comparableValues(leader.getSubTypes());
+        var cardSubTypes = CardSubTypes.comparableValues(card.getSubTypes());
+        if (leaderSubTypes.isEmpty()) {
             return false;
         }
-        if (!cardSubTypes.isBlank()
-                && (leaderSubTypes.contains(cardSubTypes) || cardSubTypes.contains(leaderSubTypes))) {
+        if (cardSubTypes.stream().anyMatch(leaderSubTypes::contains)) {
             return true;
         }
         return referencesLeaderType(card.getCardText(), leaderSubTypes)
                 || referencesCardType(leader.getCardText(), cardSubTypes);
     }
 
-    private boolean referencesLeaderType(String effect, String leaderSubTypes) {
+    private boolean referencesLeaderType(String effect, Set<String> leaderSubTypes) {
         var matcher = TYPE_REFERENCE_PATTERN.matcher(effect == null ? "" : effect);
         while (matcher.find()) {
-            if (leaderSubTypes.contains(normalize(matcher.group(1)))) {
+            if (leaderSubTypes.contains(CardSubTypes.comparableValue(matcher.group(1)))) {
                 return true;
             }
         }
         return false;
     }
 
-    private boolean referencesCardType(String effect, String cardSubTypes) {
-        if (cardSubTypes.isBlank()) {
+    private boolean referencesCardType(String effect, Set<String> cardSubTypes) {
+        if (cardSubTypes.isEmpty()) {
             return false;
         }
         var matcher = TYPE_REFERENCE_PATTERN.matcher(effect == null ? "" : effect);
         while (matcher.find()) {
-            if (cardSubTypes.contains(normalize(matcher.group(1)))) {
+            if (cardSubTypes.contains(CardSubTypes.comparableValue(matcher.group(1)))) {
                 return true;
             }
         }
@@ -91,12 +91,4 @@ public class MatchupCardRoleClassifier {
         }
     }
 
-    private String normalize(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.toLowerCase(Locale.ROOT)
-                .replaceAll("[^\\p{L}\\p{N}]+", " ")
-                .trim();
-    }
 }

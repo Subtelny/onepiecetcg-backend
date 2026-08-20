@@ -127,7 +127,7 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
     void getMatchups_afterRealSync_filtersInvalidAndDuplicateLeaderRows() throws Exception {
         var catalogCards = new ArrayList<>(List.of(
                 SetCard.builder().cardSetId("OP14-020").cardName("Dracule Mihawk")
-                        .cardColor("GREEN").cardImage("https://cdn.example/op14-020.png")
+                        .cardColor("GREEN, BLUE").cardImage("https://cdn.example/op14-020.png")
                         .cardType("Leader").variantIndex("0").build(),
                 SetCard.builder().cardSetId("OP13-079").cardName("Charlotte Katakuri")
                         .cardColor("RED").cardImage("https://cdn.example/op13-079.png")
@@ -289,6 +289,7 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
         var groupedLeader = JsonPath.<List<Map<String, Object>>>read(result.getResponse().getContentAsString(),
                 "$.leaders[?(@.code=='OP14-020')]");
         assertThat(groupedLeader).hasSize(1);
+        assertThat(groupedLeader.get(0).get("colors")).isEqualTo(List.of("GREEN", "BLUE"));
         assertThat(groupedLeader.get(0).get("matches")).isEqualTo(200);
         assertThat(((Number) groupedLeader.get(0).get("winRate")).doubleValue()).isEqualTo(50.0);
         assertThat(groupedLeader.get(0).get("profileDecklists")).isEqualTo(5);

@@ -239,20 +239,14 @@ public class CardMapper {
     }
 
     private List<String> parseColors(String cardColor) {
-        if (cardColor == null) {
-            return List.of();
-        }
-        return Arrays.stream(cardColor.split("\\s+"))
+        return CardDelimitedValues.tokens(cardColor).stream()
                 .map(String::toUpperCase)
                 .filter(token -> Arrays.stream(CardColor.values()).anyMatch(c -> c.name().equals(token)))
                 .toList();
     }
 
     private List<String> parseAttributes(String attribute) {
-        if (attribute == null || attribute.isBlank()) {
-            return List.of();
-        }
-        return Arrays.stream(attribute.split("[\\s/]+"))
+        return CardDelimitedValues.tokens(attribute).stream()
                 .filter(token -> !token.isBlank() && !token.equalsIgnoreCase("null"))
                 .toList();
     }
