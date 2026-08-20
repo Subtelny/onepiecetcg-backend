@@ -365,6 +365,27 @@ class JooqSetCardQueryAdapterIT {
     }
 
     @Test
+    void semanticSearch_matchesWholeNameAndWordWithinDotSeparatedName() {
+        dsl.execute("""
+                UPDATE set_cards
+                SET card_name = 'Monkey.D.Luffy'
+                WHERE card_set_id = 'OP01-001'
+                """);
+
+        var byWord = adapter.search(
+                "Luffy", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+        var byWholeName = adapter.search(
+                "Monkey.D.Luffy", CardSearchField.SEMANTIC,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, 0, 50, false, false);
+
+        assertThat(byWord).extracting(CardSummary::getCardName).containsExactly("Monkey.D.Luffy");
+        assertThat(byWholeName).extracting(CardSummary::getCardName).containsExactly("Monkey.D.Luffy");
+    }
+
+    @Test
     void semanticSearch_prefixSharedAcrossRows_matchesAll() {
 
         var results = adapter.search(

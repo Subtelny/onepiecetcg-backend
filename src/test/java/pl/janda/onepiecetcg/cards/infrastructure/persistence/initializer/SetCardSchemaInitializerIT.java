@@ -71,7 +71,8 @@ class SetCardSchemaInitializerIT {
         assertThat(generationExpression).isNotNull();
         assertThat(generationExpression.toString())
                 .contains("setweight")
-                .contains("COALESCE(display_name, card_name");
+                .contains("COALESCE(display_name, card_name")
+                .contains("replace");
     }
 
     @Test
