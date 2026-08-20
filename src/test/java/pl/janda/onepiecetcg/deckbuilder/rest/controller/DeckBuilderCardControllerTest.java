@@ -9,6 +9,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import pl.janda.onepiecetcg.OnePieceTcgApplication;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.*;
+import pl.janda.onepiecetcg.deckbuilder.application.model.DeckPriceSummary;
+import pl.janda.onepiecetcg.deckbuilder.application.model.DeckPriceTotal;
+import pl.janda.onepiecetcg.deckbuilder.application.port.in.DeckPriceUseCase;
 import pl.janda.onepiecetcg.matchups.application.port.in.MatchupSyncUseCase;
 import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 import pl.janda.onepiecetcg.pricing.application.model.PriceSource;
@@ -23,9 +26,12 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,6 +50,9 @@ class DeckBuilderCardControllerTest extends PostgresSpringBootTest {
 
     @MockitoBean
     private PriceQueryUseCase priceQueryUseCase;
+
+    @MockitoBean
+    private DeckPriceUseCase deckPriceUseCase;
 
     @MockitoBean
     private CardSetSyncUseCase cardSetSyncUseCase;
@@ -155,6 +164,53 @@ class DeckBuilderCardControllerTest extends PostgresSpringBootTest {
                 .andExpect(status().isOk());
 
         verify(cardCatalogUseCase).getVariantByCardCode("OP16-079", "p1");
+    }
+
+    @Test
+    void getPriceSummary_returnsTheFrontendContract() throws Exception {
+        when(deckPriceUseCase.calculateDeckPrice(anyList())).thenReturn(new DeckPriceSummary(
+                List.of(new DeckPriceTotal("EUR", new BigDecimal("123.45"))),
+                49,
+                51));
+
+        mockMvc.perform(post("/api/deckbuilder/cards/price-summary")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {"cards":[
+                                  {"cardCode":"OP01-001","variantIndex":"0","quantity":1},
+                                  {"cardCode":"OP02-002","variantIndex":"p1","quantity":4}
+                                ]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totals[0].currency").value("EUR"))
+                .andExpect(jsonPath("$.totals[0].amount").value(123.45))
+                .andExpect(jsonPath("$.pricedCopies").value(49))
+                .andExpect(jsonPath("$.totalCopies").value(51));
+
+        verify(deckPriceUseCase).calculateDeckPrice(List.of(
+                new pl.janda.onepiecetcg.deckbuilder.application.model.DeckPriceItem("OP01-001", "0", 1),
+                new pl.janda.onepiecetcg.deckbuilder.application.model.DeckPriceItem("OP02-002", "p1", 4)));
+    }
+
+    @Test
+    void getPriceSummary_rejectsInvalidVariantsBeforeCallingTheUseCase() throws Exception {
+        mockMvc.perform(post("/api/deckbuilder/cards/price-summary")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {"cards":[
+                                  {"cardCode":"OP01-001","variantIndex":"1","quantity":4}
+                                ]}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        org.mockito.Mockito.verifyNoInteractions(deckPriceUseCase);
+    }
+
+    @Test
+    void unsupportedMethodsRemainMethodNotAllowedInsteadOfInternalServerError() throws Exception {
+        mockMvc.perform(post("/api/deckbuilder/cards/filters"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405));
     }
 
     @Test

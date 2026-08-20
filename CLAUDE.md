@@ -70,8 +70,8 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
 - **Deployment memory budget:** prod runs in a 1 GB container, so heap/metaspace are capped by JVM flags in `Procfile` and the Tomcat/Hikari/`@Async` pools are capped in `application-prod.yml`. Both are documented in `DEPLOYMENT.md` — when adding a feature that holds a whole table in memory or spawns threads, that budget is the constraint to design against.
 - Swagger UI: `http://localhost:3000/swagger-ui.html`. OpenAPI spec: `http://localhost:3000/api-docs`. Both are **disabled in the `prod` profile** — the spec would otherwise publish every route, `/api/internal/*` included, to anyone. Keep the OpenAPI annotations mandatory anyway (§7): they're the contract documentation for local/dev consumers, and the frontend is verified against the local Swagger UI.
 - Reference key endpoints: `GET /` and `GET /health` (liveness), `GET /api/cards`, `GET /api/cards/{id}`,
-  `GET /api/deckbuilder/cards`, `GET /api/deckbuilder/cards/{id}`, `POST /api/deckbuilder/shared-decks`, and
-  `GET /api/deckbuilder/shared-decks/{code}`.
+  `GET /api/deckbuilder/cards`, `GET /api/deckbuilder/cards/{id}`, `POST /api/deckbuilder/cards/price-summary`,
+  `POST /api/deckbuilder/shared-decks`, and `GET /api/deckbuilder/shared-decks/{code}`.
 
 ---
 
@@ -146,10 +146,11 @@ validate and hydrate stable card-number references. Shared-deck persistence deli
 `set_cards`: catalog sync replaces that table and its generated identity IDs are not durable references.
 
 `pricing.infrastructure.client` similarly adapts the narrow card-owned priceable-catalog inbound port into pricing's own
-application model. The `pricing.application` layer therefore has no dependency on `cards`. The cards and deckbuilder
-REST adapters compose their catalog responses with the source-neutral pricing query port; their application layers
-remain independent of pricing. The durable association is the opaque namespaced `price_reference`; do not add a database
-foreign key or share JPA entities across these contexts.
+application model. The `pricing.application` layer therefore has no dependency on `cards`. Card REST adapters compose
+catalog responses with the source-neutral pricing query port. Deckbuilder application services may compose the card
+catalog and source-neutral pricing inbound ports for deck-scoped calculations, while depending only on those owning
+contexts' application contracts. The durable association is the opaque namespaced `price_reference`; do not add a
+database foreign key or share JPA entities across these contexts.
 
 **DTO/mapper duplication (accepted, deliberate exception to the dedup rule in §8):** `cards.rest.dto`/
 `cards.rest.mapper` and `deckbuilder.rest.dto`/`deckbuilder.rest.mapper` intentionally define separate, near-identical

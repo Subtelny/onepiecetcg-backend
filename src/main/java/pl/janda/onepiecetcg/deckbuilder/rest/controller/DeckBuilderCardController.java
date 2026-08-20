@@ -7,17 +7,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.CardCatalogUseCase;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardDto;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardFilterOptionsDto;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardSearchRequest;
-import pl.janda.onepiecetcg.deckbuilder.rest.dto.DeckBuilderCardSearchResponse;
+import pl.janda.onepiecetcg.deckbuilder.application.port.in.DeckPriceUseCase;
+import pl.janda.onepiecetcg.deckbuilder.rest.dto.*;
 import pl.janda.onepiecetcg.deckbuilder.rest.mapper.DeckBuilderCardMapper;
+import pl.janda.onepiecetcg.deckbuilder.rest.mapper.DeckPriceMapper;
 import pl.janda.onepiecetcg.pricing.application.model.PriceQuote;
 import pl.janda.onepiecetcg.pricing.application.port.in.PriceQueryUseCase;
 
@@ -34,7 +34,11 @@ public class DeckBuilderCardController {
 
     private final PriceQueryUseCase priceQueryUseCase;
 
+    private final DeckPriceUseCase deckPriceUseCase;
+
     private final DeckBuilderCardMapper deckBuilderCardMapper;
+
+    private final DeckPriceMapper deckPriceMapper;
 
     @GetMapping
     @Operation(summary = "Get all cards or search with filters",
@@ -102,6 +106,28 @@ public class DeckBuilderCardController {
     public ResponseEntity<DeckBuilderCardFilterOptionsDto> getFilterOptions() {
         CardFilterOptions options = cardCatalogUseCase.getFilterOptions();
         return ResponseEntity.ok(deckBuilderCardMapper.toFilterOptionsDto(options));
+    }
+
+    @PostMapping("/price-summary")
+    @Operation(
+            summary = "Calculate a deck price summary",
+            description = "Resolves durable card-code and variant-index references in one batch, then returns " +
+                    "the current trend-price total grouped by currency and the number of priced copies",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    description = "Leader and deck-card quantities keyed by durable card code and variant index",
+                    content = @Content(schema = @Schema(implementation = DeckPriceSummaryRequest.class))))
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Deck price summary calculated",
+                    content = @Content(schema = @Schema(implementation = DeckPriceSummaryDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid card references or quantities", content = @Content)
+    })
+    public ResponseEntity<DeckPriceSummaryDto> getPriceSummary(
+            @Valid @RequestBody DeckPriceSummaryRequest request) {
+        var summary = deckPriceUseCase.calculateDeckPrice(deckPriceMapper.toItems(request));
+        return ResponseEntity.ok(deckPriceMapper.toDto(summary));
     }
 
     @GetMapping("/by-code")

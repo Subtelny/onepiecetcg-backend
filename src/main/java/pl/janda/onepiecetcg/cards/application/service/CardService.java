@@ -6,9 +6,7 @@ import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.port.in.CardCatalogUseCase;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.regex.Pattern;
 
 @Service
@@ -67,6 +65,33 @@ public class CardService implements CardCatalogUseCase {
             return List.of();
         }
         return setCardRepository.findRepresentativesByCardSetIds(cardCodes);
+    }
+
+    @Override
+    public List<SetCard> getCardsByVariantReferences(List<CardVariantReference> references) {
+        if (references == null || references.isEmpty()) {
+            return List.of();
+        }
+        var normalizedReferences = references.stream()
+                .filter(Objects::nonNull)
+                .map(reference -> new CardVariantReference(
+                        reference.cardCode().trim(),
+                        normalizeVariantIndex(reference.variantIndex())))
+                .distinct()
+                .toList();
+        if (normalizedReferences.isEmpty()) {
+            return List.of();
+        }
+
+        var requestedReferences = new HashSet<>(normalizedReferences);
+        var cardCodes = normalizedReferences.stream()
+                .map(CardVariantReference::cardCode)
+                .distinct()
+                .toList();
+        return setCardRepository.findByCardSetIdIn(cardCodes).stream()
+                .filter(card -> requestedReferences.contains(
+                        new CardVariantReference(card.getCardSetId(), card.getVariantIndex())))
+                .toList();
     }
 
     @Override

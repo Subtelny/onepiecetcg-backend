@@ -14,6 +14,8 @@ public interface SetCardQueryRepository {
 
     List<SetCard> findByCardSetId(String cardSetId);
 
+    List<SetCard> findByCardSetIdIn(List<String> cardSetIds);
+
     Optional<SetCard> findByCardSetIdAndVariantIndex(String cardSetId, String variantIndex);
 
     List<SetCard> findRepresentativesByCardSetIds(List<String> cardSetIds);

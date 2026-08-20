@@ -97,6 +97,11 @@ public class SpringSetCardRepository implements SetCardQueryRepository, SetCardC
     }
 
     @Override
+    public List<SetCard> findByCardSetIdIn(List<String> cardSetIds) {
+        return jpaRepository.findByCardSetIdIn(cardSetIds);
+    }
+
+    @Override
     public Optional<SetCard> findByCardSetIdAndVariantIndex(String cardSetId, String variantIndex) {
         return jpaRepository.findByCardSetIdAndVariantIndex(cardSetId, variantIndex);
     }

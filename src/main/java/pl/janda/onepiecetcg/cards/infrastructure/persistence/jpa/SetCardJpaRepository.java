@@ -12,6 +12,8 @@ public interface SetCardJpaRepository extends JpaRepository<SetCard, Long> {
 
     List<SetCard> findByCardSetId(String cardSetId);
 
+    List<SetCard> findByCardSetIdIn(List<String> cardSetIds);
+
     Optional<SetCard> findByCardSetIdAndVariantIndex(String cardSetId, String variantIndex);
 
     List<SetCard> findByCardSetIdInAndVariantIndex(List<String> cardSetIds, String variantIndex);

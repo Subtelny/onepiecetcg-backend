@@ -5,10 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pl.janda.onepiecetcg.cards.application.model.CardSearchCriteria;
-import pl.janda.onepiecetcg.cards.application.model.CardSearchField;
-import pl.janda.onepiecetcg.cards.application.model.CardSearchQuery;
-import pl.janda.onepiecetcg.cards.application.model.SetCard;
+import pl.janda.onepiecetcg.cards.application.model.*;
 import pl.janda.onepiecetcg.cards.application.repository.SetCardQueryRepository;
 
 import java.util.List;
@@ -140,6 +137,26 @@ class CardServiceTest {
 
         assertThat(result).isSameAs(cards);
         verify(setCardRepository).findRepresentativesByCardSetIds(List.of("OP01-001", "OP01-006"));
+    }
+
+    @Test
+    void getCardsByVariantReferences_usesOneBulkLookupAndReturnsOnlyRequestedPrints() {
+        cardService = new CardService(setCardRepository, cardFilterOptionService, semanticQueryParser);
+        var requested = List.of(
+                new CardVariantReference("OP01-001", "p1"),
+                new CardVariantReference("OP02-002", "R1"));
+        var parallel = SetCard.builder().cardSetId("OP01-001").variantIndex("p1").build();
+        var reprint = SetCard.builder().cardSetId("OP02-002").variantIndex("r1").build();
+        when(setCardRepository.findByCardSetIdIn(List.of("OP01-001", "OP02-002")))
+                .thenReturn(List.of(
+                        SetCard.builder().cardSetId("OP01-001").variantIndex("0").build(),
+                        parallel,
+                        reprint));
+
+        var result = cardService.getCardsByVariantReferences(requested);
+
+        assertThat(result).containsExactly(parallel, reprint);
+        verify(setCardRepository).findByCardSetIdIn(List.of("OP01-001", "OP02-002"));
     }
 
     @Test
