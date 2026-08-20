@@ -17,8 +17,14 @@ Spring Boot 4.1.0 / Java 21 REST backend for a One Piece TCG app. Consumed by a 
     the `pricing` bounded context. Price mappings reference catalog items by deterministic text keys, never by
     replaceable `set_cards` identity IDs.
   - Browsable community decks and shops → not yet migrated to persistent storage.
-- **Card catalog sync:** independent scheduled jobs read the scraper-populated `onepiece_card_sets` and `onepiece_cards`
-  tables and write the application-facing `card_sets` and `set_cards` tables. `SetCardSyncService` maps every printed
+- **Card catalog sync:** independent scheduled jobs read released Bandai rows from scraper-populated
+  `onepiece_card_sets`/`onepiece_cards` plus future-release rows from
+  `cardkaizoku_card_sets`/`cardkaizoku_cards`, then write the application-facing `card_sets` and `set_cards` tables. The
+  SQL source adapters suppress a whole CardKaizoku set as soon as the same dashed `set_id` exists in Bandai and ignore
+  CardKaizoku releases whose `release_date <= CURRENT_DATE`; official data therefore replaces every leaked field
+  atomically instead of producing a mixed-source set. Both application tables expose `released` and
+  `release_date`; leaked price references use `cardkaizoku:<card id>` and released prints keep `single:<card id>`.
+  `SetCardSyncService` maps every printed
   variant from the source table, derives its text `variant_index` directly from `onepiece_cards.id` (`0` for the
   unsuffixed default print, `pN` for a parallel, `rN` for a reprint), replaces `set_cards` transactionally, and
   refreshes filter options on every run. A representative card is always the row with `variant_index = '0'`; there is no

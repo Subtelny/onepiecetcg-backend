@@ -9,10 +9,12 @@ import pl.janda.onepiecetcg.cards.application.model.CardFilterOptionValue;
 import pl.janda.onepiecetcg.cards.application.model.CardFilterOptions;
 import pl.janda.onepiecetcg.cards.application.model.CardSet;
 import pl.janda.onepiecetcg.cards.application.repository.CardFilterOptionRepository;
+import pl.janda.onepiecetcg.cards.application.repository.CardSetRepository;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +24,8 @@ public class CardFilterOptionService {
 
     private final CardFilterOptionRepository cardFilterOptionRepository;
 
+    private final CardSetRepository cardSetRepository;
+
     @Transactional
     public void refresh() {
         log.info("Starting refresh of card filter options cache");
@@ -29,9 +33,38 @@ public class CardFilterOptionService {
         log.info("Completed refresh of card filter options cache");
     }
 
+    private static List<CardSet> setsOf(
+            List<CardFilterOptionValue> setEntries,
+            Map<String, CardSet> cardSetsById
+    ) {
+        return setEntries.stream()
+                .map(entry -> {
+                    var source = cardSetsById.get(entry.getValue());
+                    return CardSet.builder()
+                            .setId(entry.getValue())
+                            .setName(entry.getLabel())
+                            .released(source == null || source.isReleased())
+                            .releaseDate(source != null ? source.getReleaseDate() : null)
+                            .build();
+                })
+                .sorted(Comparator.comparing(CardSet::getSetId))
+                .toList();
+    }
+
+    private static List<String> valuesOf(Map<CardFilterOptionCategory, List<CardFilterOptionValue>> grouped,
+                                          CardFilterOptionCategory category) {
+        return grouped.getOrDefault(category, List.of()).stream()
+                .map(CardFilterOptionValue::getValue)
+                .sorted()
+                .toList();
+    }
+
     public CardFilterOptions getFilterOptions() {
         var grouped = cardFilterOptionRepository.findAll().stream()
                 .collect(Collectors.groupingBy(CardFilterOptionValue::getCategory));
+
+        var cardSetsById = cardSetRepository.findAll().stream()
+                .collect(Collectors.toMap(CardSet::getSetId, Function.identity()));
 
         return CardFilterOptions.builder()
                 .types(valuesOf(grouped, CardFilterOptionCategory.TYPE))
@@ -43,22 +76,7 @@ public class CardFilterOptionService {
                 .attributeCombos(valuesOf(grouped, CardFilterOptionCategory.ATTRIBUTE_COMBO))
                 .subTypes(valuesOf(grouped, CardFilterOptionCategory.SUB_TYPE))
                 .prefixes(valuesOf(grouped, CardFilterOptionCategory.PREFIX))
-                .sets(setsOf(grouped.getOrDefault(CardFilterOptionCategory.SET, List.of())))
+                .sets(setsOf(grouped.getOrDefault(CardFilterOptionCategory.SET, List.of()), cardSetsById))
                 .build();
-    }
-
-    private static List<String> valuesOf(Map<CardFilterOptionCategory, List<CardFilterOptionValue>> grouped,
-                                          CardFilterOptionCategory category) {
-        return grouped.getOrDefault(category, List.of()).stream()
-                .map(CardFilterOptionValue::getValue)
-                .sorted()
-                .toList();
-    }
-
-    private static List<CardSet> setsOf(List<CardFilterOptionValue> setEntries) {
-        return setEntries.stream()
-                .map(entry -> CardSet.builder().setId(entry.getValue()).setName(entry.getLabel()).build())
-                .sorted(Comparator.comparing(CardSet::getSetId))
-                .toList();
     }
 }

@@ -9,6 +9,7 @@ import pl.janda.onepiecetcg.cards.application.model.OnePieceCard;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,6 +108,35 @@ class SetCardSyncServiceTest {
         assertThat(mapped.getCardCost()).isEqualTo("3");
         assertThat(mapped.getLife()).isNull();
         assertThat(mapped.getVariantIndex()).isEqualTo("p9");
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void syncSetCards_marksLeaksAndUsesASeparatePriceReferenceNamespace() {
+        var releaseDate = LocalDate.of(2026, 8, 28);
+        var source = OnePieceCard.builder()
+                .id("OP17-017")
+                .name("Future Event")
+                .setId("OP-17")
+                .setName("BOOSTER PACK [OP-17]")
+                .rarity("Uncommon")
+                .category("Event")
+                .released(false)
+                .releaseDate(releaseDate)
+                .build();
+        when(onePieceCardRepository.findAll()).thenReturn(List.of(source));
+        var service = new SetCardSyncService(
+                onePieceCardRepository, flatRarityCalculatorService, new CardDisplayNameService(),
+                setCardReplacementService);
+
+        service.syncSetCards();
+
+        var captor = ArgumentCaptor.forClass(List.class);
+        verify(setCardReplacementService).replaceAll(captor.capture());
+        var mapped = ((List<SetCard>) captor.getValue()).getFirst();
+        assertThat(mapped.isReleased()).isFalse();
+        assertThat(mapped.getReleaseDate()).isEqualTo(releaseDate);
+        assertThat(mapped.getPriceReference()).isEqualTo("cardkaizoku:OP17-017");
     }
 
     @Test

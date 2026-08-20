@@ -29,4 +29,9 @@ public class SpringCardSetRepository implements CardSetRepository {
     public void saveAll(List<CardSet> cardSets) {
         jpaRepository.saveAll(cardSets);
     }
+
+    @Override
+    public void deleteAll(List<CardSet> cardSets) {
+        jpaRepository.deleteAllInBatch(cardSets);
+    }
 }

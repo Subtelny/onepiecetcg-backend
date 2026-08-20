@@ -6,6 +6,7 @@ import pl.janda.onepiecetcg.cards.application.model.CardSet;
 import pl.janda.onepiecetcg.cards.application.model.CardSummary;
 import pl.janda.onepiecetcg.cards.application.model.SetCard;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +23,8 @@ class DeckBuilderCardMapperTest {
                 .cardName("Monkey.D.Luffy")
                 .displayName("Monkey.D.Luffy (Winner)")
                 .sourceProduct("Winner Pack 2026 Vol. 2")
+                .released(false)
+                .releaseDate(LocalDate.of(2026, 8, 28))
                 .variantIndex("p1")
                 .cardType("LEADER")
                 .cardColor("red, green")
@@ -43,6 +46,8 @@ class DeckBuilderCardMapperTest {
         assertThat(dto.getName()).isEqualTo("Monkey.D.Luffy");
         assertThat(dto.getDisplayName()).isEqualTo("Monkey.D.Luffy (Winner)");
         assertThat(dto.getSourceProduct()).isEqualTo("Winner Pack 2026 Vol. 2");
+        assertThat(dto.isReleased()).isFalse();
+        assertThat(dto.getReleaseDate()).isEqualTo(LocalDate.of(2026, 8, 28));
         assertThat(dto.getVariantIndex()).isEqualTo("p1");
         assertThat(dto.getType()).isEqualTo("LEADER");
         assertThat(dto.getColor()).containsExactly("RED", "GREEN");

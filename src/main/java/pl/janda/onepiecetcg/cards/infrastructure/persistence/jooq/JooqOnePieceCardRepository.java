@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import pl.janda.onepiecetcg.cards.application.model.OnePieceCard;
 import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardRepository;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -18,27 +19,64 @@ public class JooqOnePieceCardRepository implements OnePieceCardRepository {
     @Override
     public List<OnePieceCard> findAll() {
         return dsl.fetch("""
-                        SELECT c.id,
-                               c.base_id,
-                               c.name,
-                               c.set_id,
-                               s.label AS set_name,
-                               c.rarity,
-                               c.category,
-                               c.image_url,
-                               c.colors,
-                               c.cost,
-                               c.power,
-                               c.counter,
-                               c.attributes,
-                               c.types,
-                               c.source_product,
-                               c.effect,
-                               c.trigger,
-                               c.scraped_at
-                        FROM onepiece_cards c
-                        JOIN onepiece_card_sets s ON s.set_id = c.set_id
-                        ORDER BY COALESCE(c.base_id, c.id), c.base_id IS NOT NULL, c.set_id, c.id
+                        WITH catalog_cards AS (
+                            SELECT c.id,
+                                   c.base_id,
+                                   c.name,
+                                   c.set_id,
+                                   s.label AS set_name,
+                                   c.rarity,
+                                   c.category,
+                                   c.image_url,
+                                   c.colors,
+                                   c.cost,
+                                   c.power,
+                                   c.counter,
+                                   c.attributes,
+                                   c.types,
+                                   c.source_product,
+                                   c.effect,
+                                   c.trigger,
+                                   TRUE AS released,
+                                   NULL::date AS release_date,
+                                   c.scraped_at
+                            FROM onepiece_cards c
+                            JOIN onepiece_card_sets s ON s.set_id = c.set_id
+                        
+                            UNION ALL
+                        
+                            SELECT c.id,
+                                   c.base_id,
+                                   c.name,
+                                   c.set_id,
+                                   s.label AS set_name,
+                                   c.rarity,
+                                   c.category,
+                                   c.image_url,
+                                   c.colors,
+                                   c.cost,
+                                   c.power,
+                                   c.counter,
+                                   c.attributes,
+                                   c.types,
+                                   c.source_product,
+                                   c.effect,
+                                   c.trigger,
+                                   FALSE AS released,
+                                   s.release_date,
+                                   c.scraped_at
+                            FROM cardkaizoku_cards c
+                            JOIN cardkaizoku_card_sets s ON s.set_id = c.set_id
+                            WHERE s.release_date > CURRENT_DATE
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM onepiece_card_sets official
+                                  WHERE official.set_id = s.set_id
+                              )
+                        )
+                        SELECT *
+                        FROM catalog_cards
+                        ORDER BY COALESCE(base_id, id), base_id IS NOT NULL, set_id, id
                         """)
                 .map(record -> OnePieceCard.builder()
                         .id(record.get("id", String.class))
@@ -58,6 +96,8 @@ public class JooqOnePieceCardRepository implements OnePieceCardRepository {
                         .sourceProduct(record.get("source_product", String.class))
                         .effect(record.get("effect", String.class))
                         .trigger(record.get("trigger", String.class))
+                        .released(Boolean.TRUE.equals(record.get("released", Boolean.class)))
+                        .releaseDate(record.get("release_date", LocalDate.class))
                         .scrapedAt(record.get("scraped_at", OffsetDateTime.class))
                         .build());
     }

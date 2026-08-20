@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -16,6 +17,8 @@ public class CardSummaryDto {
     private String name;
     private String displayName;
     private String sourceProduct;
+    private boolean released;
+    private LocalDate releaseDate;
     private String cardNumber;
     private String flatRarity;
     private String imageUrl;

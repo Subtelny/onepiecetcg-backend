@@ -36,7 +36,8 @@ public class InternalSyncController {
 
     @PostMapping("/card-sets")
     @Operation(summary = "Manually sync card sets",
-            description = "Loads card sets from onepiece_card_sets and persists new or changed sets.")
+            description = "Loads released sets from onepiece_card_sets and future leaked sets from " +
+                    "cardkaizoku_card_sets, with official data taking precedence.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync completed"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
@@ -49,7 +50,7 @@ public class InternalSyncController {
 
     @PostMapping("/set-cards")
     @Operation(summary = "Manually sync set cards",
-            description = "Triggers an async set-cards sync from onepiece_cards in a separate thread, " +
+            description = "Triggers an async set-cards sync from official and future-leak source tables, " +
                     "derives variant indexes from source card IDs and refreshes filter options. Returns immediately.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync triggered successfully"),

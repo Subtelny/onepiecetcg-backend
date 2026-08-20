@@ -40,7 +40,7 @@ public class DeckBuilderCardController {
     @Operation(summary = "Get all cards or search with filters",
             description = "Returns filtered cards based on query parameters, paginated by page/limit. " +
                     "Each result is a lightweight summary (id, name, displayName, sourceProduct, cardNumber, " +
-                    "flatRarity, imageUrl, variantIndex, latest source prices) - " +
+                    "released, releaseDate, flatRarity, imageUrl, variantIndex, latest source prices) - " +
                     "fetch /api/deckbuilder/cards/{id} for full card details (effect, stats, prices).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cards retrieved successfully",

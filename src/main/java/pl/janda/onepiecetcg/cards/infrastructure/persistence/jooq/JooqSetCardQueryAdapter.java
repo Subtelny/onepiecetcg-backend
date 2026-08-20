@@ -6,6 +6,7 @@ import org.jooq.Record;
 import org.springframework.stereotype.Component;
 import pl.janda.onepiecetcg.cards.application.model.*;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +24,10 @@ public class JooqSetCardQueryAdapter {
     private final DSLContext dsl;
 
     private static final Field<String> PRICE_REFERENCE = field(name("set_cards", "price_reference"), String.class);
+
+    private static final Field<Boolean> RELEASED = field(name("set_cards", "released"), Boolean.class);
+
+    private static final Field<LocalDate> RELEASE_DATE = field(name("set_cards", "release_date"), LocalDate.class);
 
 
     private static List<SortField<?>> buildOrderBy(CardSortField sortBy, SortDirection sortOrder) {
@@ -173,6 +178,8 @@ public class JooqSetCardQueryAdapter {
                 .cardName(r.get(SET_CARDS.CARD_NAME))
                 .displayName(r.get(SET_CARDS.DISPLAY_NAME))
                 .sourceProduct(r.get(SET_CARDS.SOURCE_PRODUCT))
+                .released(Boolean.TRUE.equals(r.get(RELEASED)))
+                .releaseDate(r.get(RELEASE_DATE))
                 .flatRarity(r.get(SET_CARDS.FLAT_RARITY))
                 .cardImage(r.get(SET_CARDS.CARD_IMAGE))
                 .variantIndex(r.get(SET_CARDS.VARIANT_INDEX))
@@ -323,7 +330,7 @@ public class JooqSetCardQueryAdapter {
 
         var records = dsl.select(SET_CARDS.ID, SET_CARDS.CARD_SET_ID, SET_CARDS.CARD_NAME,
                         SET_CARDS.DISPLAY_NAME, SET_CARDS.SOURCE_PRODUCT, SET_CARDS.FLAT_RARITY,
-                        SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX, PRICE_REFERENCE)
+                        SET_CARDS.CARD_IMAGE, SET_CARDS.VARIANT_INDEX, PRICE_REFERENCE, RELEASED, RELEASE_DATE)
                 .from(SET_CARDS)
                 .where(conditions)
                 .orderBy(orderBy)

@@ -12,4 +12,6 @@ public interface CardSetRepository {
     Optional<CardSet> findById(String setId);
 
     void saveAll(List<CardSet> cardSets);
+
+    void deleteAll(List<CardSet> cardSets);
 }

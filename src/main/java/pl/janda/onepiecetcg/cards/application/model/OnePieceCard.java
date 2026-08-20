@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Data
@@ -46,6 +47,11 @@ public class OnePieceCard {
     private String effect;
 
     private String trigger;
+
+    @Builder.Default
+    private boolean released = true;
+
+    private LocalDate releaseDate;
 
     private OffsetDateTime scrapedAt;
 }

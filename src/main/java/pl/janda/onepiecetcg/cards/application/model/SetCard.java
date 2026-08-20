@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -42,6 +43,13 @@ public class SetCard {
 
     @Column(name = "set_name")
     private String setName;
+
+    @Builder.Default
+    @Column(name = "released", nullable = false, columnDefinition = "boolean default true")
+    private boolean released = true;
+
+    @Column(name = "release_date")
+    private LocalDate releaseDate;
 
     @Column(name = "card_text", columnDefinition = "TEXT")
     private String cardText;

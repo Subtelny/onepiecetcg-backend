@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,6 +22,11 @@ public class CardSummary {
     private String displayName;
 
     private String sourceProduct;
+
+    @Builder.Default
+    private boolean released = true;
+
+    private LocalDate releaseDate;
 
     private String flatRarity;
 

@@ -10,6 +10,7 @@ import pl.janda.onepiecetcg.cards.application.repository.CardSetRepository;
 import pl.janda.onepiecetcg.cards.application.repository.OnePieceCardSetRepository;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -28,7 +29,7 @@ public class CardSetSyncService implements CardSetSyncUseCase {
     public boolean syncCardSets() {
         var sourceSets = onePieceCardSetRepository.findAll();
         if (sourceSets.isEmpty()) {
-            log.warn("No card sets found in onepiece_card_sets, skipping sync");
+            log.warn("No card sets found in either catalog source table, skipping sync");
             return false;
         }
 
@@ -36,6 +37,8 @@ public class CardSetSyncService implements CardSetSyncUseCase {
                 .map(source -> CardSet.builder()
                         .setId(source.getSetId())
                         .setName(source.getLabel())
+                        .released(source.isReleased())
+                        .releaseDate(source.getReleaseDate())
                         .build())
                 .toList();
         var existingById = cardSetRepository.findAll().stream()
@@ -47,21 +50,34 @@ public class CardSetSyncService implements CardSetSyncUseCase {
         var changedSets = fetched.stream()
                 .filter(cardSet -> {
                     var existing = existingById.get(cardSet.getSetId());
-                    return existing == null || !cardSet.getSetName().equals(existing.getSetName());
+                    return existing == null
+                            || !Objects.equals(cardSet.getSetName(), existing.getSetName())
+                            || cardSet.isReleased() != existing.isReleased()
+                            || !Objects.equals(cardSet.getReleaseDate(), existing.getReleaseDate());
                 })
                 .toList();
 
-        if (changedSets.isEmpty()) {
-            log.info("card_sets is already up to date with onepiece_card_sets, skipping sync");
+        var removedLeaks = existingById.values().stream()
+                .filter(existing -> !existing.isReleased())
+                .filter(existing -> fetched.stream().noneMatch(source -> source.getSetId().equals(existing.getSetId())))
+                .toList();
+
+        if (changedSets.isEmpty() && removedLeaks.isEmpty()) {
+            log.info("card_sets is already up to date with the source tables, skipping sync");
             return false;
         }
 
         var now = LocalDateTime.now();
         fetched.forEach(cardSet -> cardSet.setLastSyncedAt(now));
-        cardSetRepository.saveAll(fetched);
-        log.info("Synced {} card sets from onepiece_card_sets ({} new: {}, {} changed)",
+        if (!changedSets.isEmpty()) {
+            cardSetRepository.saveAll(fetched);
+        }
+        if (!removedLeaks.isEmpty()) {
+            cardSetRepository.deleteAll(removedLeaks);
+        }
+        log.info("Synced {} card sets from source tables ({} new: {}, {} changed, {} expired leaks removed)",
                 fetched.size(), newSets.size(), newSets.stream().map(CardSet::getSetId).toList(),
-                changedSets.size());
-        return !newSets.isEmpty();
+                changedSets.size(), removedLeaks.size());
+        return !newSets.isEmpty() || !removedLeaks.isEmpty();
     }
 }

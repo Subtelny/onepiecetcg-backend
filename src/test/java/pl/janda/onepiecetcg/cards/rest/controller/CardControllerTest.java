@@ -105,6 +105,8 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .cardName("Nami")
                 .displayName("Nami (Winner)")
                 .sourceProduct("Winner Pack 2026 Vol. 2")
+                .released(false)
+                .releaseDate(LocalDate.of(2026, 8, 28))
                 .variantIndex("r1")
                 .build();
         when(cardCatalogUseCase.searchCards(any(CardSearchQuery.class)))
@@ -115,6 +117,8 @@ class CardControllerTest extends PostgresSpringBootTest {
                 .andExpect(jsonPath("$.cards[0].name").value("Nami"))
                 .andExpect(jsonPath("$.cards[0].displayName").value("Nami (Winner)"))
                 .andExpect(jsonPath("$.cards[0].sourceProduct").value("Winner Pack 2026 Vol. 2"))
+                .andExpect(jsonPath("$.cards[0].released").value(false))
+                .andExpect(jsonPath("$.cards[0].releaseDate").value("2026-08-28"))
                 .andExpect(jsonPath("$.cards[0].variantIndex").value("r1"));
     }
 

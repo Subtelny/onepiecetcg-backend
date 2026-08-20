@@ -26,6 +26,8 @@ public class SetCardSyncService implements SetCardSyncUseCase {
 
     private static final String SINGLE_PRICE_REFERENCE_PREFIX = "single:";
 
+    private static final String LEAK_PRICE_REFERENCE_PREFIX = "cardkaizoku:";
+
     private static final Pattern VARIANT_CARD_ID = Pattern.compile("^(.+)_([pr][1-9]\\d*)$", Pattern.CASE_INSENSITIVE);
 
     private static final Map<String, String> RARITY_CODES = Map.ofEntries(
@@ -48,41 +50,18 @@ public class SetCardSyncService implements SetCardSyncUseCase {
 
     private final SetCardReplacementService setCardReplacementService;
 
-    @Override
-    public void syncSetCards() {
-        var startTime = System.currentTimeMillis();
-        log.info("Set cards sync started");
-
-        log.info("Loading all cards from onepiece_cards");
-        var loadStartTime = System.currentTimeMillis();
-        var fetched = onePieceCardRepository.findAll().stream()
-                .map(this::toSetCard)
-                .toList();
-        var loadDuration = System.currentTimeMillis() - loadStartTime;
-        log.info("Loaded and mapped {} cards from onepiece_cards in {}ms", fetched.size(), loadDuration);
-
-        if (fetched.isEmpty()) {
-            throw new IllegalStateException("onepiece_cards is empty; refusing to replace set_cards");
+    private static String extractVariantIndex(String sourceId, String cardCode) {
+        var normalizedSourceId = blankToNull(sourceId);
+        if (normalizedSourceId == null || normalizedSourceId.equalsIgnoreCase(cardCode)) {
+            return SetCard.DEFAULT_VARIANT_INDEX;
         }
 
-        log.info("Setting sync timestamp on fetched cards");
-        var now = LocalDateTime.now();
-        fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
-
-        log.info("Assigning display names to {} cards", fetched.size());
-        cardDisplayNameService.assignDisplayNames(fetched);
-
-        log.info("Assigning flat rarities to {} cards", fetched.size());
-        var rarityStartTime = System.currentTimeMillis();
-        flatRarityCalculatorService.assignFlatRarities(fetched);
-        var rarityDuration = System.currentTimeMillis() - rarityStartTime;
-        log.info("Assigned flat rarities in {}ms", rarityDuration);
-
-        setCardReplacementService.replaceAll(fetched);
-
-        var totalDuration = System.currentTimeMillis() - startTime;
-        log.info("Set cards sync completed successfully - Total time: {}ms ({} seconds), of which load={}ms, rarity={}ms",
-                totalDuration, totalDuration / 1000, loadDuration, rarityDuration);
+        var matcher = VARIANT_CARD_ID.matcher(normalizedSourceId);
+        if (matcher.matches() && matcher.group(1).equalsIgnoreCase(cardCode)) {
+            return matcher.group(2).toLowerCase(Locale.ROOT);
+        }
+        throw new IllegalArgumentException(
+                "Unsupported source variant id '" + sourceId + "' for card code '" + cardCode + "'");
     }
 
 
@@ -106,15 +85,13 @@ public class SetCardSyncService implements SetCardSyncUseCase {
         return separator > 0 ? cardCode.substring(0, separator) : null;
     }
 
-    private String normalizeRarity(String rarity) {
-        if (rarity == null || rarity.isBlank()) {
-            return null;
+    private static String toPriceReference(String sourceCardId, boolean released) {
+        var normalizedSourceCardId = blankToNull(sourceCardId);
+        if (normalizedSourceCardId == null) {
+            throw new IllegalArgumentException("Cannot create a price reference without a source card id");
         }
-        var normalized = RARITY_CODES.get(rarity.trim().toLowerCase(Locale.ROOT));
-        if (normalized == null) {
-            log.warn("Unknown rarity '{}' in onepiece_cards", rarity);
-        }
-        return normalized;
+        var prefix = released ? SINGLE_PRICE_REFERENCE_PREFIX : LEAK_PRICE_REFERENCE_PREFIX;
+        return prefix + normalizedSourceCardId;
     }
 
     private static String combineCardText(String effect, String trigger) {
@@ -138,26 +115,52 @@ public class SetCardSyncService implements SetCardSyncUseCase {
         return normalized != null ? normalized : blankToNull(fallback);
     }
 
-    private static String extractVariantIndex(String sourceId, String cardCode) {
-        var normalizedSourceId = blankToNull(sourceId);
-        if (normalizedSourceId == null || normalizedSourceId.equalsIgnoreCase(cardCode)) {
-            return SetCard.DEFAULT_VARIANT_INDEX;
+    @Override
+    public void syncSetCards() {
+        var startTime = System.currentTimeMillis();
+        log.info("Set cards sync started");
+
+        log.info("Loading official and unreleased cards from source tables");
+        var loadStartTime = System.currentTimeMillis();
+        var fetched = onePieceCardRepository.findAll().stream()
+                .map(this::toSetCard)
+                .toList();
+        var loadDuration = System.currentTimeMillis() - loadStartTime;
+        log.info("Loaded and mapped {} cards from source tables in {}ms", fetched.size(), loadDuration);
+
+        if (fetched.isEmpty()) {
+            throw new IllegalStateException("Card source tables are empty; refusing to replace set_cards");
         }
 
-        var matcher = VARIANT_CARD_ID.matcher(normalizedSourceId);
-        if (matcher.matches() && matcher.group(1).equalsIgnoreCase(cardCode)) {
-            return matcher.group(2).toLowerCase(Locale.ROOT);
-        }
-        throw new IllegalArgumentException(
-                "Unsupported onepiece_cards variant id '" + sourceId + "' for card code '" + cardCode + "'");
+        log.info("Setting sync timestamp on fetched cards");
+        var now = LocalDateTime.now();
+        fetched.forEach(setCard -> setCard.setLastSyncedAt(now));
+
+        log.info("Assigning display names to {} cards", fetched.size());
+        cardDisplayNameService.assignDisplayNames(fetched);
+
+        log.info("Assigning flat rarities to {} cards", fetched.size());
+        var rarityStartTime = System.currentTimeMillis();
+        flatRarityCalculatorService.assignFlatRarities(fetched);
+        var rarityDuration = System.currentTimeMillis() - rarityStartTime;
+        log.info("Assigned flat rarities in {}ms", rarityDuration);
+
+        setCardReplacementService.replaceAll(fetched);
+
+        var totalDuration = System.currentTimeMillis() - startTime;
+        log.info("Set cards sync completed successfully - Total time: {}ms ({} seconds), of which load={}ms, rarity={}ms",
+                totalDuration, totalDuration / 1000, loadDuration, rarityDuration);
     }
 
-    private static String toPriceReference(String sourceCardId) {
-        var normalizedSourceCardId = blankToNull(sourceCardId);
-        if (normalizedSourceCardId == null) {
-            throw new IllegalArgumentException("Cannot create a price reference without onepiece_cards.id");
+    private String normalizeRarity(String rarity) {
+        if (rarity == null || rarity.isBlank()) {
+            return null;
         }
-        return SINGLE_PRICE_REFERENCE_PREFIX + normalizedSourceCardId;
+        var normalized = RARITY_CODES.get(rarity.trim().toLowerCase(Locale.ROOT));
+        if (normalized == null) {
+            log.warn("Unknown rarity '{}' in card source tables", rarity);
+        }
+        return normalized;
     }
 
     private static String asString(Integer value) {
@@ -178,6 +181,8 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 .sourceProduct(blankToNull(source.getSourceProduct()))
                 .setId(source.getSetId())
                 .setName(source.getSetName())
+                .released(source.isReleased())
+                .releaseDate(source.getReleaseDate())
                 .cardText(combineCardText(source.getEffect(), source.getTrigger()))
                 .rarity(promo ? "PR" : sourceRarity)
                 .flatRarity(promo && !"PR".equals(sourceRarity) ? sourceRarity : null)
@@ -190,7 +195,7 @@ public class SetCardSyncService implements SetCardSyncUseCase {
                 .counterAmount(source.getCounter())
                 .attribute(CardDelimitedValues.normalize(source.getAttributes()))
                 .cardId(source.getId())
-                .priceReference(toPriceReference(source.getId()))
+                .priceReference(toPriceReference(source.getId(), source.isReleased()))
                 .cardImage(source.getImageUrl())
                 .variantIndex(extractVariantIndex(source.getId(), cardCode))
                 .build();
