@@ -9,11 +9,9 @@ import java.io.Serializable;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class MatchupLeaderCardId implements Serializable {
+public class MatchupLeaderId implements Serializable {
 
     private String dataset;
-
-    private String leaderCode;
 
     private String cardCode;
 }

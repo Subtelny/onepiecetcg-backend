@@ -1,16 +1,20 @@
 package pl.janda.onepiecetcg.matchups.application.port.in;
 
 import pl.janda.onepiecetcg.matchups.application.model.LeaderMatchups;
+import pl.janda.onepiecetcg.matchups.application.model.MatchupSnapshotInfo;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupsOverview;
 import pl.janda.onepiecetcg.matchups.application.model.MatchupsSummary;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface MatchupsQueryUseCase {
 
-    MatchupsOverview getMatchups();
+    MatchupsOverview getMatchups(String dataset);
 
-    MatchupsSummary getOverview();
+    MatchupsSummary getOverview(String dataset);
 
-    Optional<LeaderMatchups> getLeaderMatchups(String leaderCode);
+    Optional<LeaderMatchups> getLeaderMatchups(String dataset, String leaderCode);
+
+    List<MatchupSnapshotInfo> getAvailableSnapshots();
 }

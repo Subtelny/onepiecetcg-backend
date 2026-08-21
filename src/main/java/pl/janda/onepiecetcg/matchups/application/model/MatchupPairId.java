@@ -11,6 +11,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class MatchupPairId implements Serializable {
 
+    private String dataset;
+
     private String leaderCode;
 
     private String opponentCode;

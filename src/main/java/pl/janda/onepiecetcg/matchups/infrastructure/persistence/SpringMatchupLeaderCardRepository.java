@@ -15,18 +15,19 @@ public class SpringMatchupLeaderCardRepository implements MatchupLeaderCardRepos
     private final MatchupLeaderCardJpaRepository jpaRepository;
 
     @Override
-    public List<MatchupLeaderCard> findAllOrderByLeaderAndCategoryAndInclusionRate() {
-        return jpaRepository.findAllByOrderByLeaderCodeAscCategoryAscInclusionRateDescCardCodeAsc();
+    public List<MatchupLeaderCard> findAllOrderByLeaderAndCategoryAndInclusionRate(String dataset) {
+        return jpaRepository.findAllByDatasetOrderByLeaderCodeAscCategoryAscInclusionRateDescCardCodeAsc(dataset);
     }
 
     @Override
-    public List<MatchupLeaderCard> findByLeaderCode(String leaderCode) {
-        return jpaRepository.findAllByLeaderCodeOrderByCategoryAscInclusionRateDescCardCodeAsc(leaderCode);
+    public List<MatchupLeaderCard> findByLeaderCode(String dataset, String leaderCode) {
+        return jpaRepository.findAllByDatasetAndLeaderCodeOrderByCategoryAscInclusionRateDescCardCodeAsc(
+                dataset, leaderCode);
     }
 
     @Override
-    public void deleteAll() {
-        jpaRepository.deleteAll();
+    public void deleteByDataset(String dataset) {
+        jpaRepository.deleteAllByDataset(dataset);
     }
 
     @Override

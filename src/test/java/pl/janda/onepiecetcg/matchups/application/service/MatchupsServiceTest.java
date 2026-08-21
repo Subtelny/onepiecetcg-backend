@@ -43,13 +43,13 @@ class MatchupsServiceTest {
         var snapshot = MatchupSnapshotInfo.builder().dataset("lw").totalMatches(131195L).build();
         var leader = MatchupLeader.builder().cardCode("OP14-020").name("Dracule Mihawk").build();
         var pair = MatchupPair.builder().leaderCode("OP14-020").opponentCode("OP13-079").build();
-        when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.of(snapshot));
-        when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(List.of(leader));
-        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate()).thenReturn(List.of());
-        when(pairRepository.findAll()).thenReturn(List.of(pair));
+        when(snapshotInfoRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(leaderRepository.findAllOrderByPopularityDesc("lw")).thenReturn(List.of(leader));
+        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate("lw")).thenReturn(List.of());
+        when(pairRepository.findAll("lw")).thenReturn(List.of(pair));
         var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
-        var overview = service.getMatchups();
+        var overview = service.getMatchups(null);
 
         assertThat(overview.snapshot()).isEqualTo(snapshot);
         assertThat(overview.leaders()).containsExactly(leader);
@@ -61,13 +61,10 @@ class MatchupsServiceTest {
 
     @Test
     void getMatchups_toleratesMissingSnapshotByReturningNull() {
-        when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.empty());
-        when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(List.of());
-        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate()).thenReturn(List.of());
-        when(pairRepository.findAll()).thenReturn(List.of());
+        when(snapshotInfoRepository.findLatest()).thenReturn(Optional.empty());
         var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
-        var overview = service.getMatchups();
+        var overview = service.getMatchups(null);
 
         assertThat(overview.snapshot()).isNull();
         assertThat(overview.leaders()).isEmpty();
@@ -89,13 +86,14 @@ class MatchupsServiceTest {
                 .toList();
         var topPair = MatchupPair.builder().leaderCode("L0").opponentCode("L9").build();
         var pairInvolvingAnEleventhRankedLeader = MatchupPair.builder().leaderCode("L0").opponentCode("L10").build();
-        when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.empty());
-        when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(leaders);
-        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate()).thenReturn(List.of());
-        when(pairRepository.findAll()).thenReturn(List.of(topPair, pairInvolvingAnEleventhRankedLeader));
+        var snapshot = MatchupSnapshotInfo.builder().dataset("lw").build();
+        when(snapshotInfoRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(leaderRepository.findAllOrderByPopularityDesc("lw")).thenReturn(leaders);
+        when(leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate("lw")).thenReturn(List.of());
+        when(pairRepository.findAll("lw")).thenReturn(List.of(topPair, pairInvolvingAnEleventhRankedLeader));
         var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
-        var overview = service.getMatchups();
+        var overview = service.getMatchups(null);
 
         assertThat(overview.topMatchups()).containsExactly(topPair);
     }
@@ -108,12 +106,12 @@ class MatchupsServiceTest {
                 .toList();
         var topLeaderCodes = Set.of("L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9");
         var topPair = MatchupPair.builder().leaderCode("L0").opponentCode("L9").build();
-        when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.of(snapshot));
-        when(leaderRepository.findAllOrderByPopularityDesc()).thenReturn(leaders);
-        when(pairRepository.findByLeaderCodes(topLeaderCodes)).thenReturn(List.of(topPair));
+        when(snapshotInfoRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(leaderRepository.findAllOrderByPopularityDesc("lw")).thenReturn(leaders);
+        when(pairRepository.findByLeaderCodes("lw", topLeaderCodes)).thenReturn(List.of(topPair));
         var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
-        var overview = service.getOverview();
+        var overview = service.getOverview(null);
 
         assertThat(overview.snapshot()).isEqualTo(snapshot);
         assertThat(overview.leaders()).containsExactlyElementsOf(leaders);
@@ -127,13 +125,13 @@ class MatchupsServiceTest {
         var leader = MatchupLeader.builder().cardCode("OP14-020").name("Dracule Mihawk").build();
         var card = MatchupLeaderCard.builder().leaderCode("OP14-020").cardCode("OP01-001").build();
         var pair = MatchupPair.builder().leaderCode("OP14-020").opponentCode("OP13-079").build();
-        when(leaderRepository.findByCode("OP14-020")).thenReturn(Optional.of(leader));
-        when(snapshotInfoRepository.findCurrent()).thenReturn(Optional.of(snapshot));
-        when(leaderCardRepository.findByLeaderCode("OP14-020")).thenReturn(List.of(card));
-        when(pairRepository.findByLeaderCode("OP14-020")).thenReturn(List.of(pair));
+        when(snapshotInfoRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(leaderRepository.findByCode("lw", "OP14-020")).thenReturn(Optional.of(leader));
+        when(leaderCardRepository.findByLeaderCode("lw", "OP14-020")).thenReturn(List.of(card));
+        when(pairRepository.findByLeaderCode("lw", "OP14-020")).thenReturn(List.of(pair));
         var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
-        var result = service.getLeaderMatchups(" op14-020 ");
+        var result = service.getLeaderMatchups(null, " op14-020 ");
 
         assertThat(result).hasValueSatisfying(detail -> {
             assertThat(detail.snapshot()).isEqualTo(snapshot);
@@ -145,12 +143,14 @@ class MatchupsServiceTest {
 
     @Test
     void getLeaderMatchups_unknownLeaderDoesNotQueryCardsOrPairs() {
-        when(leaderRepository.findByCode("UNKNOWN")).thenReturn(Optional.empty());
+        var snapshot = MatchupSnapshotInfo.builder().dataset("lw").build();
+        when(snapshotInfoRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(leaderRepository.findByCode("lw", "UNKNOWN")).thenReturn(Optional.empty());
         var service = new MatchupsService(snapshotInfoRepository, leaderRepository, leaderCardRepository, pairRepository);
 
-        var result = service.getLeaderMatchups("unknown");
+        var result = service.getLeaderMatchups(null, "unknown");
 
         assertThat(result).isEmpty();
-        verifyNoInteractions(snapshotInfoRepository, leaderCardRepository, pairRepository);
+        verifyNoInteractions(leaderCardRepository, pairRepository);
     }
 }

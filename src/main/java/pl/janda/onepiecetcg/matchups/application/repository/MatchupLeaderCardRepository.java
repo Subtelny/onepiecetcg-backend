@@ -6,11 +6,11 @@ import java.util.List;
 
 public interface MatchupLeaderCardRepository {
 
-    List<MatchupLeaderCard> findAllOrderByLeaderAndCategoryAndInclusionRate();
+    List<MatchupLeaderCard> findAllOrderByLeaderAndCategoryAndInclusionRate(String dataset);
 
-    List<MatchupLeaderCard> findByLeaderCode(String leaderCode);
+    List<MatchupLeaderCard> findByLeaderCode(String dataset, String leaderCode);
 
-    void deleteAll();
+    void deleteByDataset(String dataset);
 
     void saveAll(List<MatchupLeaderCard> cards);
 }

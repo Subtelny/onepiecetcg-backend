@@ -65,7 +65,7 @@ class MatchupSyncServiceTest {
 
     @Test
     void syncMatchups_returnsFalseAndSkipsReplacementWhenNoSnapshotExists() {
-        when(rawSnapshotRepository.findLatest()).thenReturn(Optional.empty());
+        when(rawSnapshotRepository.findLatestPerDataset()).thenReturn(List.of());
 
         var result = service().syncMatchups();
 
@@ -79,11 +79,11 @@ class MatchupSyncServiceTest {
         var snapshot = RawMatchupSnapshot.builder()
                 .id(1L).dataset("lw").totalMatches(100L).scrapedAt(scrapedAt)
                 .build();
-        when(rawSnapshotRepository.findLatest()).thenReturn(Optional.of(snapshot));
-        when(matchupSnapshotInfoRepository.findCurrent()).thenReturn(Optional.of(
+        when(rawSnapshotRepository.findLatestPerDataset()).thenReturn(List.of(snapshot));
+        when(matchupSnapshotInfoRepository.findByDataset("lw")).thenReturn(Optional.of(
                 MatchupSnapshotInfo.builder().sourceSnapshotId(1L).dataset("lw")
                         .totalMatches(100L).scrapedAt(scrapedAt).cardProfileVersion(4).build()));
-        when(leaderRepository.hasAnyRepresentativeDeck()).thenReturn(true);
+        when(leaderRepository.hasAnyRepresentativeDeck("lw")).thenReturn(true);
 
         var result = service().syncMatchups();
 
@@ -98,7 +98,7 @@ class MatchupSyncServiceTest {
         var snapshot = RawMatchupSnapshot.builder()
                 .id(1L).dataset("lw").totalMatches(100L).scrapedAt(OffsetDateTime.now())
                 .build();
-        when(rawSnapshotRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(rawSnapshotRepository.findLatestPerDataset()).thenReturn(List.of(snapshot));
         when(rawLeaderStatRepository.findBySnapshotId(1L)).thenReturn(List.of(
                 RawLeaderStat.builder().leader("1xOP14-020").build(),
                 RawLeaderStat.builder().leader("4xST34-003").build()));
@@ -137,6 +137,7 @@ class MatchupSyncServiceTest {
 
         @SuppressWarnings("unchecked")
         var savedLeaders = (List<MatchupLeader>) leadersCaptor.getValue();
+        assertThat(savedLeaders).extracting(MatchupLeader::getDataset).containsOnly("lw");
         assertThat(savedLeaders).extracting(MatchupLeader::getCardCode).containsExactly("OP14-020");
         assertThat(savedLeaders).extracting(MatchupLeader::getName).containsExactly("Dracule Mihawk");
 
@@ -159,7 +160,7 @@ class MatchupSyncServiceTest {
         var usoHachi = SetCard.builder().cardSetId("ST18-001").cardName("Uso-Hachi")
                 .cardColor("PURPLE").cardImage("https://cdn.example/st18-001.png").cardType("Character").build();
 
-        when(rawSnapshotRepository.findLatest()).thenReturn(Optional.of(snapshot));
+        when(rawSnapshotRepository.findLatestPerDataset()).thenReturn(List.of(snapshot));
         when(rawLeaderStatRepository.findBySnapshotId(1L)).thenReturn(List.of(RawLeaderStat.builder().build()));
         when(normalizationService.normalizeAndMergeLeaderStats(anyList())).thenReturn(List.of(leaderStat));
         when(cardCatalogUseCase.getRepresentativeCardsByCardCodes(anyList()))
@@ -181,6 +182,7 @@ class MatchupSyncServiceTest {
         assertThat(savedLeaders).singleElement()
                 .satisfies(leader -> assertThat(leader.getProfileDecklists()).isEqualTo(3));
         assertThat(savedCards).singleElement().satisfies(card -> {
+            assertThat(card.getDataset()).isEqualTo("lw");
             assertThat(card.getCardCode()).isEqualTo("ST18-001");
             assertThat(card.getCategory()).isEqualTo(MatchupLeaderCardCategory.POSSIBLE_TECH);
         });

@@ -42,7 +42,7 @@ public class MatchupsMapper {
                 .build();
     }
 
-    private SnapshotDto toSnapshotDto(MatchupSnapshotInfo snapshot) {
+    public SnapshotDto toSnapshotDto(MatchupSnapshotInfo snapshot) {
         if (snapshot == null) {
             return null;
         }

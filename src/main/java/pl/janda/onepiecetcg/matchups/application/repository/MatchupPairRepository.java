@@ -7,13 +7,13 @@ import java.util.Set;
 
 public interface MatchupPairRepository {
 
-    List<MatchupPair> findAll();
+    List<MatchupPair> findAll(String dataset);
 
-    List<MatchupPair> findByLeaderCode(String leaderCode);
+    List<MatchupPair> findByLeaderCode(String dataset, String leaderCode);
 
-    List<MatchupPair> findByLeaderCodes(Set<String> leaderCodes);
+    List<MatchupPair> findByLeaderCodes(String dataset, Set<String> leaderCodes);
 
-    void deleteAll();
+    void deleteByDataset(String dataset);
 
     void saveAll(List<MatchupPair> pairs);
 }

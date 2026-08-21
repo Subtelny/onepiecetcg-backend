@@ -1,10 +1,6 @@
 package pl.janda.onepiecetcg.matchups.application.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.IdClass;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +16,10 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MatchupPair {
+
+    @Id
+    @Column(name = "dataset", nullable = false, columnDefinition = "varchar(255) default ''")
+    private String dataset;
 
     @Id
     @Column(name = "leader_code")

@@ -16,23 +16,23 @@ public class SpringMatchupPairRepository implements MatchupPairRepository {
     private final MatchupPairJpaRepository jpaRepository;
 
     @Override
-    public List<MatchupPair> findAll() {
-        return jpaRepository.findAll();
+    public List<MatchupPair> findAll(String dataset) {
+        return jpaRepository.findAllByDataset(dataset);
     }
 
     @Override
-    public List<MatchupPair> findByLeaderCode(String leaderCode) {
-        return jpaRepository.findAllByLeaderCode(leaderCode);
+    public List<MatchupPair> findByLeaderCode(String dataset, String leaderCode) {
+        return jpaRepository.findAllByDatasetAndLeaderCode(dataset, leaderCode);
     }
 
     @Override
-    public List<MatchupPair> findByLeaderCodes(Set<String> leaderCodes) {
-        return jpaRepository.findAllByLeaderCodeInAndOpponentCodeIn(leaderCodes, leaderCodes);
+    public List<MatchupPair> findByLeaderCodes(String dataset, Set<String> leaderCodes) {
+        return jpaRepository.findAllByDatasetAndLeaderCodeInAndOpponentCodeIn(dataset, leaderCodes, leaderCodes);
     }
 
     @Override
-    public void deleteAll() {
-        jpaRepository.deleteAll();
+    public void deleteByDataset(String dataset) {
+        jpaRepository.deleteAllByDataset(dataset);
     }
 
     @Override

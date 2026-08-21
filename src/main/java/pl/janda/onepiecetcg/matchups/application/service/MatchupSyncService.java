@@ -46,25 +46,34 @@ public class MatchupSyncService implements MatchupSyncUseCase {
 
     @Override
     public boolean syncMatchups() {
-        var startTime = System.currentTimeMillis();
         log.info("Matchups sync started");
 
-        var rawSnapshot = rawSnapshotRepository.findLatest().orElse(null);
-        if (rawSnapshot == null) {
+        var rawSnapshots = rawSnapshotRepository.findLatestPerDataset();
+        if (rawSnapshots.isEmpty()) {
             log.warn("No matchmaking snapshot found in tcgmatchmaking_matchup_snapshots, skipping sync");
             return false;
         }
 
-        var alreadySynced = matchupSnapshotInfoRepository.findCurrent()
+        var syncedDatasets = rawSnapshots.stream()
+                .filter(this::syncSnapshot)
+                .count();
+        log.info("Matchups sync finished - {} of {} datasets updated", syncedDatasets, rawSnapshots.size());
+        return syncedDatasets > 0;
+    }
+
+    private boolean syncSnapshot(RawMatchupSnapshot rawSnapshot) {
+        var startTime = System.currentTimeMillis();
+        var dataset = rawSnapshot.getDataset();
+
+        var alreadySynced = matchupSnapshotInfoRepository.findByDataset(dataset)
                 .filter(current -> Objects.equals(current.getSourceSnapshotId(), rawSnapshot.getId()))
-                .filter(current -> current.getDataset().equals(rawSnapshot.getDataset()))
                 .filter(current -> current.getScrapedAt().isEqual(rawSnapshot.getScrapedAt()))
                 .filter(current -> Objects.equals(current.getCardProfileVersion(), CARD_PROFILE_VERSION))
-                .filter(current -> leaderRepository.hasAnyRepresentativeDeck())
+                .filter(current -> leaderRepository.hasAnyRepresentativeDeck(dataset))
                 .isPresent();
         if (alreadySynced) {
             log.info("Matchup snapshot '{}' scraped at {} already synced, skipping",
-                    rawSnapshot.getDataset(), rawSnapshot.getScrapedAt());
+                    dataset, rawSnapshot.getScrapedAt());
             return false;
         }
 
@@ -79,7 +88,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .collect(Collectors.toMap(SetCard::getCardSetId, Function.identity()));
 
         var leaders = normalizedLeaderStats.stream()
-                .map(stat -> toMatchupLeader(stat, cardsByCode))
+                .map(stat -> toMatchupLeader(dataset, stat, cardsByCode))
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -87,7 +96,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
 
         var normalizedMatchups = normalizationService.normalizeAndMergeMatchups(rawMatchups, validLeaderCodes);
         var pairs = normalizedMatchups.stream()
-                .map(this::toMatchupPair)
+                .map(matchup -> toMatchupPair(dataset, matchup))
                 .toList();
 
         var rawDecklists = rawDecklistRepository.findBySnapshotId(rawSnapshot.getId());
@@ -106,11 +115,11 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 leader.setTopDeckWinRate(representativeDeck.winRate());
             }
         });
-        var leaderCards = enrichLeaderCards(normalizedLeaderCards, representativeDecksByLeader, cardsByCode);
+        var leaderCards = enrichLeaderCards(dataset, normalizedLeaderCards, representativeDecksByLeader, cardsByCode);
 
         var snapshotInfo = MatchupSnapshotInfo.builder()
                 .sourceSnapshotId(rawSnapshot.getId())
-                .dataset(rawSnapshot.getDataset())
+                .dataset(dataset)
                 .totalMatches(rawSnapshot.getTotalMatches())
                 .scrapedAt(rawSnapshot.getScrapedAt())
                 .syncedAt(LocalDateTime.now())
@@ -120,13 +129,14 @@ public class MatchupSyncService implements MatchupSyncUseCase {
         matchupReplacementService.replaceAll(snapshotInfo, leaders, pairs, leaderCards);
 
         var totalDuration = System.currentTimeMillis() - startTime;
-        log.info("Matchups sync completed successfully - {} leaders, {} pairs, {} leader cards, {} representative " +
-                        "decks, total time: {}ms",
-                leaders.size(), pairs.size(), leaderCards.size(), representativeDecks.size(), totalDuration);
+        log.info("Matchups dataset '{}' synced successfully - {} leaders, {} pairs, {} leader cards, {} " +
+                        "representative decks, total time: {}ms",
+                dataset, leaders.size(), pairs.size(), leaderCards.size(), representativeDecks.size(), totalDuration);
         return true;
     }
 
-    private MatchupLeader toMatchupLeader(NormalizedLeaderStat stat, Map<String, SetCard> cardsByCode) {
+    private MatchupLeader toMatchupLeader(String dataset, NormalizedLeaderStat stat,
+                                          Map<String, SetCard> cardsByCode) {
         var card = cardsByCode.get(stat.cardCode());
         if (card == null) {
             log.warn("Dropping leader stat for '{}' - no matching card found in set_cards", stat.cardCode());
@@ -138,6 +148,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
             return null;
         }
         return MatchupLeader.builder()
+                .dataset(dataset)
                 .cardCode(stat.cardCode())
                 .name(card.getCardName())
                 .colors(card.getCardColor())
@@ -148,8 +159,9 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .build();
     }
 
-    private MatchupPair toMatchupPair(NormalizedMatchup matchup) {
+    private MatchupPair toMatchupPair(String dataset, NormalizedMatchup matchup) {
         return MatchupPair.builder()
+                .dataset(dataset)
                 .leaderCode(matchup.leaderCode())
                 .opponentCode(matchup.opponentCode())
                 .games(matchup.games())
@@ -161,7 +173,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .build();
     }
 
-    private List<MatchupLeaderCard> enrichLeaderCards(List<NormalizedLeaderCard> normalizedCards,
+    private List<MatchupLeaderCard> enrichLeaderCards(String dataset, List<NormalizedLeaderCard> normalizedCards,
                                                       Map<String, RepresentativeDeck> representativeDecks,
                                                       Map<String, SetCard> leadersByCode) {
         if (normalizedCards.isEmpty() && representativeDecks.isEmpty()) {
@@ -179,7 +191,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
         var leaderCards = new ArrayList<MatchupLeaderCard>();
         var enrichedKeys = new HashSet<LeaderCardKey>();
         normalizedCards.stream()
-                .map(card -> toMatchupLeaderCard(card, cardsByCode, representativeDecks, leadersByCode))
+                .map(card -> toMatchupLeaderCard(dataset, card, cardsByCode, representativeDecks, leadersByCode))
                 .filter(Objects::nonNull)
                 .forEach(card -> {
                     leaderCards.add(card);
@@ -191,7 +203,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
             if (enrichedKeys.contains(key)) {
                 return;
             }
-            var card = toTopDeckOnlyCard(deck.leaderCode(), cardCode, copies, cardsByCode);
+            var card = toTopDeckOnlyCard(dataset, deck.leaderCode(), cardCode, copies, cardsByCode);
             if (card != null) {
                 leaderCards.add(card);
                 enrichedKeys.add(key);
@@ -200,7 +212,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
         return leaderCards;
     }
 
-    private MatchupLeaderCard toMatchupLeaderCard(NormalizedLeaderCard normalizedCard,
+    private MatchupLeaderCard toMatchupLeaderCard(String dataset, NormalizedLeaderCard normalizedCard,
                                                   Map<String, SetCard> cardsByCode,
                                                   Map<String, RepresentativeDeck> representativeDecks,
                                                   Map<String, SetCard> leadersByCode) {
@@ -216,6 +228,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 : cardRoleClassifier.classify(normalizedCard, leader, card);
         var representativeDeck = representativeDecks.get(normalizedCard.leaderCode());
         return MatchupLeaderCard.builder()
+                .dataset(dataset)
                 .leaderCode(normalizedCard.leaderCode())
                 .cardCode(normalizedCard.cardCode())
                 .category(category)
@@ -234,7 +247,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
                 .build();
     }
 
-    private MatchupLeaderCard toTopDeckOnlyCard(String leaderCode, String cardCode, int copies,
+    private MatchupLeaderCard toTopDeckOnlyCard(String dataset, String leaderCode, String cardCode, int copies,
                                                 Map<String, SetCard> cardsByCode) {
         var card = cardsByCode.get(cardCode);
         if (card == null) {
@@ -243,6 +256,7 @@ public class MatchupSyncService implements MatchupSyncUseCase {
             return null;
         }
         return MatchupLeaderCard.builder()
+                .dataset(dataset)
                 .leaderCode(leaderCode)
                 .cardCode(cardCode)
                 .category(MatchupLeaderCardCategory.TOP_DECK_ONLY)

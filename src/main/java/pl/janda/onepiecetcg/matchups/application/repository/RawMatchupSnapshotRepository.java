@@ -2,9 +2,9 @@ package pl.janda.onepiecetcg.matchups.application.repository;
 
 import pl.janda.onepiecetcg.matchups.application.model.RawMatchupSnapshot;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface RawMatchupSnapshotRepository {
 
-    Optional<RawMatchupSnapshot> findLatest();
+    List<RawMatchupSnapshot> findLatestPerDataset();
 }

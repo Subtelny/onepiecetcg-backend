@@ -88,18 +88,19 @@ public class InternalSyncController {
 
     @PostMapping("/matchups")
     @Operation(summary = "Manually sync matchups",
-            description = "Loads the latest snapshot from tcgmatchmaking_matchup_snapshots/tcgmatchmaking_leader_stats/" +
+            description = "Loads the latest snapshot of every dataset from " +
+                    "tcgmatchmaking_matchup_snapshots/tcgmatchmaking_leader_stats/" +
                     "tcgmatchmaking_matchups/tcgmatchmaking_decklists, normalizes and merges dirty leader/opponent " +
                     "codes, derives game-weighted expected cards and possible techs using an adaptive per-leader " +
-                    "win-rate cohort, enriches with card data, and fully " +
-                    "replaces the matchup_snapshot_info/matchup_leaders/matchup_pairs/matchup_leader_cards tables.")
+                    "win-rate cohort, enriches with card data, and replaces only the corresponding dataset in " +
+                    "matchup_snapshot_info/matchup_leaders/matchup_pairs/matchup_leader_cards.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Sync completed"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid API key")
     })
     public ResponseEntity<SyncResultDto> syncMatchups() {
         var synced = matchupSyncUseCase.syncMatchups();
-        var message = synced ? "Matchups synced" : "No matchmaking snapshot found, sync skipped";
+        var message = synced ? "Matchups synced" : "No matchup dataset required an update";
         return ResponseEntity.ok(new SyncResultDto(synced, message));
     }
 }

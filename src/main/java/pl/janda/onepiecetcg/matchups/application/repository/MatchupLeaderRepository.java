@@ -7,13 +7,13 @@ import java.util.Optional;
 
 public interface MatchupLeaderRepository {
 
-    List<MatchupLeader> findAllOrderByPopularityDesc();
+    List<MatchupLeader> findAllOrderByPopularityDesc(String dataset);
 
-    Optional<MatchupLeader> findByCode(String code);
+    Optional<MatchupLeader> findByCode(String dataset, String code);
 
-    boolean hasAnyRepresentativeDeck();
+    boolean hasAnyRepresentativeDeck(String dataset);
 
-    void deleteAll();
+    void deleteByDataset(String dataset);
 
     void saveAll(List<MatchupLeader> leaders);
 }

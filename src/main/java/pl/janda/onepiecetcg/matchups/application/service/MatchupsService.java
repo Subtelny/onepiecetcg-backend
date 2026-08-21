@@ -30,34 +30,59 @@ public class MatchupsService implements MatchupsQueryUseCase {
     private final MatchupPairRepository pairRepository;
 
     @Override
-    public MatchupsOverview getMatchups() {
-        var snapshot = snapshotInfoRepository.findCurrent().orElse(null);
-        var leaders = leaderRepository.findAllOrderByPopularityDesc();
-        var leaderCards = leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate();
-        var pairs = pairRepository.findAll();
+    public MatchupsOverview getMatchups(String requestedDataset) {
+        var snapshot = resolveSnapshot(requestedDataset).orElse(null);
+        if (snapshot == null) {
+            return new MatchupsOverview(null, List.of(), List.of(), List.of(), List.of());
+        }
+        var dataset = snapshot.getDataset();
+        var leaders = leaderRepository.findAllOrderByPopularityDesc(dataset);
+        var leaderCards = leaderCardRepository.findAllOrderByLeaderAndCategoryAndInclusionRate(dataset);
+        var pairs = pairRepository.findAll(dataset);
         var topMatchups = filterToTopLeaders(leaders, pairs);
         return new MatchupsOverview(snapshot, leaders, leaderCards, pairs, topMatchups);
     }
 
     @Override
-    public MatchupsSummary getOverview() {
-        var snapshot = snapshotInfoRepository.findCurrent().orElse(null);
-        var leaders = leaderRepository.findAllOrderByPopularityDesc();
+    public MatchupsSummary getOverview(String requestedDataset) {
+        var snapshot = resolveSnapshot(requestedDataset).orElse(null);
+        if (snapshot == null) {
+            return new MatchupsSummary(null, List.of(), List.of());
+        }
+        var dataset = snapshot.getDataset();
+        var leaders = leaderRepository.findAllOrderByPopularityDesc(dataset);
         var topLeaderCodes = topLeaderCodes(leaders);
-        var topMatchups = pairRepository.findByLeaderCodes(topLeaderCodes);
+        var topMatchups = pairRepository.findByLeaderCodes(dataset, topLeaderCodes);
         return new MatchupsSummary(snapshot, leaders, topMatchups);
     }
 
     @Override
-    public Optional<LeaderMatchups> getLeaderMatchups(String leaderCode) {
+    public Optional<LeaderMatchups> getLeaderMatchups(String requestedDataset, String leaderCode) {
+        var snapshot = resolveSnapshot(requestedDataset);
+        if (snapshot.isEmpty()) {
+            return Optional.empty();
+        }
+        var dataset = snapshot.orElseThrow().getDataset();
         var normalizedCode = leaderCode.trim().toUpperCase(Locale.ROOT);
-        return leaderRepository.findByCode(normalizedCode)
+        return leaderRepository.findByCode(dataset, normalizedCode)
                 .map(leader -> new LeaderMatchups(
-                        snapshotInfoRepository.findCurrent().orElse(null),
+                        snapshot.orElseThrow(),
                         leader,
-                        leaderCardRepository.findByLeaderCode(normalizedCode),
-                        pairRepository.findByLeaderCode(normalizedCode)
+                        leaderCardRepository.findByLeaderCode(dataset, normalizedCode),
+                        pairRepository.findByLeaderCode(dataset, normalizedCode)
                 ));
+    }
+
+    @Override
+    public List<MatchupSnapshotInfo> getAvailableSnapshots() {
+        return snapshotInfoRepository.findAllOrderByScrapedAtDesc();
+    }
+
+    private Optional<MatchupSnapshotInfo> resolveSnapshot(String dataset) {
+        if (dataset == null || dataset.isBlank()) {
+            return snapshotInfoRepository.findLatest();
+        }
+        return snapshotInfoRepository.findByDataset(dataset.trim());
     }
 
     // The matrix on the matchups page only ever shows the most popular leaders, so

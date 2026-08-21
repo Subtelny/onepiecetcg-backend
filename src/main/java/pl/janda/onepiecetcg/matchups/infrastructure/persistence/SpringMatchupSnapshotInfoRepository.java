@@ -6,6 +6,7 @@ import pl.janda.onepiecetcg.matchups.application.model.MatchupSnapshotInfo;
 import pl.janda.onepiecetcg.matchups.application.repository.MatchupSnapshotInfoRepository;
 import pl.janda.onepiecetcg.matchups.infrastructure.persistence.jpa.MatchupSnapshotInfoJpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,13 +16,23 @@ public class SpringMatchupSnapshotInfoRepository implements MatchupSnapshotInfoR
     private final MatchupSnapshotInfoJpaRepository jpaRepository;
 
     @Override
-    public Optional<MatchupSnapshotInfo> findCurrent() {
-        return jpaRepository.findAll().stream().findFirst();
+    public Optional<MatchupSnapshotInfo> findLatest() {
+        return jpaRepository.findFirstByOrderByScrapedAtDescIdDesc();
     }
 
     @Override
-    public void deleteAll() {
-        jpaRepository.deleteAll();
+    public Optional<MatchupSnapshotInfo> findByDataset(String dataset) {
+        return jpaRepository.findFirstByDatasetIgnoreCaseOrderByScrapedAtDescIdDesc(dataset);
+    }
+
+    @Override
+    public List<MatchupSnapshotInfo> findAllOrderByScrapedAtDesc() {
+        return jpaRepository.findAllByOrderByScrapedAtDescIdDesc();
+    }
+
+    @Override
+    public void deleteByDataset(String dataset) {
+        jpaRepository.deleteAllByDataset(dataset);
     }
 
     @Override

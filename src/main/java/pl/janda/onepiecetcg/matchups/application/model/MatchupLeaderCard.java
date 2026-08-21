@@ -18,6 +18,10 @@ import java.math.BigDecimal;
 public class MatchupLeaderCard {
 
     @Id
+    @Column(name = "dataset", nullable = false, columnDefinition = "varchar(255) default ''")
+    private String dataset;
+
+    @Id
     @Column(name = "leader_code", nullable = false)
     private String leaderCode;
 

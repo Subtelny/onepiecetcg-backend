@@ -16,23 +16,23 @@ public class SpringMatchupLeaderRepository implements MatchupLeaderRepository {
     private final MatchupLeaderJpaRepository jpaRepository;
 
     @Override
-    public List<MatchupLeader> findAllOrderByPopularityDesc() {
-        return jpaRepository.findAllByOrderByPopularityDesc();
+    public List<MatchupLeader> findAllOrderByPopularityDesc(String dataset) {
+        return jpaRepository.findAllByDatasetOrderByPopularityDesc(dataset);
     }
 
     @Override
-    public Optional<MatchupLeader> findByCode(String code) {
-        return jpaRepository.findById(code);
+    public Optional<MatchupLeader> findByCode(String dataset, String code) {
+        return jpaRepository.findByDatasetAndCardCode(dataset, code);
     }
 
     @Override
-    public boolean hasAnyRepresentativeDeck() {
-        return jpaRepository.existsByTopDeckGamesIsNotNull();
+    public boolean hasAnyRepresentativeDeck(String dataset) {
+        return jpaRepository.existsByDatasetAndTopDeckGamesIsNotNull(dataset);
     }
 
     @Override
-    public void deleteAll() {
-        jpaRepository.deleteAll();
+    public void deleteByDataset(String dataset) {
+        jpaRepository.deleteAllByDataset(dataset);
     }
 
     @Override

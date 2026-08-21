@@ -7,7 +7,7 @@ import pl.janda.onepiecetcg.matchups.application.model.RawMatchupSnapshot;
 import pl.janda.onepiecetcg.matchups.application.repository.RawMatchupSnapshotRepository;
 
 import java.time.OffsetDateTime;
-import java.util.Optional;
+import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
@@ -16,12 +16,16 @@ public class JooqRawMatchupSnapshotRepository implements RawMatchupSnapshotRepos
     private final DSLContext dsl;
 
     @Override
-    public Optional<RawMatchupSnapshot> findLatest() {
+    public List<RawMatchupSnapshot> findLatestPerDataset() {
         return dsl.fetch("""
                         SELECT id, dataset, total_matches, scraped_at
-                        FROM tcgmatchmaking_matchup_snapshots
+                        FROM (
+                            SELECT DISTINCT ON (LOWER(dataset))
+                                   id, dataset, total_matches, scraped_at
+                            FROM tcgmatchmaking_matchup_snapshots
+                            ORDER BY LOWER(dataset), scraped_at DESC, id DESC
+                        ) latest
                         ORDER BY scraped_at DESC, id DESC
-                        LIMIT 1
                         """)
                 .stream()
                 .map(record -> RawMatchupSnapshot.builder()
@@ -30,6 +34,6 @@ public class JooqRawMatchupSnapshotRepository implements RawMatchupSnapshotRepos
                         .totalMatches(record.get("total_matches", Long.class))
                         .scrapedAt(record.get("scraped_at", OffsetDateTime.class))
                         .build())
-                .findFirst();
+                .toList();
     }
 }

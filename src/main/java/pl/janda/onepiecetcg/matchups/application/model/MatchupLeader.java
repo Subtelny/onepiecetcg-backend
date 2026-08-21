@@ -1,9 +1,6 @@
 package pl.janda.onepiecetcg.matchups.application.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,11 +10,16 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "matchup_leaders")
+@IdClass(MatchupLeaderId.class)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class MatchupLeader {
+
+    @Id
+    @Column(name = "dataset", nullable = false, columnDefinition = "varchar(255) default ''")
+    private String dataset;
 
     @Id
     @Column(name = "card_code")

@@ -120,7 +120,101 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
         dsl.execute("DELETE FROM tcgmatchmaking_matchups");
         dsl.execute("DELETE FROM tcgmatchmaking_leader_stats");
         dsl.execute("DELETE FROM tcgmatchmaking_matchup_snapshots");
+        dsl.execute("DELETE FROM matchup_leader_cards");
+        dsl.execute("DELETE FROM matchup_pairs");
+        dsl.execute("DELETE FROM matchup_leaders");
+        dsl.execute("DELETE FROM matchup_snapshot_info");
         setCardJpaRepository.deleteAll();
+    }
+
+    @Test
+    void syncRetainsLatestSnapshotForEveryDatasetAndApiCanSelectEitherOne() throws Exception {
+        setCardJpaRepository.saveAndFlush(SetCard.builder()
+                .cardSetId("OP14-020")
+                .cardName("Dracule Mihawk")
+                .cardColor("GREEN, BLUE")
+                .cardImage("https://cdn.example/op14-020.png")
+                .cardType("Leader")
+                .variantIndex("0")
+                .build());
+
+        var lwScrapedAt = OffsetDateTime.parse("2026-08-20T10:00:00Z");
+        var specialQueueScrapedAt = OffsetDateTime.parse("2026-08-21T10:00:00Z");
+        insertSnapshot(10L, "lw", 1000L, lwScrapedAt);
+        insertSnapshot(11L, "lw", 900L, lwScrapedAt.minusDays(1));
+        insertSnapshot(20L, "Special_Queue", 2000L, specialQueueScrapedAt);
+        insertLeaderStat(10L, 100L, new BigDecimal("40.00"), new BigDecimal("10.00"));
+        insertLeaderStat(11L, 90L, new BigDecimal("30.00"), new BigDecimal("9.00"));
+        insertLeaderStat(20L, 200L, new BigDecimal("60.00"), new BigDecimal("20.00"));
+
+        assertThat(matchupSyncUseCase.syncMatchups()).isTrue();
+
+        assertThat(dsl.fetchCount(dsl.selectFrom(org.jooq.impl.DSL.table("matchup_snapshot_info")))).isEqualTo(2);
+        assertThat(dsl.fetchCount(dsl.selectFrom(org.jooq.impl.DSL.table("matchup_leaders")))).isEqualTo(2);
+
+        mockMvc.perform(get("/api/matchups/overview").queryParam("dataset", "lw"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.snapshot.dataset").value("lw"))
+                .andExpect(jsonPath("$.leaders[0].matches").value(100))
+                .andExpect(jsonPath("$.leaders[0].winRate").value(40.0));
+
+        mockMvc.perform(get("/api/matchups/overview").queryParam("dataset", "special_queue"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.snapshot.dataset").value("Special_Queue"))
+                .andExpect(jsonPath("$.leaders[0].matches").value(200))
+                .andExpect(jsonPath("$.leaders[0].winRate").value(60.0));
+
+        mockMvc.perform(get("/api/matchups/overview"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.snapshot.dataset").value("Special_Queue"));
+
+        mockMvc.perform(get("/api/matchups/datasets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].dataset").value("Special_Queue"))
+                .andExpect(jsonPath("$[1].dataset").value("lw"));
+
+        mockMvc.perform(get("/api/matchups/overview").queryParam("dataset", "unknown"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void schemaMigrationAssignsTheExistingSnapshotDatasetToLegacyRows() throws Exception {
+        dsl.execute("INSERT INTO matchup_snapshot_info " +
+                        "(source_snapshot_id, dataset, total_matches, scraped_at, synced_at, card_profile_version) " +
+                        "VALUES (?, ?, ?, ?::timestamptz, CURRENT_TIMESTAMP, ?)",
+                1L, "lw", 1000L, OffsetDateTime.parse("2026-08-20T10:00:00Z").toString(), 4);
+
+        dsl.execute("ALTER TABLE matchup_leader_cards DROP CONSTRAINT matchup_leader_cards_pkey");
+        dsl.execute("ALTER TABLE matchup_leader_cards DROP COLUMN dataset");
+        dsl.execute("ALTER TABLE matchup_leader_cards ADD PRIMARY KEY (leader_code, card_code)");
+        dsl.execute("ALTER TABLE matchup_pairs DROP CONSTRAINT matchup_pairs_pkey");
+        dsl.execute("ALTER TABLE matchup_pairs DROP COLUMN dataset");
+        dsl.execute("ALTER TABLE matchup_pairs ADD PRIMARY KEY (leader_code, opponent_code)");
+        dsl.execute("ALTER TABLE matchup_leaders DROP CONSTRAINT matchup_leaders_pkey");
+        dsl.execute("ALTER TABLE matchup_leaders DROP COLUMN dataset");
+        dsl.execute("ALTER TABLE matchup_leaders ADD PRIMARY KEY (card_code)");
+
+        dsl.execute("INSERT INTO matchup_leaders (card_code, name, popularity, matches, win_rate) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                "OP14-020", "Dracule Mihawk", new BigDecimal("10.00"), 100L, new BigDecimal("50.00"));
+        dsl.execute("INSERT INTO matchup_pairs " +
+                        "(leader_code, opponent_code, games, win_rate, first_games, second_games) " +
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                "OP14-020", "OP13-079", 10L, new BigDecimal("50.00"), 5L, 5L);
+        dsl.execute("INSERT INTO matchup_leader_cards " +
+                        "(leader_code, card_code, category, name, inclusion_rate, typical_copies) " +
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                "OP14-020", "OP01-001", "EXPECTED", "Expected Character",
+                new BigDecimal("100.00"), new BigDecimal("4.0"));
+
+        matchupSchemaInitializer.apply();
+
+        assertThat(dsl.fetchSingle("SELECT dataset FROM matchup_leaders").get("dataset", String.class))
+                .isEqualTo("lw");
+        assertThat(dsl.fetchSingle("SELECT dataset FROM matchup_pairs").get("dataset", String.class))
+                .isEqualTo("lw");
+        assertThat(dsl.fetchSingle("SELECT dataset FROM matchup_leader_cards").get("dataset", String.class))
+                .isEqualTo("lw");
     }
 
     @Test
@@ -324,5 +418,19 @@ class MatchupsControllerIT extends PostgresSpringBootTest {
         assertThat(topDeckCards).hasSize(13);
         assertThat(topDeckCards.stream().mapToInt(card -> ((Number) card.get("copies")).intValue()).sum())
                 .isEqualTo(50);
+    }
+
+    private void insertSnapshot(long id, String dataset, long totalMatches, OffsetDateTime scrapedAt) {
+        dsl.execute("INSERT INTO tcgmatchmaking_matchup_snapshots (id, dataset, total_matches, scraped_at) " +
+                        "VALUES (?, ?, ?, ?::timestamptz)",
+                id, dataset, totalMatches, scrapedAt.toString());
+    }
+
+    private void insertLeaderStat(long snapshotId, long matches, BigDecimal winRate, BigDecimal popularity) {
+        var wins = Math.round(matches * winRate.doubleValue() / 100.0);
+        dsl.execute("INSERT INTO tcgmatchmaking_leader_stats " +
+                        "(snapshot_id, leader, leader_group_index, wins, losses, number_of_matches, win_rate, popularity) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                snapshotId, "1xOP14-020", 0L, wins, matches - wins, matches, winRate, popularity);
     }
 }

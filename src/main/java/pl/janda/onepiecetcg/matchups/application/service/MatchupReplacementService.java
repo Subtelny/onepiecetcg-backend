@@ -31,17 +31,18 @@ public class MatchupReplacementService {
     @Transactional
     public void replaceAll(MatchupSnapshotInfo snapshotInfo, List<MatchupLeader> leaders, List<MatchupPair> pairs,
                            List<MatchupLeaderCard> leaderCards) {
-        log.info("Deleting existing matchup data from database");
+        var dataset = snapshotInfo.getDataset();
+        log.info("Deleting existing matchup data for dataset '{}' from database", dataset);
         var deleteStartTime = System.currentTimeMillis();
-        leaderCardRepository.deleteAll();
-        pairRepository.deleteAll();
-        leaderRepository.deleteAll();
-        snapshotInfoRepository.deleteAll();
+        leaderCardRepository.deleteByDataset(dataset);
+        pairRepository.deleteByDataset(dataset);
+        leaderRepository.deleteByDataset(dataset);
+        snapshotInfoRepository.deleteByDataset(dataset);
         var deleteDuration = System.currentTimeMillis() - deleteStartTime;
         log.info("Deleted existing matchup data in {}ms", deleteDuration);
 
-        log.info("Saving {} matchup leaders, {} matchup pairs and {} leader cards to database",
-                leaders.size(), pairs.size(), leaderCards.size());
+        log.info("Saving dataset '{}': {} matchup leaders, {} matchup pairs and {} leader cards",
+                dataset, leaders.size(), pairs.size(), leaderCards.size());
         var saveStartTime = System.currentTimeMillis();
         snapshotInfoRepository.save(snapshotInfo);
         leaderRepository.saveAll(leaders);
@@ -50,6 +51,7 @@ public class MatchupReplacementService {
         var saveDuration = System.currentTimeMillis() - saveStartTime;
         log.info("Successfully saved matchup data in {}ms", saveDuration);
 
-        log.info("Matchup replacement completed - Breakdown: delete={}ms, save={}ms", deleteDuration, saveDuration);
+        log.info("Matchup replacement for dataset '{}' completed - Breakdown: delete={}ms, save={}ms",
+                dataset, deleteDuration, saveDuration);
     }
 }
