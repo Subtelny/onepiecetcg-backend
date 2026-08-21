@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
@@ -89,6 +90,41 @@ class MatchupSyncServiceTest {
 
         assertThat(result).isFalse();
         verify(rawLeaderStatRepository, never()).findBySnapshotId(any());
+        verify(matchupReplacementService, never()).replaceAll(any(), any(), any(), any());
+    }
+
+    @Test
+    void recalculateMatchups_forcesReplacementOfAnAlreadySyncedDataset() {
+        var snapshot = RawMatchupSnapshot.builder()
+                .id(7L).dataset("Special_Queue").totalMatches(100L).scrapedAt(OffsetDateTime.now())
+                .build();
+        when(rawSnapshotRepository.findLatestPerDataset()).thenReturn(List.of(snapshot));
+        when(rawLeaderStatRepository.findBySnapshotId(7L)).thenReturn(List.of());
+        when(normalizationService.normalizeAndMergeLeaderStats(anyList())).thenReturn(List.of());
+        when(cardCatalogUseCase.getRepresentativeCardsByCardCodes(anyList())).thenReturn(List.of());
+        when(rawMatchupRepository.findBySnapshotId(7L)).thenReturn(List.of());
+        when(normalizationService.normalizeAndMergeMatchups(anyList(), any())).thenReturn(List.of());
+        when(rawDecklistRepository.findBySnapshotId(7L)).thenReturn(List.of());
+        when(cardProfileService.calculateProfiles(anyList(), any())).thenReturn(List.of());
+        when(cardProfileService.calculateRepresentativeDecks(anyList(), any())).thenReturn(List.of());
+
+        var recalculated = service().recalculateMatchups("special_queue");
+
+        assertThat(recalculated).isTrue();
+        verify(matchupSnapshotInfoRepository, never()).findByDataset(any());
+        verify(matchupReplacementService).replaceAll(
+                argThat(info -> info.getDataset().equals("Special_Queue") && info.getSourceSnapshotId().equals(7L)),
+                anyList(), anyList(), anyList());
+    }
+
+    @Test
+    void recalculateMatchups_rejectsUnknownDataset() {
+        when(rawSnapshotRepository.findLatestPerDataset()).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service().recalculateMatchups("unknown"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Matchup dataset not found: unknown");
+
         verify(matchupReplacementService, never()).replaceAll(any(), any(), any(), any());
     }
 

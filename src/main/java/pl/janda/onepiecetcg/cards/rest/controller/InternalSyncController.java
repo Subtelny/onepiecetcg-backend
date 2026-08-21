@@ -1,6 +1,7 @@
 package pl.janda.onepiecetcg.cards.rest.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.janda.onepiecetcg.cards.application.port.in.CardErrataSyncUseCase;
 import pl.janda.onepiecetcg.cards.application.port.in.CardFaqSyncUseCase;
@@ -102,5 +104,24 @@ public class InternalSyncController {
         var synced = matchupSyncUseCase.syncMatchups();
         var message = synced ? "Matchups synced" : "No matchup dataset required an update";
         return ResponseEntity.ok(new SyncResultDto(synced, message));
+    }
+
+    @PostMapping("/matchups/recalculate")
+    @Operation(summary = "Force matchup dataset recalculation",
+            description = "Rebuilds one matchup dataset from its latest raw snapshot even when that snapshot was " +
+                    "already processed. Use this after the card catalog gains cards that were missing during the " +
+                    "original matchup sync.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Dataset recalculated"),
+            @ApiResponse(responseCode = "400", description = "Dataset parameter is missing"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid API key"),
+            @ApiResponse(responseCode = "404", description = "Dataset not found")
+    })
+    public ResponseEntity<SyncResultDto> recalculateMatchups(
+            @Parameter(description = "Dataset name, matched case-insensitively", example = "Special_Queue", required = true)
+            @RequestParam String dataset
+    ) {
+        matchupSyncUseCase.recalculateMatchups(dataset);
+        return ResponseEntity.ok(new SyncResultDto(true, "Matchup dataset recalculated: " + dataset));
     }
 }

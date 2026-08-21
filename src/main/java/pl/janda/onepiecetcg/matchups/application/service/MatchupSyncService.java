@@ -55,26 +55,43 @@ public class MatchupSyncService implements MatchupSyncUseCase {
         }
 
         var syncedDatasets = rawSnapshots.stream()
-                .filter(this::syncSnapshot)
+                .filter(snapshot -> syncSnapshot(snapshot, false))
                 .count();
         log.info("Matchups sync finished - {} of {} datasets updated", syncedDatasets, rawSnapshots.size());
         return syncedDatasets > 0;
     }
 
-    private boolean syncSnapshot(RawMatchupSnapshot rawSnapshot) {
+    @Override
+    public boolean recalculateMatchups(String dataset) {
+        if (dataset == null || dataset.isBlank()) {
+            throw new IllegalArgumentException("Matchup dataset is required");
+        }
+
+        var rawSnapshot = rawSnapshotRepository.findLatestPerDataset().stream()
+                .filter(snapshot -> dataset.equalsIgnoreCase(snapshot.getDataset()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Matchup dataset not found: " + dataset));
+
+        log.info("Forced matchup recalculation requested for dataset '{}'", rawSnapshot.getDataset());
+        return syncSnapshot(rawSnapshot, true);
+    }
+
+    private boolean syncSnapshot(RawMatchupSnapshot rawSnapshot, boolean force) {
         var startTime = System.currentTimeMillis();
         var dataset = rawSnapshot.getDataset();
 
-        var alreadySynced = matchupSnapshotInfoRepository.findByDataset(dataset)
-                .filter(current -> Objects.equals(current.getSourceSnapshotId(), rawSnapshot.getId()))
-                .filter(current -> current.getScrapedAt().isEqual(rawSnapshot.getScrapedAt()))
-                .filter(current -> Objects.equals(current.getCardProfileVersion(), CARD_PROFILE_VERSION))
-                .filter(current -> leaderRepository.hasAnyRepresentativeDeck(dataset))
-                .isPresent();
-        if (alreadySynced) {
-            log.info("Matchup snapshot '{}' scraped at {} already synced, skipping",
-                    dataset, rawSnapshot.getScrapedAt());
-            return false;
+        if (!force) {
+            var alreadySynced = matchupSnapshotInfoRepository.findByDataset(dataset)
+                    .filter(current -> Objects.equals(current.getSourceSnapshotId(), rawSnapshot.getId()))
+                    .filter(current -> current.getScrapedAt().isEqual(rawSnapshot.getScrapedAt()))
+                    .filter(current -> Objects.equals(current.getCardProfileVersion(), CARD_PROFILE_VERSION))
+                    .filter(current -> leaderRepository.hasAnyRepresentativeDeck(dataset))
+                    .isPresent();
+            if (alreadySynced) {
+                log.info("Matchup snapshot '{}' scraped at {} already synced, skipping",
+                        dataset, rawSnapshot.getScrapedAt());
+                return false;
+            }
         }
 
         var rawLeaderStats = rawLeaderStatRepository.findBySnapshotId(rawSnapshot.getId());
